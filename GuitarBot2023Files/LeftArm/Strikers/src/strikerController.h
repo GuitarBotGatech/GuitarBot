@@ -322,7 +322,7 @@ public:
                 qf = strings[i];
             }
             if (i < 7) {
-                Util::fill(temp_traj_1, 40, q0);
+                Util::fill(temp_traj_1, 40, q0); //Fills temp_traj_1 of length 40 with the value of
                 Util::interpWithBlend(q0, qf, 20, .05, temp_traj_2);
                 int index = 0;
                 for (int x = 0; x < 40; x++) {
