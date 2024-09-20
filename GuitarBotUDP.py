@@ -61,6 +61,7 @@ class GuitarBotUDP:
         message += b'\x00'
         time.sleep(0.005)
         self.sock.sendto(message, (self.udp_ip, self.udp_port))
+        time.sleep(0.001)
         return 0
 
     def send_msg_picker(self, ipickercommand, bstartpicker, pgain, dgain, ipickerpos, ipickervel, ipickeracc,
@@ -120,8 +121,10 @@ class GuitarBotUDP:
 
 def main():
     # initialize UDP socket for guitar robot
-    UDP_IP = "169.254.60.100"
-    UDP_PORT = 1001
+    # UDP_IP = "169.254.60.100"
+    UDP_IP = "10.2.1.177"
+    # UDP_PORT = 1001
+    UDP_PORT = 8888
     guitarbot_udp = GuitarBotUDP(UDP_IP, UDP_PORT)
 
     # example to control left hand
