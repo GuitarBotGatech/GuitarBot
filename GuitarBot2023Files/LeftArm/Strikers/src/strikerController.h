@@ -11,6 +11,7 @@
 #include "Trajectory.h"
 #include <ArduinoQueue.h>
 #include <ArduinoEigen.h>
+//#include "networkHandler.h"
 
 class StrikerController {
 public:
@@ -37,6 +38,10 @@ public:
             }
             CanBus.attachRxInterrupt(canRxHandle);
         }
+//        //TODO: Confirm initialization for Ethernet messaging
+//        Error_t err = m_socket.init(&strikerController::packetCallback);
+//        if (err != kNoError)
+//            return err;
 
         RPDOTimer.setPeriod(PDO_RATE * 1000);
         RPDOTimer.attachInterrupt(RPDOTimerIRQHandler);
@@ -136,6 +141,7 @@ public:
         }
         if (bTerminateCAN)
             CanBus.end();
+//            m_socket.close();
     }
 
     Striker::Command getStrikerMode(char mode) {
@@ -522,6 +528,7 @@ public:
     }
 
 private:
+//    NetworkHandler m_socket;
     Striker m_striker[NUM_STRIKERS + NUM_PRESSERS + 1]; // 0 is dummy
     static StrikerController* pInstance;
     volatile bool m_bPlaying = false;
