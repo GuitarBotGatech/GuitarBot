@@ -2,7 +2,7 @@
     {
         "song_title": "chromatic_preview",
         "time_signature": "4/4",
-        "bpm": "60",
+        "bpm": 60,
         "chord_mode": "Optimal",
         "ordered_section_ids": [
             1

@@ -1,6 +1,6 @@
 from Model import Model
 from View import View, ChordNotationsPopup, HelpPopup
-from constants.bot_specs import DEFAULT_BPM
+from constants.bot_specs import MIN_BPM, MAX_BPM, DEFAULT_BPM
 # drag and drop
 from vis_entities.DraggableSectionLabel import DraggableSectionLabel
 # json saving/loading
@@ -41,9 +41,12 @@ class Controller:
         self.song_controls_frame.song_title.trace_add(('write'), self._update_song_title_handler)
 
         # BPM spinbox
-        self.song_controls_frame.bpm_spinbox.bind('<KeyRelease>', lambda e: self._update_bpm_handler(e, 'KeyRelease'))
-        self.song_controls_frame.bpm_spinbox.bind('<<Increment>>', lambda e: self._update_bpm_handler(e, 'Increment'))
-        self.song_controls_frame.bpm_spinbox.bind('<<Decrement>>', lambda e: self._update_bpm_handler(e, 'Decrement'))
+        default_bpm_font_color = self.song_controls_frame.bpm_spinbox.cget('foreground')
+        self.song_controls_frame.bpm_spinbox.bind('<FocusIn>', lambda e: self._update_bpm_handler(e, 'FocusIn', default_bpm_font_color))
+        self.song_controls_frame.bpm_spinbox.bind('<<Increment>>', lambda e: self._update_bpm_handler(e, 'Increment', default_bpm_font_color))
+        self.song_controls_frame.bpm_spinbox.bind('<<Decrement>>', lambda e: self._update_bpm_handler(e, 'Decrement', default_bpm_font_color))
+        self.song_controls_frame.bpm_spinbox.bind('<KeyRelease>', lambda e: self._update_bpm_handler(e, 'KeyRelease', default_bpm_font_color))
+        self.song_controls_frame.bpm_spinbox.bind('<FocusOut>', lambda e: self._update_bpm_handler(e, 'FocusOut', default_bpm_font_color))
 
         # Time signature options
         self.song_controls_frame.time_signature.trace_add('write', self._update_time_sig_handler)
@@ -85,21 +88,18 @@ class Controller:
             labels_frame.strum_pattern.trace_add(('write'), lambda e1, e2, e3: self._update_section_strum_pattern_handler(e1, e2, e3, section_frame, labels_frame))
 
         # Eraser (clear measure) icons
-        for tuple in section_frame.eraser_btns:
-            btn, measure_idx = tuple
-            # TODO: measure_idx is only passing the last measure num. copy, deepcopy didn't fix it
-            btn.configure(command=lambda: self._clear_measure_handler(section_frame, measure_idx)) # use configure for CTk btn
+        for btn, measure_idx in section_frame.eraser_btns:
+            btn.configure(command=lambda sf=section_frame, mi = measure_idx: self._clear_measure_handler(sf, mi)) # use configure for CTk btn
 
         # Trash (remove measure) icons
-        for tuple in section_frame.trash_btns:
-            btn, measure_idx = tuple
-            btn.configure(command=lambda: self._remove_measure_handler(None, section_frame, measure_idx)) # use configure for CTk btn
+        for btn, measure_idx in section_frame.trash_btns:
+            btn.configure(command=lambda b=btn, sf=section_frame, mi = measure_idx: self._remove_measure_handler(b, sf, mi)) # use configure for CTk btn
 
         # Add/remove measure key bindings for input boxes
         for row in range(2, 4):
-            for col in range(1, section_frame.subdiv_per_measure * section_frame.num_measures + 1):
+            for col in range(1, section_frame.subdiv_per_measure * section_frame.num_measures + 1): # SUSPICIOUS THAT SECTION_FRAME.NUM_MEASURES IS NOT INCREMENTED??????/
                 entry = section_frame.grid_slaves(row=row, column=col)[0]
-                m = col % section_frame.subdiv_per_measure
+                m = int(col / section_frame.subdiv_per_measure)
 
                 # Return -> Add measure
                 entry.bind("<Shift-Return>", lambda e: self._add_measure_handler(e, section_frame, m))
@@ -129,8 +129,11 @@ class Controller:
     def _update_song_title_handler(self, event, *args):
         self.model.song_title = self.song_controls_frame.song_title.get()
 
-    def _update_bpm_handler(self, event, type):
+    def _update_bpm_handler(self, event, type, default_bpm_font_color):
         # This event handler will run before increment/decrement buttons update the actual Entry, so we need to manually increment/decrement to account for that
+
+        global bpm_on_entry
+        global errored
         if type == 'Increment':
             self.model.bpm = int(self.song_controls_frame.bpm_spinbox.get()) + 1
         elif type == 'Decrement':
@@ -138,9 +141,22 @@ class Controller:
         elif type == 'KeyRelease':
             try:
                 self.model.bpm = int(self.song_controls_frame.bpm_spinbox.get())
-            except ValueError:
+                assert self.model.bpm >= MIN_BPM and self.model.bpm <= MAX_BPM
+                self.view.song_controls_frame.bpm_spinbox.config(foreground=default_bpm_font_color)
+                errored = False
+            except (ValueError, AssertionError) as e:
                 # If user enters invalid BPM (such as a letter or empty string) then set BPM to default value
                 self.model.bpm = DEFAULT_BPM
+                self.view.song_controls_frame.bpm_spinbox.config(foreground='red')
+                errored = True
+        elif type == 'FocusIn':
+            bpm_on_entry = int(self.song_controls_frame.bpm_spinbox.get())
+        elif type == 'FocusOut':
+            if 'errored' in globals() and errored:
+                self.view.song_controls_frame.bpm_spinbox.set(bpm_on_entry)
+                self.view.song_controls_frame.bpm_spinbox.config(foreground=default_bpm_font_color)
+            errored = False
+    
 
     def _update_time_sig_handler(self, event, *args):
         time_sig = self.song_controls_frame.time_signature.get()
@@ -149,7 +165,7 @@ class Controller:
         self.model.time_signature = time_sig
 
         # reset view w/ updated time signature
-        for section in self.song_frame.sections:
+        for unused_key, section in self.song_frame.sections.items():
             section_frame, section_label = section
             section_frame.rebuild_table(time_sig)
 
@@ -198,9 +214,12 @@ class Controller:
         # remove existing sections from view
         for section_id in self.model.sections.keys():
             # remove section from song frame
-            self.song_frame.remove_section(section_id)
+            self.song_frame.remove_section(section_id) # this call prompts a key error
             # remove section from song builder (drag and drop)
             self.song_builder_frame.remove_section_button_and_draggables(section_id)
+        
+        self.view.song_frame.curr_id = 1 # resets as if nothing put in yet
+        self.model.sections = {} # resets, no more sections 
 
         # repopulate song data (title, bpm, time signature, chord mode) in view
         self.song_controls_frame.update_song_data(song_title, bpm, time_signature, chord_mode)
@@ -277,7 +296,7 @@ class Controller:
         self.model.remove_section(id)
 
     def _add_measure_handler(self, e, section_frame, measure_idx):
-        print(f'Add measure handler, {measure_idx} to section {section_frame.id}')
+        # print(f'Add measure handler, {measure_idx} to section {section_frame.id}')
         # add measure to View
         # TODO uncomment once this function is implemented in SectionFrame.py (adds measure at any point in the section)
         #section_frame.add_measure(measure_idx)
@@ -300,13 +319,9 @@ class Controller:
         self._update_model_section_arm_lists(section_frame)
 
     def _remove_measure_handler(self, e, section_frame, measure_idx):
-        print(f'Remove measure handler, {measure_idx} from section {section_frame.id}')
+        # print(f'btn {e} pressed, removing measure {measure_idx} from section {section_frame.id}')
         # remove measure from View
-        # TODO uncomment once this function is implemented in SectionFrame.py (removes measure from any point in the section)
-        # section_frame.remove_measure(measure_idx)
-
-        # for now, just remove measure from the end of the section
-        section_frame.remove_measure()
+        section_frame.remove_measure(measure_idx)
 
         # update section data in model
         self._update_model_section_arm_lists(section_frame)
@@ -325,7 +340,7 @@ class Controller:
     # Saves all the current section data in the View to the Model
     def _update_model_sections(self):
         # iterate over each section
-        for section_tuple in self.view.song_frame.sections:
+        for unused_key, section_tuple in self.song_frame.sections.items():
             section_frame, labels_frame = section_tuple
 
             # get section data from View
@@ -385,8 +400,7 @@ class Controller:
         section_frame.update_section_data(num_measures, left_arm, right_arm)
 
     def _build_complete_arm_lists(self):
-        left_arm = []
-        right_arm = []
+        left_arm, right_arm = [], []
 
         # loop through song builder and append individual section left/right arm lists to the total lists
         for dd_section in DraggableSectionLabel.existing_draggables_list:
@@ -412,12 +426,11 @@ class Controller:
         
         # get the total time for each measure in seconds
         measure_time = self._calculate_measure_time()
-        # print(measure_time)
 
         # send arm lists, measure_time to reciever via UDP message
         self.arm_list_sender.send_arm_lists_to_reciever(left_arm, right_arm, measure_time)
-        
-    # TODO run this on a separate thread so that it doesn't block entire UI (current implementation not working)
+
+    # NOTE tried to run this on a separate thread, but due to the Global Python Interpreter lock (GIL), a separate thread still blocks the main UI thread.
     def _preview_song_with_plugin(self):
         left_arm, right_arm = self._build_complete_arm_lists()
 

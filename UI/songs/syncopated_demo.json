@@ -2,9 +2,9 @@
     {
         "song_title": "syncopated_demo",
         "time_signature": "4/4",
-        "bpm": "90",
+        "bpm": 90,
         "chord_mode": "Optimal",
-        "song_order": [
+        "ordered_section_ids": [
             1,
             1,
             1,

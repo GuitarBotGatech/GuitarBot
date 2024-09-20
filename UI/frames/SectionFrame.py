@@ -18,7 +18,8 @@ class SectionFrame(ctk.CTkScrollableFrame):
         self.num_measures = 0
         self.curr_measure = 0
         self.beats_per_measure = int(time_signature[0])
-        self.subdiv_per_measure = self.beats_per_measure * 2
+        self.subdiv_per_beat = 2
+        self.subdiv_per_measure = self.beats_per_measure * self.subdiv_per_beat
         self.beat_labels = beat_labels[time_signature]
         
         self.plus_btns = [] # for plus signs (currently not implemented)
@@ -49,17 +50,16 @@ class SectionFrame(ctk.CTkScrollableFrame):
 
     def build_measure(self, start_col):
         # get underlying frame's background color
-        frame_bg =self.master.cget('bg')
+        frame_bg = self.master.cget('bg')
 
         # build chords/strum inputs
-        for row in range(0, 4):
+        for row in range(4):
             col = start_col
 
             while col <= (self.subdiv_per_measure * self.num_measures):
                 if row == 0:
                     # BAR LABELS
-                    #print(self.curr_measure)
-                    self.cell = tk.Label(self, width=4, text="Bar " + str(self.curr_measure), bg=frame_bg, justify="center")
+                    self.cell = tk.Label(self, width=4, text=f'Bar {str(self.curr_measure)}', bg=frame_bg, justify='center')
                     self.cell.grid(row=row, column=col + self.beats_per_measure - 2, sticky='e',
                                     columnspan=2)
                     
@@ -76,9 +76,8 @@ class SectionFrame(ctk.CTkScrollableFrame):
                     self.eraser_btn = ctk.CTkButton(self, image=self.eraser_icon, width=0, border_width=0, border_spacing=0, text='', fg_color='transparent')
                     self.eraser_btn.grid(row=row, column=col + self.beats_per_measure + 1, sticky='w')
                     self.eraser_btns.append((self.eraser_btn, self.curr_measure - 1)) # subtract 1 so measure_idx is 0-indexed
-                    
+                   
                     col += self.subdiv_per_measure
-                    continue
                 elif row == 1:
                     # BEAT LABELS
                     self.cell = ttk.Entry(self, width=2, font=('Arial', 16, 'bold'))
@@ -141,7 +140,6 @@ class SectionFrame(ctk.CTkScrollableFrame):
         col = (self.subdiv_per_measure * measure_idx) + 1
 
         while col <= self.subdiv_per_measure * (measure_idx + 1):
-            #print(col)
             # clear chord input
             self.grid_slaves(row=2, column=col)[0].delete(0, tk.END)
 
@@ -150,70 +148,34 @@ class SectionFrame(ctk.CTkScrollableFrame):
 
             col += 1
 
-    # TODO: Generalization of remove from end function it overloads
+    def _shift_measure_text_left(self, earlier_idx):
+        start_col = 1 + earlier_idx*self.beats_per_measure
+
+        for col in range(start_col, start_col + self.subdiv_per_measure, self.subdiv_per_beat): 
+            # copy over chord
+            self.grid_slaves(row=2, column=col)[0].delete(0, tk.END)
+            self.grid_slaves(row=2, column=col)[0].insert(tk.END, self.grid_slaves(row=2, column=col + self.subdiv_per_measure)[0].get())
+
+            for i in range(col, col+self.subdiv_per_beat):
+            # copy over strums
+                self.grid_slaves(row=3, column=i)[0].delete(0, tk.END)
+                self.grid_slaves(row=3, column=i)[0].insert(tk.END, self.grid_slaves(row=3, column=i + self.subdiv_per_measure)[0].get())
+
     def remove_measure(self, measure_idx):
-        pass
-        # TODO: test, and modify further if needed
-        # start_col = (measure_idx - 1) * self.subdiv_per_measure
-        #
-        # # minimum of 1 measure per section
-        # if self.num_measures > 1:
-        #     self.num_measures = self.num_measures - 1
-
-        # # delete all components in last measure
-        # for i in range(self.subdiv_per_measure):
-        #     for j in range(5):
-        #         for e in self.grid_slaves(column=start_col + i, row=j):
-        #             e.grid_forget()
-
-        #             # remove deleted cells from tab orders
-        #             if j == 2:
-        #                 self.chords_tab_order.pop(start_col + i)
-        #             if j == 3:
-        #                 self.strums_tab_order.pop(start_col + i)
-
-        #             self._set_tab_order()
-
-        # # update last column
-        # self.last_col = self.last_col - self.subdiv_per_measure
-
-        # # set default focus to first input of last measure
-        # self.grid_slaves(row=2, column=self.last_col - self.subdiv_per_measure + 1)[
-        #     0].focus_set()
-
-        # # put bar labels back
-        # self.cell = tk.Label(self, width=4, text="Bar " + str(self.num_measures))
-        # self.cell.grid(row=0, column=self.last_col - self.beats_per_measure, sticky='w',
-        #                 columnspan=self.subdiv_per_measure)
-
-    def _set_tab_order(self):
-        # NOTE: if user presses tab on last chord input in a section, focus will go to the first strum input on the next row
-        
-        # iterate through the "Chords" row, set tabbing order from left -> right
-        for cell in self.chords_tab_order:
-            cell.lift()
-
-        # iterate through the "Strums" row, set tabbing order from left -> right
-        for cell in self.strums_tab_order:
-            cell.lift()
-
-    def add_measure(self):
-        self.num_measures += 1
-        self.curr_measure += 1
-
-        self.build_measure(self.last_col + 1)
-
-    def remove_measure(self):
         # minimum of 1 measure per section
         if self.num_measures == 1:
             return
+        
+        while measure_idx < self.num_measures-1:
+            self._shift_measure_text_left(measure_idx)
+            measure_idx += 1
             
         self.num_measures -= 1
         self.curr_measure -= 1
 
         # delete all components in last measure
-        for col in range(self.subdiv_per_measure):
-            for row in range(4):
+        for row in range(4):
+            for col in range(self.subdiv_per_measure):
                 for e in self.grid_slaves(column=self.last_col - col, row=row):
                     e.grid_forget()
 
@@ -232,6 +194,23 @@ class SectionFrame(ctk.CTkScrollableFrame):
         # set default focus to first input of last measure
         self.grid_slaves(row=2, column=self.last_col - self.subdiv_per_measure + 1)[
             0].focus_set()
+
+    def _set_tab_order(self):
+        # NOTE: if user presses tab on last chord input in a section, focus will go to the first strum input on the next row
+        
+        # iterate through the "Chords" row, set tabbing order from left -> right
+        for cell in self.chords_tab_order:
+            cell.lift()
+
+        # iterate through the "Strums" row, set tabbing order from left -> right
+        for cell in self.strums_tab_order:
+            cell.lift()
+
+    def add_measure(self):
+        self.num_measures += 1
+        self.curr_measure += 1
+
+        self.build_measure(self.last_col + 1)
 
     # called when time signature changes
     def rebuild_table(self, time_signature):
@@ -302,10 +281,9 @@ class SectionFrame(ctk.CTkScrollableFrame):
 
     # Helper method to fill section with left_arm, right_arm data
     def insert_chord_strum_data(self, left_arm, right_arm):
-        # flatten left_arm, right_arm lists to 1D lists
+        # flatten left_arm, right_arm lists to 1D lists  
         left_arm = [item for sublist in left_arm for item in sublist]
         right_arm = [item for sublist in right_arm for item in sublist]
-
         # insert left arm (chord) data
         i = 0
         for e in reversed(self.grid_slaves(row=2)):
@@ -313,7 +291,6 @@ class SectionFrame(ctk.CTkScrollableFrame):
             e.delete(0, tk.END)
             e.insert(0, left_arm[i])
             i += 1
-
         # insert right arm (strum) data
         i = 0
         for e in reversed(self.grid_slaves(row=3)):

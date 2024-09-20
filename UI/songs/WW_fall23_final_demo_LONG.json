@@ -2,7 +2,7 @@
     {
         "song_title": "WW_fall23_final_demo_LONG",
         "time_signature": "4/4",
-        "bpm": "145",
+        "bpm": 145,
         "chord_mode": "Optimal",
         "ordered_section_ids": [
             1,
@@ -21,7 +21,7 @@
         "id": 1,
         "name": "v",
         "num_measures": 4,
-        "strum_pattern": "WV",
+        "strum_pattern": "WWV",
         "left_arm": [
             [
                 "Em",
@@ -95,7 +95,7 @@
         "id": 2,
         "name": "c",
         "num_measures": 4,
-        "strum_pattern": "WC",
+        "strum_pattern": "WWC",
         "left_arm": [
             [
                 "C",
@@ -169,7 +169,7 @@
         "id": 3,
         "name": "b",
         "num_measures": 4,
-        "strum_pattern": "WB",
+        "strum_pattern": "WWB",
         "left_arm": [
             [
                 "C",
@@ -243,7 +243,7 @@
         "id": 4,
         "name": "p1",
         "num_measures": 4,
-        "strum_pattern": "WV",
+        "strum_pattern": "WWV",
         "left_arm": [
             [
                 "C",

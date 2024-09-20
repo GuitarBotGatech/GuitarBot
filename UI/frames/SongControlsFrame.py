@@ -68,7 +68,7 @@ class SongControlsFrame(tk.Frame):
         self.bpm_label = tk.Label(self, text="BPM:")
         self.bpm_label.grid(row=0, column=8, sticky='E')
 
-        self.bpm_spinbox = ttk.Spinbox(self, textvariable=self.bpm, width=3, justify='left')
+        self.bpm_spinbox = ttk.Spinbox(self, textvariable=self.bpm, width=3, justify='left', from_=MIN_BPM, to=MAX_BPM)
         self.bpm_spinbox.grid(row=0, column=9, sticky='EW')
 
         # Time signature label and dropdown
