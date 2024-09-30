@@ -539,7 +539,8 @@ int Epos4::setOpMode(OpMode opMode, uint8_t uiInterpolationTime, int8_t iInterpo
             LOG_ERROR("setHomingMethod");
             return -1;
         }
-        n = SetHomeOffset(52000);
+        //n = SetHomeOffset(52000);
+        n = SetHomeOffset(0);
         //SetHomeOffset(1500);
         if(m_uiNodeID > 6){
             n = SetHomeOffset(-25);
@@ -554,8 +555,8 @@ int Epos4::setOpMode(OpMode opMode, uint8_t uiInterpolationTime, int8_t iInterpo
 //            LOG_ERROR("setHomePosition");
 //            return -1;
 //        }
-
-        n = setHomingCurrentThreshold(2000);
+// Sliders first, 2000 mA
+        n = setHomingCurrentThreshold(800);
         if(m_uiNodeID > 6){
             n = setHomingCurrentThreshold(500);
         }

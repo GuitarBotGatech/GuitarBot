@@ -42,10 +42,12 @@ public:
         RPDOTimer.attachInterrupt(RPDOTimerIRQHandler);
         LOG_LOG("Controller Initialized");
 
-        return initStrikers(spec);
+        //Uncomment when ready to switch back to LH
+        //return initLH(spec);
+        return initRH(spec);
     }
 
-    Error_t initStrikers(MotorSpec spec) {
+    Error_t initLH(MotorSpec spec) {
         m_motorSpec = spec;
         Error_t err = kNoError;
         for (int i = 1; i < NUM_STRIKERS + 1; ++i) {
@@ -113,6 +115,82 @@ public:
 
             if (ii++ > 200) break;
         }
+
+        Serial.println("finished initializing and homing all controllers.");
+        //delay(20000);
+        return kNoError;
+    }
+
+    Error_t initRH(MotorSpec spec) {
+        m_motorSpec = spec;
+        Error_t err = kNoError;
+        //Loop only through pluckers
+        for (int i = 1; i < NUM_PLUCKERS + 1; ++i) {
+            //m_striker[i].setPInstance(pInstance);
+            LOG_LOG("plucker %i", i);
+            err = m_plucker[i].init(i, spec);
+            delay(300);
+            if (err != kNoError) {
+                LOG_ERROR("Cannot initialize slider with id %i. Error: %i", i, err);
+            }
+            //m_striker[i].setPresserCallback(pPresserCallBack);
+        }
+        /* Presser Inits
+        MotorSpec spec2 = EC20;
+        err = kNoError;
+        for (int i = NUM_STRIKERS + 1; i < NUM_PRESSERS + NUM_STRIKERS + 1; ++i) {
+            LOG_LOG("presser %i", i);
+            err = m_striker[i].init(i, spec2);
+            delay(300);
+            if (err != kNoError) {
+                LOG_ERROR("Cannot initialize presser with id %i. Error: %i", i, err);
+            }
+            else {
+                LOG_LOG("Successfully initialized presser with id %i", i);
+            }
+
+        } */
+        for (int i = 1; i < NUM_PLUCKERS + 1; ++i) {
+            m_plucker[i].startHome(i);
+            }
+        int ii = 0;
+        bool isHoming_all = true;
+        bool isHoming_1 = true;
+        // bool isHoming_2 = true;
+        // bool isHoming_3 = true;
+        // bool isHoming_4 = true;
+        // bool isHoming_5 = true;
+        // bool isHoming_6 = true;
+
+        while (isHoming_all) {
+            delay(50);
+            isHoming_1 = m_plucker[1].homingStatus();
+            // isHoming_2 = m_striker[2].homingStatus();
+            // isHoming_3 = m_striker[3].homingStatus();
+            // isHoming_4 = m_striker[4].homingStatus();
+            // isHoming_5 = m_striker[5].homingStatus();
+            // isHoming_6 = m_striker[6].homingStatus();
+            isHoming_all = isHoming_1; //|| isHoming_2 || isHoming_3 || isHoming_4 || isHoming_5 || isHoming_6;
+
+            if (ii++ > 200) break; //200 loops is enough time to home
+        }
+        /*HOMING for sliders complete, starting homing for pressers*/
+        // LOG_LOG("Homing for sliders, starting pressers. ");
+        // for (int i = NUM_STRIKERS + 1; i < NUM_PRESSERS + NUM_STRIKERS + 1; ++i) {
+        //     m_striker[i].startHome(i);
+        //     }
+        // while (isHoming_all) {
+        //     delay(50);
+        //     isHoming_1 = m_striker[7].homingStatus();
+        //     isHoming_2 = m_striker[8].homingStatus();
+        //     isHoming_3 = m_striker[9].homingStatus();
+        //     isHoming_4 = m_striker[10].homingStatus();
+        //     isHoming_5 = m_striker[11].homingStatus();
+        //     isHoming_6 = m_striker[12].homingStatus();
+        //     isHoming_all = isHoming_1 || isHoming_2 || isHoming_3 || isHoming_4 || isHoming_5 || isHoming_6;
+
+        //     if (ii++ > 200) break;
+        // }
 
         Serial.println("finished initializing and homing all controllers.");
         //delay(20000);
@@ -271,6 +349,11 @@ public:
         }
     }
 
+    /* Function: executeSlide()
+       Purpose: Creates the traj for the LH slide system
+       Inputs: string_1:string_6 (sliders), frets_1:frets_6 (pressers)
+       Outputs: Pushes to LH queue
+    */
     void executeSlide(int string_1, int string_2, int string_3, int string_4, int string_5, int string_6, int frets_1, int frets_2, int frets_3, int frets_4,  int frets_5, int frets_6) {
         int mult = -1;
         strings[1] = fminf(string_1, 9); // setting to max out at 9 for now
@@ -318,12 +401,14 @@ public:
             pos2pulse = mult * pos2pulse;
             float q0 = m_striker[i].getPosition_ticks();
             float qf = pos2pulse;
+            //Pressers have preset distances, RH needs something similar per string
             if (i > 6) {
                 qf = strings[i];
             }
-            if (i < 7) {
-                Util::fill(temp_traj_1, 40, q0); //Fills temp_traj_1 of length 40 with the value of
-                Util::interpWithBlend(q0, qf, 20, .05, temp_traj_2);
+            if (i < 7) { //If its a string (striker/slider) motor
+                Util::fill(temp_traj_1, 40, q0); //Fills temp_traj_1 of length 40 with the value of q0
+                Util::interpWithBlend(q0, qf, 20, .05, temp_traj_2); //Interpolates from q0 to qf with length 20
+                //Combines both temp_traj 1 and temp_traj 2 into all_trajs. all_trajs[8][60]
                 int index = 0;
                 for (int x = 0; x < 40; x++) {
                     all_Trajs[i - 1][index++] = temp_traj_1[x];
@@ -331,9 +416,10 @@ public:
                 for (int x = 0; x < 20; x++) {
                     all_Trajs[i - 1][index++] = temp_traj_2[x];
                 }
-            } else {
-                Util::interpWithBlend(q0, -10, 40, .25, temp_traj_1);
-                Util::interpWithBlend(-10, qf, 20, .25, temp_traj_2);
+            } else { //If its a fret (presser) motors
+                Util::interpWithBlend(q0, -10, 40, .25, temp_traj_1); //Interpolates from q0 to -10 (default presser pos)
+                Util::interpWithBlend(-10, qf, 20, .25, temp_traj_2); //Interpolates from -10 to qf
+                //Combines both temp_traj 1 and temp_traj 2 into all_trajs. all_trajs[8][60]
                 int index = 0;
                 for (int x = 0; x < 40; x++) {
                     all_Trajs[i - 1][index++] = temp_traj_1[x];
@@ -343,7 +429,8 @@ public:
                 }
             }
         }
-
+        //Creates a trajectory point for each interpolated curve and adds it to the queue for each motor
+        //NUM_MOTORS = 12 but all_Trajs is [8][60], definite array out of bounds right?? Error from ViolinBot?
         Trajectory<int32_t>::point_t temp_point;
         for (int i = 0; i < 60; i++) {
             for(int x = 0; x < NUM_MOTORS; x++){
@@ -351,6 +438,16 @@ public:
             }
             m_traj.push(temp_point);
         }
+    }
+
+    /* Function: executePluck()
+       Purpose: Creates the traj for the RH plucking/strumming system
+       Inputs: [U/D] array signaling up and down strum commands
+       Outputs: Pushes to RH queue
+    */
+    void executePluck()
+    {
+
     }
 
 
@@ -523,11 +620,13 @@ public:
 
 private:
     Striker m_striker[NUM_STRIKERS + NUM_PRESSERS + 1]; // 0 is dummy
+    Striker m_plucker[NUM_PLUCKERS+1]; //0 is dummy
     static StrikerController* pInstance;
     volatile bool m_bPlaying = false;
     MotorSpec m_motorSpec = MotorSpec::EC45;
     Trajectory<int32_t>::point_t m_currentPoint {};
     Trajectory<int32_t> m_traj;
+    Trajectory<int32_t> m_rh_traj;
     bool m_bSendDataRequest = true;
     bool m_bDataRequested = false;
 
@@ -584,11 +683,12 @@ private:
         }
     }
 
+    //Callback for RPDOTimer, (timer is started in start(), initialized in init())
     static void RPDOTimerIRQHandler() {
         static bool errorAtPop = false;
         static ulong idx = 0;
 
-
+        //pInstance = StrikerController()
         if (pInstance == nullptr)
             return;
 

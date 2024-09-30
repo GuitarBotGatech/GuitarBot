@@ -33,7 +33,7 @@ public:
 
     Error_t init(int iNodeId, MotorSpec spec) {
         LOG_LOG("%i", iNodeId);
-        int err = epos.init(iNodeId, spec, kStrikerDirection[1], 2000);
+        int err = epos.init(iNodeId, spec, 0, 2000); //0 is kStrikerDirection, 0 is normal, 1 is inverted.
         if (err != 0) {
             LOG_ERROR("Epos init failed for node id: %i", iNodeId);
             return kSetValueError;
