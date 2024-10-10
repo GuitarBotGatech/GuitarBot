@@ -539,11 +539,11 @@ int Epos4::setOpMode(OpMode opMode, uint8_t uiInterpolationTime, int8_t iInterpo
             LOG_ERROR("setHomingMethod");
             return -1;
         }
+        //CHANGE ME
         //n = SetHomeOffset(52000);
         n = SetHomeOffset(0);
-        //SetHomeOffset(1500);
         if(m_uiNodeID > 6){
-            n = SetHomeOffset(-25);
+            //n = SetHomeOffset(-25);
         }
         if(n != 0 ) {
             LOG_ERROR("setHomeOffset");
@@ -555,10 +555,14 @@ int Epos4::setOpMode(OpMode opMode, uint8_t uiInterpolationTime, int8_t iInterpo
 //            LOG_ERROR("setHomePosition");
 //            return -1;
 //        }
-// Sliders first, 2000 mA
-        n = setHomingCurrentThreshold(800);
+//      CHANGE ME
+        //n = setHomingCurrentThreshold(2000);
+        n = setHomingCurrentThreshold(400);
         if(m_uiNodeID > 6){
             n = setHomingCurrentThreshold(500);
+        }
+        if(m_uiNodeID > 12){
+            n = setHomingCurrentThreshold(800);
         }
         if (n != 0) {
             LOG_ERROR("setHomingCurrentThreshold");
@@ -994,7 +998,7 @@ int Epos4::setCurrentControlParameters_EC60() {
 
 int Epos4::setPositionControlParameters() {
     int n;
-    n = writeObj(POS_CTRL_PARAM_ADDR, PC_P_GAIN, 1230000);
+    n = writeObj(POS_CTRL_PARAM_ADDR, PC_P_GAIN, 830000);
     if (n != 0) {
         LOG_ERROR("Write Obj failed. Error code: ", m_uiError);
         return -1;

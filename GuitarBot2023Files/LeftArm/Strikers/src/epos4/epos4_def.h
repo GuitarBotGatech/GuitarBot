@@ -160,5 +160,5 @@ enum MotorSpec {
     EC60
 };
 #define EC20_ENC_RES 1024
-#define EC45_ENC_RES 2048   // Pulses per Revolution
+#define EC45_ENC_RES 1024//2048   // Pulses per Revolution
 #define EC60_ENC_RES 1024

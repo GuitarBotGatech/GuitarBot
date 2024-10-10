@@ -1,7 +1,7 @@
 //
 // Created by Raghavasimhan Sankaranarayanan on 03/30/22.
 // Modified for GuitarBot by Marcus Parker on 12/7/23
-//base version
+//MARCUS PLUCK PROTOTYPE
 #include "src/strikerController.h"
 #include "src/logger.h"
 
@@ -16,9 +16,8 @@ void setup() {
     inputString.reserve(10);
     // delay(5000); //Added delay for output reading
     pController = StrikerController::createInstance();
-    LOG_LOG("Initializing Pressers and Strikers...");
-    int err = pController->init(MotorSpec::EC45); //All motors
-    delay(15000);
+    LOG_LOG("Initializing Pressers and Striker...");
+    int err = pController->init(MotorSpec::EC45); //Sliders
     if (err != 0) {
         LOG_ERROR("Controller Init failed");
         return;
@@ -26,21 +25,29 @@ void setup() {
 //  int err = PController->init(MotorSpec::EC20); //Pressers
     if (err != 0) {
         LOG_ERROR("Controller Init failed");
+
+
         return;
     }
     delay(2000);
     LOG_LOG("Successfully Initialized! Controller Starting....");
     delay(2000);
-    //pController->start(); //Just testing homing for now
+    pController->start();
     delay(2000);
     
     LOG_LOG("Listening for commands...");   // "in format (ascii characters) <mode><id code><midi velocity>"
 }
 
+
 void loop() {
 //test all 6 sliders
-
-
+  //pController->executePluckTest(0);
+  delay(100);
+  //pController->executePluckTest(1);
+  delay(100);
+  //40 ms is the max if continuous to test, change the two delays above. 
+  //100 ms is the max stable
+  
     if (stringComplete) {
         // LOG_LOG("%s", inputString);
         uint8_t idCode;
@@ -88,8 +95,6 @@ void loop() {
 //        }
 
         pController->executeSlide(fret[0], fret[1], fret[2], fret[3], fret[4], fret[5], playcommand[0], playcommand[1], playcommand[2], playcommand[3], playcommand[4], playcommand[5]);
-        // For now, add in an executePluck() here, will probably later combine with executeSlide()
-        //pController->executePluck()
 
         if (err == kNoError) {
           LOG_LOG("playcommand 1: %i, playcommand 2: %i, playcommand 3: %i, playcommand 4: %i, playcommand 5: %i, playcommand 6: %i", playcommand[0], playcommand[1], playcommand[2], playcommand[3], playcommand[4], playcommand[5]);

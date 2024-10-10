@@ -4,10 +4,15 @@
 
 #ifndef SHIMON_DEF_H
 #define SHIMON_DEF_H
+
+#define IP_ADDR "10.2.1.177"
+#define MASTER_ADDR "10.2.1.1"
+#define PORT 8888
+#define CS_PIN 10
+#define MAX_BUFFER_SIZE 1024
 //change num pressers, TRACE_ME
-#define NUM_STRIKERS 6
-#define NUM_PRESSERS 6
-//NUM_PLUCKERS = 1 for now, change to 6 once all are implemented
+#define NUM_STRIKERS 0
+#define NUM_PRESSERS 0
 #define NUM_PLUCKERS 1
 #define NUM_MOTORS NUM_PRESSERS+NUM_STRIKERS+NUM_PLUCKERS
 #define NUT_POS 0

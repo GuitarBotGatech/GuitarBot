@@ -33,7 +33,7 @@ public:
 
     Error_t init(int iNodeId, MotorSpec spec) {
         LOG_LOG("%i", iNodeId);
-        int err = epos.init(iNodeId, spec, 0, 2000); //0 is kStrikerDirection, 0 is normal, 1 is inverted.
+        int err = epos.init(iNodeId, spec, kStrikerDirection[1], 2000);
         if (err != 0) {
             LOG_ERROR("Epos init failed for node id: %i", iNodeId);
             return kSetValueError;
@@ -96,6 +96,10 @@ public:
             //LOG_LOG("Passed");
             err = epos.setHomingMethod(HomingMethod::CurrentThresholdPositive);
         }
+        //CHANGE ME
+        //err = epos.setHomingMethod(HomingMethod::CurrentThresholdPositive);
+
+
         if (err != 0) {
             LOG_ERROR("setOpMode");
             return kSetValueError;
@@ -121,7 +125,9 @@ public:
 //        if (err != 0) return kSetValueError;
 //        return prepToGoHome();
         // Added Homing compatible w/ epos
-        int err = epos.setOpMode(OpMode::Homing, HomingMethod::CurrentThresholdNegative);
+        //CHANGE ME
+        //int err = epos.setOpMode(OpMode::Homing, HomingMethod::CurrentThresholdNegative);
+        int err = epos.setOpMode(OpMode::Homing, HomingMethod::CurrentThresholdPositive);
         if( iNodeID == 2 || iNodeID == 3 || iNodeID == 6 || iNodeID > 6){
             //LOG_LOG("Passed");
             err = epos.setHomingMethod(HomingMethod::CurrentThresholdPositive);
