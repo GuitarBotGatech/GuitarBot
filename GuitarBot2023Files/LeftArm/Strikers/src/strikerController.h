@@ -394,7 +394,7 @@ public:
         }
     }
     void executePluckTest(int pluckType) {
-        LOG_LOG("EXECUTE_PLUCK");
+//        LOG_LOG("EXECUTE_PLUCK");
         // Make space for temporary trajs
         float temp_traj_1[5];
         float temp_traj_2[5];
@@ -432,82 +432,9 @@ public:
             }
             m_traj.push(temp_point);
         }
-        LOG_LOG("END_EXECUTE_PLUCK_TEST");
+//        LOG_LOG("END_EXECUTE_PLUCK_TEST");
 
 
-    }
-
-    void executePluck() {
-        LOG_LOG("EXECUTE_PLUCK");
-        int mult = -1;
-
-//        for(int i = 0; i < 6; i++){
-//            Serial.println(strings[i+7]);
-//            switch (strings[i + 7]) {
-//                case 1:
-//                    strings[i + 7] = -10;
-//                    break;
-//                case 2:
-//                    strings[i + 7] = 36;
-//                    break;
-//                case 3:
-//                    strings[i + 7] = 23;
-//                    break;
-//                default:
-//                    strings[i + 7] = -10;
-//                    break;
-//            }
-//            //Serial.println(strings[i+7]);
-//        }
-
-        float temp_traj_1[5];
-        float temp_traj_2[5];
-
-        for(int i = 1; i < NUM_MOTORS + 1; i++) {
-            mult = -1;
-            float pluckLength = 0.15; //mm needed to a pluck
-            float pos2pulse = (pluckLength * 1024) / 9.4; //2048 for LH
-            if (i == 2 || i == 3 || i == 6) {
-                mult = 1;
-            }
-
-            pos2pulse = mult * pos2pulse; //down strum
-            float q0 = m_striker[i].getPosition_ticks();
-            LOG_LOG("CURRENT POSITION: %f", q0);
-            float qf = pos2pulse; //positive pos2pulse is up pluck, negative is down pluck
-            if (i > 6) {
-                qf = strings[i];
-            }
-            if (i < 7) {
-                Util::fill(temp_traj_1, 5, q0);
-                Util::interpWithBlend(q0, qf, 5, .05, temp_traj_2);
-                int index = 0;
-                for (int x = 0; x < 5; x++) {
-                    all_Trajs[i - 1][index++] = temp_traj_1[x];
-                }
-                for (int x = 0; x < 5; x++) {
-                    all_Trajs[i - 1][index++] = temp_traj_2[x];
-                }
-            } else {
-                Util::interpWithBlend(q0, -10, 40, .25, temp_traj_1);
-                Util::interpWithBlend(-10, qf, 20, .25, temp_traj_2);
-                int index = 0;
-                for (int x = 0; x < 40; x++) {
-                    all_Trajs[i - 1][index++] = temp_traj_1[x];
-                }
-                for (int x = 0; x < 20; x++) {
-                    all_Trajs[i - 1][index++] = temp_traj_2[x];
-                }
-            }
-        }
-
-        Trajectory<int32_t>::point_t temp_point;
-        for (int i = 0; i < 10; i++) {
-            for(int x = 0; x < NUM_MOTORS; x++){
-                temp_point[x] = all_Trajs[x][i];
-            }
-            m_traj.push(temp_point);
-        }
     }
 
 
@@ -568,7 +495,7 @@ public:
 //            m_currentPoint[i - 1] = kInitials[i - 1];
 
             //PLUCKER PROTOTYPE:
-        float offset = 5.75; //MINIMUM needed to go from home to top of string!
+        float offset = 7; //MINIMUM needed to go from home to top of string!
         float pos2pulse = (offset * 1024) / 9.4;
         for(int i = 1;i < NUM_MOTORS + 1 ;i++){
             temp_point[i - 1] = pos2pulse;
