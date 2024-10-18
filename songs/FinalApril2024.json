@@ -1,0 +1,226 @@
+[
+    {
+        "song_title": "FinalApril2024",
+        "time_signature": "4/4",
+        "bpm": 60,
+        "chord_mode": "Optimal",
+        "ordered_section_ids": [
+            1,
+            2,
+            3,
+            4,
+            5,
+            6,
+            7,
+            8
+        ]
+    },
+    {
+        "id": 1,
+        "name": "Section1",
+        "num_measures": 1,
+        "strum_pattern": "Custom",
+        "left_arm": [
+            [
+                "Bm",
+                "",
+                "",
+                ""
+            ]
+        ],
+        "right_arm": [
+            [
+                "",
+                "",
+                "",
+                "",
+                "",
+                "",
+                "",
+                ""
+            ]
+        ]
+    },
+    {
+        "id": 2,
+        "name": "Section2",
+        "num_measures": 1,
+        "strum_pattern": "Custom",
+        "left_arm": [
+            [
+                "Em",
+                "",
+                "",
+                ""
+            ]
+        ],
+        "right_arm": [
+            [
+                "",
+                "",
+                "",
+                "",
+                "",
+                "",
+                "",
+                ""
+            ]
+        ]
+    },
+    {
+        "id": 3,
+        "name": "Section3",
+        "num_measures": 1,
+        "strum_pattern": "Custom",
+        "left_arm": [
+            [
+                "A",
+                "",
+                "",
+                ""
+            ]
+        ],
+        "right_arm": [
+            [
+                "",
+                "",
+                "",
+                "",
+                "",
+                "",
+                "",
+                ""
+            ]
+        ]
+    },
+    {
+        "id": 4,
+        "name": "Section4",
+        "num_measures": 1,
+        "strum_pattern": "Custom",
+        "left_arm": [
+            [
+                "D",
+                "",
+                "",
+                ""
+            ]
+        ],
+        "right_arm": [
+            [
+                "",
+                "",
+                "",
+                "",
+                "",
+                "",
+                "",
+                ""
+            ]
+        ]
+    },
+    {
+        "id": 5,
+        "name": "Section5",
+        "num_measures": 1,
+        "strum_pattern": "Custom",
+        "left_arm": [
+            [
+                "G",
+                "",
+                "",
+                ""
+            ]
+        ],
+        "right_arm": [
+            [
+                "",
+                "",
+                "",
+                "",
+                "",
+                "",
+                "",
+                ""
+            ]
+        ]
+    },
+    {
+        "id": 6,
+        "name": "Section6",
+        "num_measures": 1,
+        "strum_pattern": "Custom",
+        "left_arm": [
+            [
+                "C",
+                "",
+                "",
+                ""
+            ]
+        ],
+        "right_arm": [
+            [
+                "",
+                "",
+                "",
+                "",
+                "",
+                "",
+                "",
+                ""
+            ]
+        ]
+    },
+    {
+        "id": 7,
+        "name": "Section7",
+        "num_measures": 1,
+        "strum_pattern": "Custom",
+        "left_arm": [
+            [
+                "F#",
+                "",
+                "G",
+                ""
+            ]
+        ],
+        "right_arm": [
+            [
+                "",
+                "",
+                "",
+                "",
+                "",
+                "",
+                "",
+                ""
+            ]
+        ]
+    },
+    {
+        "id": 8,
+        "name": "Section8",
+        "num_measures": 1,
+        "strum_pattern": "Custom",
+        "left_arm": [
+            [
+                "A",
+                "",
+                "F#",
+                ""
+            ]
+        ],
+        "right_arm": [
+            [
+                "",
+                "",
+                "",
+                "",
+                "",
+                "",
+                "",
+                ""
+            ]
+        ]
+    }
+]

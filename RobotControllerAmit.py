@@ -7,9 +7,10 @@ import threading
 import logging
 
 #### Definitions
-UDP_IP = "192.168.1.50"
+# UDP_IP = "192.168.1.50"
+UDP_IP = "10.2.1.177"
 XARM_IP = '192.168.1.215'
-UDP_PORT = 1001
+UDP_PORT = 8888
 INIT_POSE = [684.3, 246.8, 367.7, -90, 0, 0]
 SYNC_RATE = 250
 move_time = 0.1
@@ -114,8 +115,8 @@ class GuitarRobotController():
         print("t: ", timings)
         print("firstc: ", firstc)
         #Test
-        # self.guitarbot_udp.send_msg_left(iplaycommand=firstc[1], ifretnumber=firstc[0])
-        self.guitarbot_udp.send_msg_arduino(iplaycommand=firstc[1], ifretnumber=firstc[0])
+        self.guitarbot_udp.send_msg_left(iplaycommand=firstc[1], ifretnumber=firstc[0])
+        # self.guitarbot_udp.send_msg_arduino(iplaycommand=firstc[1], ifretnumber=firstc[0])
 
         bpm = 60
         bps = bpm / 60
@@ -171,16 +172,16 @@ class GuitarRobotController():
             else:  # TYPE 0 IS HERE AND IS PICKING
                 # print("array1", tNextEvent)
                 # Test
-                # self.guitarbot_udp.send_msg_left(iplaycommand=chordtoplay[1], ifretnumber=chordtoplay[0])
-                self.guitarbot_udp.send_msg_arduino(iplaycommand=chordtoplay[1], ifretnumber=chordtoplay[0])
+                self.guitarbot_udp.send_msg_left(iplaycommand=chordtoplay[1], ifretnumber=chordtoplay[0])
+                # self.guitarbot_udp.send_msg_arduino(iplaycommand=chordtoplay[1], ifretnumber=chordtoplay[0])
                 chordindex += 1
                 # time.sleep(measure_time / 4)
 
         # Pass to tune
         time.sleep(2)
-        # self.guitarbot_udp.send_msg_left(iplaycommand=[1, 1, 1, 1, 1, 1], ifretnumber=firstc[0])
+        self.guitarbot_udp.send_msg_left(iplaycommand=[1, 1, 1, 1, 1, 1], ifretnumber=firstc[0])
         # test
-        self.guitarbot_udp.send_msg_arduino(iplaycommand=[1, 1, 1, 1, 1, 1], ifretnumber=firstc[0])
+        # self.guitarbot_udp.send_msg_arduino(iplaycommand=[1, 1, 1, 1, 1, 1], ifretnumber=firstc[0])
         print("done")
         return 0
 
