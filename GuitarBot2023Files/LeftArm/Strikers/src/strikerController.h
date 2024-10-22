@@ -390,8 +390,17 @@ public:
             for(int x = 0; x < NUM_MOTORS; x++){
                 temp_point[x] = all_Trajs[x][i];
             }
-            m_traj.push(temp_point);
+            m_traj.push(temp_point); //Push 60 temp points
         }
+
+        //AT THE END OF THE PHRASE, PLACE A SPECIAL POINT (999.0) ON THE QUEUE TO TRIGGER PLUCK CALLBACK
+        Trajectory<int32_t>::point_t pluck_symbol;
+        for (int i = 0; i<NUM_MOTORS; i++)
+        {
+            pluck_symbol[i] = 999.0; 
+        }
+        m_traj.push(pluck_symbol); //Push 1 pluck symbol
+
     }
     void executePluckTest(int pluckType) {
 //        LOG_LOG("EXECUTE_PLUCK");
@@ -738,6 +747,23 @@ private:
                 auto err = pInstance->m_traj.peek(pt);
                 if (err)
                     LOG_ERROR("Error peeking trajectory. Code %i", (int) err);
+                
+                //CHECK PLUCK SYMBOL TO TRIGGER PLUCK CALLBACK
+                Trajectory<int32_t>::point_t pluck_symbol;
+                for (int i = 0; i<NUM_MOTORS; i++)
+                {
+                    pluck_symbol[i] = 999.0;
+                }
+                //CHECK FOR PLUCK SYMBOL, POP FROM QUEUE, TRIGGER CALLBACK
+                if(pt.isClose(pluck_symbol))
+                {
+                    LOG_LOG("FOUND_PLUCK_SYMBOL");
+                    pInstance->m_traj.pop(pluck_symbol); //pluck_symbol should now contain 999.0 for all motors
+                    
+                    executePluckTest(0); //TODO: Map each plucker to either and up state or down state so it's easy to determine which direction
+                }
+                
+
 
                 // If the point is not close to the previous point, generate transition trajectory
                 if (!pt.isClose(pInstance->m_currentPoint, DISCONTINUITY_THRESHOLD)) {
