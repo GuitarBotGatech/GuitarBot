@@ -96,6 +96,9 @@ public:
             //LOG_LOG("Passed");
             err = epos.setHomingMethod(HomingMethod::CurrentThresholdPositive);
         }
+        if(iNodeID > 12){
+            err = epos.setHomingMethod(HomingMethod::CurrentThresholdNegative);
+        }
         //CHANGE ME
         //err = epos.setHomingMethod(HomingMethod::CurrentThresholdPositive);
 

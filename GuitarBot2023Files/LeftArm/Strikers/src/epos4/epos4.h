@@ -45,7 +45,7 @@ public:
     ~Epos4() = default;
 
     // Timeout of 0 means no timeout
-    int init(int iNodeID = 1, MotorSpec spec = EC45, bool inverted = false, unsigned long timeout_ms = 0);
+    int init(int iNodeID = 1, MotorSpec spec = EC45_Slider, bool inverted = false, unsigned long timeout_ms = 0);
     void reset();
 
     int configEC20();
@@ -93,6 +93,9 @@ public:
     int setTargetTorque(int16_t torque);
     int SetHomePosition(int32_t iPos);
     int SetHomeOffset(int32_t iPos);
+    int SetHomeSpeedSwitch(int32_t iVel);
+
+
     int clearFault();
 
     int setCurrentControlParameters();
@@ -183,9 +186,9 @@ private:
     _WORD m_uiCurrentCtrlWord;
     _WORD m_uiCurrentStatusWord;
 
-    MotorSpec m_motorSpec = EC45;
+    MotorSpec m_motorSpec = EC45_Slider;
     int32_t m_iEncoderPosition;
-    int m_iEncoderResolution = EC45_ENC_RES;
+    int m_iEncoderResolution = EC45_ENC_RES_PLUCKER;
 
     can_message_t m_txMsg;
     can_message_t m_rxMsg;

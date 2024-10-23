@@ -27,11 +27,14 @@ int Epos4::init(int iNodeID, MotorSpec spec, bool inverted, unsigned long timeou
         err = configEC20();
         break;
 
-    case EC45:
-        m_iEncoderResolution = EC45_ENC_RES;
+    case EC45_Slider:
+        m_iEncoderResolution = EC45_ENC_RES_SLIDER;
         err = configEC45();
         break;
-
+    case EC45_Plucker:
+        m_iEncoderResolution = EC45_ENC_RES_PLUCKER;
+        err = configEC45();
+        break;
     case EC60:
         m_iEncoderResolution = EC60_ENC_RES;
         err = configEC60();
@@ -485,7 +488,6 @@ char* Epos4::getOpModeString(OpMode mode) const {
     case OpMode::ProfilePosition:
         return "Profile Position Mode";
         break;
-
     case OpMode::ProfileVelocity:
         return "Profile Velocity Mode";
         break;
@@ -540,13 +542,21 @@ int Epos4::setOpMode(OpMode opMode, uint8_t uiInterpolationTime, int8_t iInterpo
             return -1;
         }
         //CHANGE ME
-        //n = SetHomeOffset(52000);
-        n = SetHomeOffset(0);
-        if(m_uiNodeID > 6){
-            //n = SetHomeOffset(-25);
+        n = SetHomeOffset(52000);
+        if(m_uiNodeID > 12){
+            n = SetHomeOffset(0);
         }
+        if(m_uiNodeID > 6 && m_uiNodeID < 13){
+            n = SetHomeOffset(-25);
+        }
+
         if(n != 0 ) {
             LOG_ERROR("setHomeOffset");
+            return -1;
+        }
+        n = SetHomeSpeedSwitch(200);
+        if(n != 0 ) {
+            LOG_ERROR("setHomeSpeedSwitch");
             return -1;
         }
 
@@ -555,14 +565,13 @@ int Epos4::setOpMode(OpMode opMode, uint8_t uiInterpolationTime, int8_t iInterpo
 //            LOG_ERROR("setHomePosition");
 //            return -1;
 //        }
-//      CHANGE ME
-        //n = setHomingCurrentThreshold(2000);
-        n = setHomingCurrentThreshold(400);
-        if(m_uiNodeID > 6){
+        n = setHomingCurrentThreshold(2000);
+        //n = setHomingCurrentThreshold(400);
+        if(m_uiNodeID > 6 && m_uiNodeID < 13){
             n = setHomingCurrentThreshold(500);
         }
         if(m_uiNodeID > 12){
-            n = setHomingCurrentThreshold(800);
+            n = setHomingCurrentThreshold(400);
         }
         if (n != 0) {
             LOG_ERROR("setHomingCurrentThreshold");
@@ -921,6 +930,18 @@ int Epos4::SetHomeOffset(int32_t iPos) {
     return 0;
 
 }
+int Epos4::SetHomeSpeedSwitch(int32_t iVel) {
+    int n;
+
+    n = writeObj(0x6099, 0x01, iVel);
+    if (n != 0) {
+        LOG_ERROR("Write Obj failed. Error code: ", m_uiError);
+        return -1;
+    }
+    return 0;
+
+}
+
 
 
 int Epos4::SetHomePosition(int32_t iPos) {

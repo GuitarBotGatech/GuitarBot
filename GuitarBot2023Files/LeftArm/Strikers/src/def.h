@@ -11,9 +11,9 @@
 #define CS_PIN 10
 #define MAX_BUFFER_SIZE 1024
 //change num pressers, TRACE_ME
-#define NUM_STRIKERS 0
-#define NUM_PRESSERS 0
-#define NUM_PLUCKERS 1
+#define NUM_STRIKERS 6
+#define NUM_PRESSERS 6
+#define NUM_PLUCKERS 0
 #define NUM_MOTORS NUM_PRESSERS+NUM_STRIKERS+NUM_PLUCKERS
 #define NUT_POS 0
 #define NUM_BYTES_PER_VALUE sizeof(uint16_t)

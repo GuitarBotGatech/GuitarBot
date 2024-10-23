@@ -1,7 +1,9 @@
-//
+// Github Version
 // Created by Raghavasimhan Sankaranarayanan on 03/30/22.
 // Modified for GuitarBot by Marcus Parker on 12/7/23
-// Modified for GuitarBot - RH + Ethernet by Derrick Joyce on 10/10/24
+// Modified to merge pluck and pick by Marcus Parker 10/17/24
+// Modified to increase homing speed by Marcus Parker 10/22/24
+// Modification in progress for queue manipulation 10/23/24
 
 #include "src/strikerController.h"
 #include "src/logger.h"
@@ -27,7 +29,7 @@ void setup() {
     if (Ethernet.hardwareStatus() == EthernetNoHardware) {
       LOG_LOG("Ethernet shield was not found. Sorry, can't run without hardware.");
       while (true) {
-        delay(1);
+        delay(10000);
       }
     } else {LOG_LOG("Ethernet shield found!");};
     //Checks for presence of etherner link.Halts if no link present. 
@@ -39,12 +41,11 @@ void setup() {
 
 
     // put your setup code here, to run once:
-    delay(8000); //Added delay for output reading
+    delay(2000); //Added delay for output reading
     LOG_LOG("Initializing GuitarBot...");
-    // delay(5000); //Added delay for output reading
     pController = StrikerController::createInstance();
     LOG_LOG("Initializing Pressers and Striker...");
-    int err = pController->init(MotorSpec::EC45); //Sliders
+    int err = pController->init(MotorSpec::EC45_Slider); //Sliders
     if (err != 0) {
         LOG_ERROR("Controller Init failed");
         return;
@@ -54,13 +55,34 @@ void setup() {
         LOG_ERROR("Controller Init failed");
         return;
     }
-    delay(2000);
-    LOG_LOG("Successfully Initialized! Controller Starting....");
-    delay(2000);
+    // delay(2000);
+    // LOG_LOG("Successfully Initialized! Controller Starting....");
+    delay(1000);
     pController->start();
-    delay(2000);
-    
+    delay(1000);
+    // delay(2000);
+    // pController->executeSlide(1,1,1,5,1,1,1,1,1,1,1,1);
+    // delay(2000);
+    // pController->executeSlide(1,1,1,4,1,1,1,1,1,2,1,1);
+    // delay(2000);
+    // pController->executeSlide(1,1,1,3,1,1,1,1,1,1,1,1);
+    // delay(2000);
+    // pController->executeSlide(1,1,1,2,1,1,1,1,1,1,1,1);
+    // delay(2000);
+    // pController->executePluckTest(0);
+    // delay(2000);
+    // pController->executePluckTest(1);
+    // delay(2000);
+    // pController->executePluckTest(0);
+    // delay(2000);
+    // pController->executePluckTest(1);
+    // delay(2000);
+    // pController->executePluckTest(0);
+    // delay(2000);
+    //pController->executePluckTest(1);
+
     LOG_LOG("Listening for commands...");   // "in format (ascii characters) <mode><id code><midi velocity>"
+
 }
 
 void loop() {
@@ -69,10 +91,7 @@ void loop() {
     if (complete) {
       LOG_LOG("ETHERNET RECEIVED");
       //test all 6 sliders
-      pController->executePluckTest(0);
-      delay(100);
-      pController->executePluckTest(1);
-      delay(100);
+
       //30ms is in fact good and possible, just need a more stable setup -- AMIT
       //40 ms is the max if continuous to test, change the two delays above. 
       //100 ms is the max stable
@@ -87,12 +106,13 @@ void loop() {
         complete = false;
         // //Unpress
 
-        //pController->executeSlide(fret[0], fret[1], fret[2], fret[3], fret[4], fret[5], playcommand[0], playcommand[1], playcommand[2], playcommand[3], playcommand[4], playcommand[5]);
+        pController->executeSlide(fret[0], fret[1], fret[2], fret[3], fret[4], fret[5], playcommand[0], playcommand[1], playcommand[2], playcommand[3], playcommand[4], playcommand[5]);
 
         if (err == kNoError) {
           LOG_LOG("playcommand 1: %i, playcommand 2: %i, playcommand 3: %i, playcommand 4: %i, playcommand 5: %i, playcommand 6: %i", playcommand[0], playcommand[1], playcommand[2], playcommand[3], playcommand[4], playcommand[5]);
           LOG_LOG("fret 1: %i, fret 2: %i, fret 3: %i, fret 4: %i, fret 5: %i, fret 6: %i", fret[0], fret[1], fret[2], fret[3], fret[4], fret[5]);
         }
+        //Why is this here.
         delay(10);
     }
 }

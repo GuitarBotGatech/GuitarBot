@@ -156,9 +156,11 @@ enum HomingStatus {
 
 enum MotorSpec {
     EC20,
-    EC45,
+    EC45_Slider,
+    EC45_Plucker,
     EC60
 };
 #define EC20_ENC_RES 1024
-#define EC45_ENC_RES 1024//2048   // Pulses per Revolution
+#define EC45_ENC_RES_PLUCKER 1024
+#define EC45_ENC_RES_SLIDER 2048
 #define EC60_ENC_RES 1024
