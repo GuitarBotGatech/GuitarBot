@@ -108,7 +108,7 @@ void loop() {
         // //Unpress
 
         pController->executeSlide(fret[0], fret[1], fret[2], fret[3], fret[4], fret[5], playcommand[0], playcommand[1], playcommand[2], playcommand[3], playcommand[4], playcommand[5]);
-        //pController->executePluckTest(0);
+        pController->executePluckTest(0);
         //delay(1000);
         //pController->executePluckTest(1);
         if (err == kNoError) {
