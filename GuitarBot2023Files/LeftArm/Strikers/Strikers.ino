@@ -4,6 +4,7 @@
 // Modified to merge pluck and pick by Marcus Parker 10/17/24
 // Modified to increase homing speed by Marcus Parker 10/22/24
 // Modification in progress for queue manipulation 10/23/24
+//Derrick Github 10/23/2024
 
 #include "src/strikerController.h"
 #include "src/logger.h"
@@ -57,9 +58,9 @@ void setup() {
     }
     // delay(2000);
     // LOG_LOG("Successfully Initialized! Controller Starting....");
-    delay(1000);
+    delay(3000);
     pController->start();
-    delay(1000);
+    delay(3000);
     // delay(2000);
     // pController->executeSlide(1,1,1,5,1,1,1,1,1,1,1,1);
     // delay(2000);
@@ -107,13 +108,14 @@ void loop() {
         // //Unpress
 
         pController->executeSlide(fret[0], fret[1], fret[2], fret[3], fret[4], fret[5], playcommand[0], playcommand[1], playcommand[2], playcommand[3], playcommand[4], playcommand[5]);
-
+        //pController->executePluckTest(0);
+        //delay(1000);
+        //pController->executePluckTest(1);
         if (err == kNoError) {
           LOG_LOG("playcommand 1: %i, playcommand 2: %i, playcommand 3: %i, playcommand 4: %i, playcommand 5: %i, playcommand 6: %i", playcommand[0], playcommand[1], playcommand[2], playcommand[3], playcommand[4], playcommand[5]);
           LOG_LOG("fret 1: %i, fret 2: %i, fret 3: %i, fret 4: %i, fret 5: %i, fret 6: %i", fret[0], fret[1], fret[2], fret[3], fret[4], fret[5]);
         }
-        //Why is this here.
-        delay(10);
+        
     }
 }
 

@@ -416,7 +416,7 @@ public:
         {
             pluck_symbol[i] = 999.0; 
         }
-        m_traj.push(pluck_symbol); //Push 1 pluck symbol
+        //m_traj.push(pluck_symbol); //Push 1 pluck symbol
 
 
     }
@@ -451,7 +451,7 @@ public:
                     all_Trajs[i - 1][index++] = temp_traj_1[x];
                 }
 
-            } else {
+            } else { //Fill with just initial q0 point for all other motors
                 Util::fill(temp_traj_1, 5, q0);
                 int index = 0;
                 for (int x = 0; x < 5; x++) {
@@ -525,6 +525,7 @@ public:
     }
 
     void start() {
+    LOG_LOG("START");
         float offset = 7; //MINIMUM needed to go from home to top of string!
         float pos2pulse = (offset * 1024) / 9.4;
 
@@ -532,11 +533,50 @@ public:
         for(int i = 1;i < NUM_MOTORS + 1 ;i++) {
             temp_point[i - 1] = 0;
             kInitials[i - 1] = 0;
+
             if(i == 13){
                 temp_point[i - 1] = pos2pulse;
                 kInitials[i - 1] = pos2pulse;
+
+                //Interpolate line to start position
+                float temp_traj_1[7];
+
+//                // Get initial position in position ticks
+                float q0 = m_striker[i].getPosition_ticks();
+
+////                //Translate pluckType to position ticks and assign to qf
+                float qf = pos2pulse;
+////                //Interpolate Line
+                Util::interpWithBlend(q0, qf, 7, .25, temp_traj_1);
+                LOG_LOG("Interp Successful");
+////                // Put line into list of trajs
+                int index = 0;
+                for (int x = 0; x < 7; x++) {
+                    all_Trajs[i - 1][index++] = temp_traj_1[x];
+                }
+                LOG_LOG("Added to All_Trajs");
+
+                Trajectory<int32_t>::point_t plucker_temp_point;
+                for (int y = 0; y < 7; y++) {
+                    for(int x = 0; x < NUM_MOTORS; x++){
+                        //I'd like to seperate all_trajs between left and right hand at some point.
+                        if(x<13){
+                            plucker_temp_point[x] = 0;
+                        }
+                        else {
+                            plucker_temp_point[x] = all_Trajs[x][y];
+                        }
+                    }
+                    m_traj.push(plucker_temp_point);
+                    LOG_LOG("Pushed Plucker Start Point to m_traj");
+                }
+
             }
-            m_currentPoint[i - 1] = kInitials[i - 1];
+            else {
+                m_traj.push(temp_point); //push 0 start point for sliders and pressers
+                LOG_LOG("Pushed Normal Start Point to m_traj");
+            }
+
         }
 
             //PLUCKER PROTOTYPE:
@@ -547,8 +587,6 @@ public:
 //            kInitials[i - 1] = pos2pulse;
 //            m_currentPoint[i - 1] = kInitials[i - 1];
 //        }
-
-        m_traj.push(temp_point);
 
 
 
@@ -795,15 +833,17 @@ private:
                 //CHECK FOR PLUCK SYMBOL, POP FROM QUEUE, TRIGGER CALLBACK
                 if(pt.isClose(pluck_symbol))
                 {
-                    LOG_LOG("FOUND_PLUCK_SYMBOL");
+                    LOG_LOG("FOUND_PLUCK_SYMBOL = End of Phrase");
                     pInstance->m_traj.pop(pluck_symbol); //pluck_symbol should now contain 999.0 for all motors
-                    
-                    executePluckTest(0); //TODO: Map each plucker to either and up state or down state so it's easy to determine which direction
+
                 }
 
                 // If the point is not close to the previous point, generate transition trajectory
                 if (!pt.isClose(pInstance->m_currentPoint, DISCONTINUITY_THRESHOLD)) {
+
                     LOG_WARN("Trajectory discontinuous. Generating Transitions...");
+                    LOG_LOG("PT: %f", pt[0]);
+                    LOG_LOG("m_current: %f", pInstance->m_currentPoint[0]);
                     // pInstance->m_traj.generateTransitions(pInstance->m_currentPoint, pt, TRANSITION_LENGTH);
                 }
                 // Pop from traj queue. If transition was added, this point is from the generated transition
