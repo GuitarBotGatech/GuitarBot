@@ -529,64 +529,60 @@ public:
         float offset = 7; //MINIMUM needed to go from home to top of string!
         float pos2pulse = (offset * 1024) / 9.4;
 
+        float temp_traj_1[7];
+
+      // Get initial position in position ticks
+        float q0 = m_striker[13].getPosition_ticks();
+
+//    //Translate pluckType to position ticks and assign to qf
+        float qf = pos2pulse;
+
+        //  Interpolate line for plucker
+        Util::interpWithBlend(q0, qf, 7, .25, temp_traj_1);
+
+        //Create all trajectories
         Trajectory<int32_t>::point_t temp_point;
-        for(int i = 1;i < NUM_MOTORS + 1 ;i++) {
-            temp_point[i - 1] = 0;
-            kInitials[i - 1] = 0;
-
-            if(i == 13){
-                temp_point[i - 1] = pos2pulse;
-                kInitials[i - 1] = pos2pulse;
-
-                //Interpolate line to start position
-                float temp_traj_1[7];
-
-//                // Get initial position in position ticks
-                float q0 = m_striker[i].getPosition_ticks();
-
-////                //Translate pluckType to position ticks and assign to qf
-                float qf = pos2pulse;
-////                //Interpolate Line
-                Util::interpWithBlend(q0, qf, 7, .25, temp_traj_1);
-                LOG_LOG("Interp Successful");
-////                // Put line into list of trajs
-                int index = 0;
-                for (int x = 0; x < 7; x++) {
-                    all_Trajs[i - 1][index++] = temp_traj_1[x];
+        for (int i = 0; i<7;i++)
+        {
+            for (int j = 0; j<NUM_MOTORS; j++)
+            {
+                if(j==12) //Corresponds to m_striker[13] == plucker
+                {
+                    temp_point[j] = static_cast<int32_t>(temp_traj_1[i]);
+                    kInitials[j] = static_cast<int32_t>(temp_traj_1[i]);
                 }
-                LOG_LOG("Added to All_Trajs");
-
-                Trajectory<int32_t>::point_t plucker_temp_point;
-                for (int y = 0; y < 7; y++) {
-                    for(int x = 0; x < NUM_MOTORS; x++){
-                        //I'd like to seperate all_trajs between left and right hand at some point.
-                        if(x<13){
-                            plucker_temp_point[x] = 0;
-                        }
-                        else {
-                            plucker_temp_point[x] = all_Trajs[x][y];
-                        }
-                    }
-                    m_traj.push(plucker_temp_point);
-                    LOG_LOG("Pushed Plucker Start Point to m_traj");
+                else //sliders and pressers
+                {
+                    temp_point[j] = 0;
+                    kInitials[j] = 0;
                 }
-
             }
-            else {
-                m_traj.push(temp_point); //push 0 start point for sliders and pressers
-                LOG_LOG("Pushed Normal Start Point to m_traj");
-            }
-
+            m_traj.push(temp_point);
         }
 
-            //PLUCKER PROTOTYPE:
+        //Update m_currentPoint
+        for (int i = 0; i<NUM_MOTORS;i++)
+        {
+            m_currentPoint[i] = kInitials[i];
+        }
+
+
+        //WORKS BUT NOT SMOOTH
 //        float offset = 7; //MINIMUM needed to go from home to top of string!
 //        float pos2pulse = (offset * 1024) / 9.4;
-//        for(int i = 1;i < NUM_MOTORS + 1 ;i++){
-//            temp_point[i - 1] = pos2pulse;
-//            kInitials[i - 1] = pos2pulse;
+//
+//        Trajectory<int32_t>::point_t temp_point;
+//        for(int i = 1;i < NUM_MOTORS + 1 ;i++) {
+//            temp_point[i - 1] = 0;
+//            kInitials[i - 1] = 0;
+//            if(i == 13){
+//                temp_point[i - 1] = pos2pulse;
+//                kInitials[i - 1] = pos2pulse;
+//            }
 //            m_currentPoint[i - 1] = kInitials[i - 1];
 //        }
+//
+//        m_traj.push(temp_point);
 
 
 
