@@ -308,13 +308,69 @@ public:
             m_traj.push(temp_point);
         }
     }
-//    void executeSlide(int string_1, int string_2, int string_3, int string_4, int string_5, int string_6, int frets_1, int frets_2, int frets_3, int frets_4,  int frets_5, int frets_6) {
-//
-//
-//
-//
-//
-//    }
+    void executeSlide_NewQueue(int string_1, int string_2, int string_3, int string_4, int string_5, int string_6, int frets_1, int frets_2, int frets_3, int frets_4,  int frets_5, int frets_6) {
+        /*Order of operations:
+         *
+         * 1. Convert frets and presser positions to encoder ticks
+         * 2. Interpolate plucker points to unpress, press, and slide.
+         * 3. Create placeholder points to signify unpress, press, and slide
+         * 4. Push placeholder for unpress, unpress interpolation, placeholder for slide,
+         *    slide interpolation, placeholder for press, and press interpolation in that order.
+         * 5. Make changes to RPDO Handler.
+*/
+        // Step 1
+        strings[1] = fminf(string_1, 9); // setting to max out at 9 for now
+        strings[2] = fminf(string_2, 9);
+        strings[3] = fminf(string_3, 9);
+        strings[4] = fminf(string_4, 9);
+        strings[5] = fminf(string_5, 9);
+        strings[6] = fminf(string_6, 9);
+
+        strings[7] = frets_1;
+        strings[8] = frets_2;
+        strings[9] = frets_3;
+        strings[10] = frets_4;
+        strings[11] = frets_5;
+        strings[12] = frets_6;
+
+        strings[13] = 0;
+        for(int i = 0; i < 6; i++){
+            switch (strings[i + 7]) {
+                case 1:
+                    strings[i + 7] = -10;
+                    break;
+                case 2:
+                    strings[i + 7] = 36;
+                    break;
+                case 3:
+                    strings[i + 7] = 23;
+                    break;
+                default:
+                    strings[i + 7] = -10;
+                    break;
+            }
+        }
+        //Store slide, two press trajs
+        float slide_temp_traj[40];
+        float press_temp_traj[10];
+        float unpress_traj[10];
+
+        for(int i = 1; i < NUM_STRIKERS + 1; i++) {
+            mult = -1;
+            float fretLength = (SCALE_LENGTH - (SCALE_LENGTH / pow(2, (((strings[i])) / 12.f)))) - 20;
+            float pos2pulse = (fretLength * 2048) / 9.4;
+            if (i == 2 || i == 3 || i == 6) {
+                mult = 1;
+            }
+
+
+        }
+
+
+
+
+
+    }
 
 
         void executeSlide(int string_1, int string_2, int string_3, int string_4, int string_5, int string_6, int frets_1, int frets_2, int frets_3, int frets_4,  int frets_5, int frets_6) {
@@ -351,8 +407,9 @@ public:
                     strings[i + 7] = -10;
                     break;
             }
-            //Serial.println(strings[i+7]);
         }
+
+
 
         float temp_traj_1[40];
         float temp_traj_2[20];
@@ -680,7 +737,7 @@ private:
 
     float all_Trajs[13][60];
 
-    //Serial.println(all_Trajs);
+    float all_Trajs_u[6][60];
 
     float m_afTraj_string_1[60];
     float m_afTraj_string_2[60];
