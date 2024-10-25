@@ -680,6 +680,16 @@ private:
 
     float all_Trajs[13][60];
 
+    enum State {
+        //PRESSING,
+        //SLIDING,
+        PROCESS_LH,
+        PROCESS_PLUCKER,
+        IDLE
+    };
+
+    static State currentState;
+
     //Serial.println(all_Trajs);
 
     float m_afTraj_string_1[60];
@@ -752,6 +762,163 @@ private:
         }
     }
 
+//    static void RPDOTimerIRQHandler() {
+//        static bool errorAtPop = false;
+//        static ulong idx = 0;
+//
+//
+//        if (pInstance == nullptr)
+//            return;
+//
+//        Trajectory<int32_t>::point_t point { pInstance->m_currentPoint };
+//
+//
+//        bool run_bot = true; //false turns off motor, true turns on
+//        if(run_bot)
+//        {
+//            switch (currentState) {
+//                case PROCESS_LH:
+//                    if(pInstance->m_traj.count()>0)
+//                    {
+//                        LOG_LOG("currentState: PROCESS_LH has %i points left", pInstance->m_traj.count());
+//
+//                        Trajectory<int32_t>::point_t pt { pInstance->m_currentPoint };
+//                        auto err = pInstance->m_traj.peek(pt);
+//                        if (err)
+//                            LOG_ERROR("Error peeking trajectory. Code %i", (int) err);
+//
+//                        // If the point is not close to the previous point, generate transition trajectory
+//                        if (!pt.isClose(pInstance->m_currentPoint, DISCONTINUITY_THRESHOLD)) {
+//                            LOG_WARN("Trajectory discontinuous. Generating Transitions...");
+//                            for (int i = 0; i < NUM_MOTORS; ++i) {
+//                                    Serial.print("Index: ");
+//                                    Serial.println(idx);
+//                                    Serial.print("Traj Point: ");
+//                                    Serial.println(pt[i]);
+//                                    //Serial.print(idx);
+//                            }
+//                            delay(10000);
+//                            // pInstance->m_traj.generateTransitions(pInstance->m_currentPoint, pt, TRANSITION_LENGTH);
+//                        }
+//                        // Pop from traj queue. If transition was added, this point is from the generated transition
+//                        err = pInstance->m_traj.pop(point);
+//                        if (err != kNoError) {
+//                            errorAtPop = true;
+//                            LOG_ERROR("Error getting value from trajectory. Code %i", (int) err);
+//                            // TODO: If we cannot obtain a datapoint, there will be a discontinuity.
+//                            // In that case, form a trajectory to go to the last point and stay.
+//                        }
+//
+//                        //ROTATE MOTORS
+//                        for (int i = 1; i<NUM_MOTORS +1; i++)
+//                        {
+//                            //pInstance->m_striker[i].rotate(point[i-1]);
+//                        }
+//                        pInstance->m_currentPoint = point;
+//                    }
+//                    else if(pInstance->m_plucker_traj.count() > 0)
+//                    {
+//                        currentState = PROCESS_PLUCKER;
+//                        LOG_LOG("Finished PROCESS_LH, transitioning to PROCESS_PLUCKER");
+//                    }
+//                    else
+//                    {
+//                        currentState = IDLE;
+//                        LOG_LOG("Finished LH, transitioning to IDLE");
+//                    }
+//                    break;
+//
+//                case PROCESS_PLUCKER:
+//                    if(pInstance->m_plucker_traj.count() > 0)
+//                    {
+//                        LOG_LOG("currentState: PROCESS_PLUCKER has %i points left", pInstance->m_plucker_traj.count());
+//
+//                        Trajectory<int32_t>::point_t pt { pInstance->m_currentPoint };
+//                        auto err = pInstance->m_plucker_traj.peek(pt);
+//                        if (err)
+//                            LOG_ERROR("Error peeking trajectory. Code %i", (int) err);
+//
+//                        // If the point is not close to the previous point, generate transition trajectory
+//                        if (!pt.isClose(pInstance->m_currentPoint, DISCONTINUITY_THRESHOLD)) {
+//                            LOG_WARN("Trajectory discontinuous. Generating Transitions...");
+//                            // pInstance->m_traj.generateTransitions(pInstance->m_currentPoint, pt, TRANSITION_LENGTH);
+//                            for (int i = 0; i < NUM_MOTORS; ++i) {
+//                                if(i ==1) {
+//                                    Serial.print("Index: ");
+//                                    Serial.println(idx);
+//                                    Serial.print("Traj Point: ");
+//                                    Serial.println(point[i]);
+//                                    //Serial.print(idx);
+//                                    }
+//                            }
+//                        }
+//                        // Pop from traj queue. If transition was added, this point is from the generated transition
+//                        err = pInstance->m_plucker_traj.pop(point);
+//                        if (err != kNoError) {
+//                            errorAtPop = true;
+//                            LOG_ERROR("Error getting value from trajectory. Code %i", (int) err);
+//                            // TODO: If we cannot obtain a datapoint, there will be a discontinuity.
+//                            // In that case, form a trajectory to go to the last point and stay.
+//                        }
+//
+//                        //ROTATE MOTORS
+//                        for (int i = 1; i<NUM_MOTORS +1; i++)
+//                        {
+//                            //pInstance->m_striker[i].rotate(point[i-1]);
+//                        }
+//                        pInstance->m_currentPoint = point;
+//                    }
+//                    else if(pInstance->m_traj.count() > 0)
+//                    {
+//                        currentState = PROCESS_LH;
+//                        LOG_LOG("Finished PROCESS_PLUCKER, transitioning to PROCESS_LH");
+//                    }
+//                    else
+//                    {
+//                        currentState = IDLE;
+//                        LOG_LOG("Finished PROCESS_PLUCKER, transitioning to IDLE");
+//                    }
+//                    break;
+//
+//                case IDLE:
+//                    if(pInstance->m_traj.count() > 0)
+//                    {
+//                        currentState = PROCESS_LH;
+//                        LOG_LOG("Finished IDLE, transitioning to PROCESS_LH");
+//
+//                    }
+//                    else if(pInstance->m_plucker_traj.count() > 0)
+//                    {
+//                        currentState = PROCESS_PLUCKER;
+//                        LOG_LOG("Finished IDLE, transitioning to PROCESS_PLUCKER");
+//                    }
+//                    else
+//                    {
+//                        LOG_LOG("SITTING IDLE");
+//                        for (int i = 1; i<NUM_MOTORS +1; i++)
+//                        {
+////                            m_striker[i].rotate(pInstance->m_currentPoint)
+//                        }
+//                    }
+//
+//                    break;
+//            }
+//
+//        }
+//        for (int i = 0; i < NUM_MOTORS; ++i) {
+//            Serial.print("Index: ");
+//            Serial.println(idx);
+//            Serial.print("Traj Point: ");
+//            Serial.println(point[i]);
+//            //Serial.print(idx);
+//        }
+//        Serial.println("---------------------------");
+//        idx += 1;
+//        }
+
+
+
+
     static void RPDOTimerIRQHandler() {
         static bool errorAtPop = false;
         static ulong idx = 0;
@@ -765,6 +932,81 @@ private:
         // If new point is available, grab it. Else keep using last point
 
         // If there was an error, this new point might not be continuous.
+
+
+        switch (currentState) {
+            case IDLE:
+                if(pInstance->m_traj.count() > 1)
+                            {
+                                currentState = PROCESS_LH;
+//                                currentState = PRESSING;
+                                // Since the order of operations is constant, IDLE should only switch to Pressing.
+                                // This means the bounds of motors that are rotating to new positions becomes 7 thru 12.
+
+                                LOG_LOG("Finished IDLE, transitioning to PROCESS_LH");
+                            }
+                            // Let's worry about this later.
+    //                        else if(pInstance->m_plucker_traj.count() > 0)
+    //                        {
+    //                            currentState = PROCESS_PLUCKER;
+    //                            LOG_LOG("Finished IDLE, transitioning to PROCESS_PLUCKER");
+    //
+    //                        }
+                            else
+                            {
+                                //LOG_LOG("SITTING IDLE...");
+                        }
+                break;
+            case PROCESS_LH:
+            // To Do: Split into pressing and sliding. Pressing can enter either Idle or Sliding, Sliding can only enter Pressing.
+                if(pInstance->m_traj.count() == 1){
+                    currentState = IDLE;
+                    LOG_LOG("Finished LH Processing, switching to IDLE");
+
+                }
+                else {
+                    //LOG_LOG("Procesing Left Hand Info...");
+
+
+                }
+                break;
+//            case PRESSING:
+//                if(pInstance->m_traj.count() == 1){
+//                    currentState = IDLE;
+//                    LOG_LOG("Finished LH Processing, switching to IDLE");
+//
+//                }
+//                // When 50 points left, enter SLIDING.
+//                else if(pInstance->m_traj.count() == 50) {
+//                    currentState = SLIDING;
+//                    //save current point, Change bounds
+//
+//
+//                }
+//                else {
+//                //LOG_LOG("Processing Press Data");
+//
+//                }
+//
+//                break;
+//            case SLIDING:
+//
+//                // When 10 points left, enter PRESSING again.
+//                else if(pInstance->m_traj.count() == 10) {
+//                    currentState = PRESSING;
+//                    //save current point, Change bounds
+//
+//                   
+//                }
+//                else {
+//                //LOG_LOG("Processing Slide Data");
+//
+//                }
+//
+//                break;
+            }
+
+
         if (errorAtPop) {
             // TODO: Form a trajectory from current point to this new point and then move using the new point.
             errorAtPop = false;
@@ -828,5 +1070,6 @@ private:
     // }
 };
 
+StrikerController::State StrikerController::currentState = StrikerController::IDLE;
 StrikerController* StrikerController::pInstance = nullptr;
 #endif // STRIKERCONTROLLER_H
