@@ -1,11 +1,8 @@
-// Github Version
+//
 // Created by Raghavasimhan Sankaranarayanan on 03/30/22.
 // Modified for GuitarBot by Marcus Parker on 12/7/23
-// Modified to merge pluck and pick by Marcus Parker 10/17/24
-// Modified to increase homing speed by Marcus Parker 10/22/24
-// Modification in progress for queue manipulation 10/23/24
-//Derrick Github 10/23/2024
-
+// Modified for left + right commands through Ethernet by Shayahn Mirfendereski 10/21/24
+//Working Ethernet version
 #include "src/strikerController.h"
 #include "src/logger.h"
 #include <Ethernet.h>
@@ -18,6 +15,11 @@ IPAddress ip(10, 2, 1, 177); //ip address
 unsigned int localPort = 8888; //udp port to listen for packets on
 
 char packetBuffer[1024];
+uint8_t playcommand[6];
+uint8_t fret[6];
+uint8_t pickings[6];
+int8_t strumAngle;
+char event;
 
 EthernetUDP udp;
 
@@ -30,7 +32,7 @@ void setup() {
     if (Ethernet.hardwareStatus() == EthernetNoHardware) {
       LOG_LOG("Ethernet shield was not found. Sorry, can't run without hardware.");
       while (true) {
-        delay(10000);
+        delay(1);
       }
     } else {LOG_LOG("Ethernet shield found!");};
     //Checks for presence of etherner link.Halts if no link present. 
@@ -44,6 +46,7 @@ void setup() {
     // put your setup code here, to run once:
     delay(2000); //Added delay for output reading
     LOG_LOG("Initializing GuitarBot...");
+    // delay(5000); //Added delay for output reading
     pController = StrikerController::createInstance();
     LOG_LOG("Initializing Pressers and Striker...");
     int err = pController->init(MotorSpec::EC45_Slider); //Sliders
@@ -56,67 +59,58 @@ void setup() {
         LOG_ERROR("Controller Init failed");
         return;
     }
-    // delay(2000);
-    // LOG_LOG("Successfully Initialized! Controller Starting....");
-    delay(3000);
+    delay(2000);
+    LOG_LOG("Successfully Initialized! Controller Starting....");
+    delay(2000);
     pController->start();
-    delay(3000);
-    // delay(2000);
-    // pController->executeSlide(1,1,1,5,1,1,1,1,1,1,1,1);
-    // delay(2000);
-    // pController->executeSlide(1,1,1,4,1,1,1,1,1,2,1,1);
-    // delay(2000);
-    // pController->executeSlide(1,1,1,3,1,1,1,1,1,1,1,1);
-    // delay(2000);
-    // pController->executeSlide(1,1,1,2,1,1,1,1,1,1,1,1);
-    // delay(2000);
-    // pController->executePluckTest(0);
-    // delay(2000);
-    // pController->executePluckTest(1);
-    // delay(2000);
-    // pController->executePluckTest(0);
-    // delay(2000);
-    // pController->executePluckTest(1);
-    // delay(2000);
-    // pController->executePluckTest(0);
-    // delay(2000);
-    //pController->executePluckTest(1);
-
+    delay(2000);
+    
     LOG_LOG("Listening for commands...");   // "in format (ascii characters) <mode><id code><midi velocity>"
-
+    //pController->executePluckTest(0);
 }
 
 void loop() {
-  ethernetEvent();
-
+  //int8_t commands[18];
+//test all 6 sliders
+    //ethernetEvent(commands);
+    ethernetEvent();
     if (complete) {
-      LOG_LOG("ETHERNET RECEIVED");
-      //test all 6 sliders
 
-      //30ms is in fact good and possible, just need a more stable setup -- AMIT
-      //40 ms is the max if continuous to test, change the two delays above. 
-      //100 ms is the max stable
-        uint8_t idCode;
-        uint8_t midiVelocity;
-        uint8_t chPressure;
-        char cMode;
-        uint8_t playcommand[6];
-        uint8_t fret[6];
-
-        Error_t err = parseCommand(packetBuffer, playcommand, fret);
+        // Error_t err = parseCommand(commands, playcommand, fret, pickings);
         complete = false;
         // //Unpress
 
-        pController->executeSlide(fret[0], fret[1], fret[2], fret[3], fret[4], fret[5], playcommand[0], playcommand[1], playcommand[2], playcommand[3], playcommand[4], playcommand[5]);
-        pController->executePluckTest(0);
-        //delay(1000);
-        //pController->executePluckTest(1);
-        if (err == kNoError) {
-          LOG_LOG("playcommand 1: %i, playcommand 2: %i, playcommand 3: %i, playcommand 4: %i, playcommand 5: %i, playcommand 6: %i", playcommand[0], playcommand[1], playcommand[2], playcommand[3], playcommand[4], playcommand[5]);
-          LOG_LOG("fret 1: %i, fret 2: %i, fret 3: %i, fret 4: %i, fret 5: %i, fret 6: %i", fret[0], fret[1], fret[2], fret[3], fret[4], fret[5]);
-        }
-        
+        // if (err == kNoError) {
+        //   pController->executeSlide(fret[0], fret[1], fret[2], fret[3], fret[4], fret[5], playcommand[0], playcommand[1], playcommand[2], playcommand[3], playcommand[4], playcommand[5]);
+        //   LOG_LOG("playcommand 1: %i, playcommand 2: %i, playcommand 3: %i, playcommand 4: %i, playcommand 5: %i, playcommand 6: %i", playcommand[0], playcommand[1], playcommand[2], playcommand[3], playcommand[4], playcommand[5]);
+        //   LOG_LOG("fret 1: %i, fret 2: %i, fret 3: %i, fret 4: %i, fret 5: %i, fret 6: %i", fret[0], fret[1], fret[2], fret[3], fret[4], fret[5]);
+        //   LOG_LOG("pick 1: %i, pick 2: %i, pick 3: %i, pick 4: %i, pick 5: %i, pick 6: %i", pickings[0], pickings[1], pickings[2], pickings[3], pickings[4], pickings[5]);
+        // }
+        // else if (err == kCorruptedDataError) {
+        //   Serial.println("Corrupted data");
+        // }
+        LOG_LOG("press 1: %i, press 2: %i, press 3: %i, press 4: %i, press 5: %i, press 6: %i", playcommand[0], playcommand[1], playcommand[2], playcommand[3], playcommand[4], playcommand[5]);
+        LOG_LOG("slide 1: %i, slide 2: %i, slide 3: %i, slide 4: %i, slide 5: %i, slide 6: %i", fret[0], fret[1], fret[2], fret[3], fret[4], fret[5]);
+        LOG_LOG("strummer: %i", strumAngle);
+        //delay(10);
     }
+    //sendEthernet();
+}
+
+void ethernetEvent(int8_t commands[]) {
+    int packetSize = udp.parsePacket();
+    if (packetSize) {
+      udp.read(packetBuffer, 1024);
+      //Convert each byte in packet_buffer to a uint8_t
+      for(int i = 0; i<18; i++)
+      {
+        int8_t value = static_cast<uint8_t>(packetBuffer[i]);
+        commands[i] = value;
+        //Serial.print(commands[i]);
+      }
+      //Serial.println('\n');
+      complete = true;
+    }        
 }
 
 void ethernetEvent() {
@@ -124,21 +118,42 @@ void ethernetEvent() {
     if (packetSize) {
       udp.read(packetBuffer, 1024);
       //Convert each byte in packet_buffer to a uint8_t
-      for(int i = 0; i<12; i++)
-      {
-        int8_t value = static_cast<uint8_t>(packetBuffer[i]);
-        Serial.print(value);
+      event = packetBuffer[0];
+      if (event == 'L') {
+        LOG_LOG("LH event");
+        playcommand[0] = static_cast<uint8_t>(packetBuffer[1]);
+        playcommand[1] = static_cast<uint8_t>(packetBuffer[2]);
+        playcommand[2] = static_cast<uint8_t>(packetBuffer[3]);
+        playcommand[3] = static_cast<uint8_t>(packetBuffer[4]);
+        playcommand[4] = static_cast<uint8_t>(packetBuffer[5]);
+        playcommand[5] = static_cast<uint8_t>(packetBuffer[6]);
+        fret[0] = static_cast<uint8_t>(packetBuffer[7]);
+        fret[1] = static_cast<uint8_t>(packetBuffer[8]);
+        fret[2] = static_cast<uint8_t>(packetBuffer[9]);
+        fret[3] = static_cast<uint8_t>(packetBuffer[10]);
+        fret[4] = static_cast<uint8_t>(packetBuffer[11]);
+        fret[5] = static_cast<uint8_t>(packetBuffer[12]);
       }
-      Serial.println('\n');
+      else if (event == 'S') {
+        LOG_LOG("Strum event");
+        strumAngle = packetBuffer[1];
+      }
       complete = true;
     }        
+}
+
+void sendEthernet()
+{
+  udp.beginPacket(ip,localPort);
+  udp.write("hello");
+  udp.endPacket();
 }
 
 // Format example to strike using motor 1 with velocity 80: s<SCH>P ... explanation s -> normal strike, <SCH> -> ascii of 0b00000001, P -> ascii of 80
 // Pressure is another parameter to map when using choreo
 // To stop tremolo, send mode t with velocity 0
-Error_t parseCommand(char buffer[], uint8_t playcommand[], uint8_t fret[]) {
-    if (strlen(buffer) != 12) return kCorruptedDataError;
+Error_t parseCommand(int8_t buffer[], uint8_t playcommand[], uint8_t fret[], uint8_t pickings[]) {
+    //if (sizeof(buffer) / sizeof(buffer[0]) != 18) return kCorruptedDataError;
 
     playcommand[0] = buffer[0];
     playcommand[1] = buffer[1];
@@ -152,6 +167,13 @@ Error_t parseCommand(char buffer[], uint8_t playcommand[], uint8_t fret[]) {
     fret[3] = buffer[9];
     fret[4] = buffer[10];
     fret[5] = buffer[11];
+    pickings[0] = buffer[12];
+    pickings[1] = buffer[13];
+    pickings[2] = buffer[14];
+    pickings[3] = buffer[15];
+    pickings[4] = buffer[16];
+    pickings[5] = buffer[17];
+
 
     return kNoError;
 }
