@@ -136,6 +136,35 @@ class GuitarBotUDP:
 
         slider_controller.close()
 
+    def send_msg(self, header, command):
+        LH = bytes('L', 'utf8')
+        strum = bytes('S', 'utf8')
+
+        message = None
+        flattened = []
+        if header[0] == 0:
+            message = LH
+            flattened = [i for list in command for i in list]
+        elif header[0] == 1:
+            message = strum
+            flattened.append(command)
+        # arr = []
+        # index = 0
+        # for c in command:
+        #     for i in c:
+        #         print(i)
+        #         arr[index] = i
+        #         index += 1
+        print("command: ", flattened)
+        pCommand = struct.pack(f'<{len(flattened)}b', *flattened)
+        packed_data = message + pCommand
+        time.sleep(0.005)
+        # self.sock.sendto(bytes(msg, 'utf8'), (self.udp_ip, self.udp_port))
+        self.sock.sendto(packed_data, (self.udp_ip, self.udp_port))
+
+        time.sleep(0.01)
+        return 0
+
 
 
 

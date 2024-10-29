@@ -1,6 +1,9 @@
 import numpy as np
 import time
 from queue import Queue
+
+from numpy.distutils.conv_template import header
+
 from GuitarBotUDP import GuitarBotUDP
 # from xarm.wrapper import XArmAPI      TODO XARM
 import threading
@@ -115,7 +118,8 @@ class GuitarRobotController():
         print("t: ", timings)
         print("firstc: ", firstc)
         #Test
-        self.guitarbot_udp.send_msg_left(iplaycommand=firstc[1], ifretnumber=firstc[0])
+        # self.guitarbot_udp.send_msg_left(iplaycommand=firstc[1], ifretnumber=firstc[0])
+        self.guitarbot_udp.send_msg(header= firstc[0], command=[firstc[2],firstc[1]])
         # self.guitarbot_udp.send_msg_arduino(iplaycommand=firstc[1], ifretnumber=firstc[0])
 
         bpm = 60
@@ -172,14 +176,16 @@ class GuitarRobotController():
             else:  # TYPE 0 IS HERE AND IS PICKING
                 # print("array1", tNextEvent)
                 # Test
-                self.guitarbot_udp.send_msg_left(iplaycommand=chordtoplay[1], ifretnumber=chordtoplay[0])
+                # self.guitarbot_udp.send_msg_left(iplaycommand=chordtoplay[2], ifretnumber=chordtoplay[1]) #TODO: CHANGE LATER
+                self.guitarbot_udp.send_msg(header=chordtoplay[0], command=[chordtoplay[2],chordtoplay[1]])
                 # self.guitarbot_udp.send_msg_arduino(iplaycommand=chordtoplay[1], ifretnumber=chordtoplay[0])
                 chordindex += 1
                 # time.sleep(measure_time / 4)
 
         # Pass to tune
         time.sleep(2)
-        self.guitarbot_udp.send_msg_left(iplaycommand=[1, 1, 1, 1, 1, 1], ifretnumber=firstc[0])
+        # self.guitarbot_udp.send_msg(header=chordtoplay[0], command=[[1,1,1,1,1,1], firstc[1]])
+        # self.guitarbot_udp.send_msg_left(iplaycommand=[1, 1, 1, 1, 1, 1], ifretnumber=firstc[0])
         # test
         # self.guitarbot_udp.send_msg_arduino(iplaycommand=[1, 1, 1, 1, 1, 1], ifretnumber=firstc[0])
         print("done")

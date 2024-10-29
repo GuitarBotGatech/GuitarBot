@@ -2,7 +2,8 @@
 // Created by Raghavasimhan Sankaranarayanan on 03/30/22.
 // Modified for GuitarBot by Marcus Parker on 12/7/23
 // Modified for left + right commands through Ethernet by Shayahn Mirfendereski 10/21/24
-//Working Ethernet version
+// DERRICK GitHub Version 10/24/2024
+
 #include "src/strikerController.h"
 #include "src/logger.h"
 #include <Ethernet.h>
@@ -15,8 +16,8 @@ IPAddress ip(10, 2, 1, 177); //ip address
 unsigned int localPort = 8888; //udp port to listen for packets on
 
 char packetBuffer[1024];
-uint8_t playcommand[6];
-uint8_t fret[6];
+uint8_t playcommands[6];
+uint8_t frets[6];
 uint8_t pickings[6];
 int8_t strumAngle;
 char event;
@@ -89,8 +90,9 @@ void loop() {
         // else if (err == kCorruptedDataError) {
         //   Serial.println("Corrupted data");
         // }
-        LOG_LOG("press 1: %i, press 2: %i, press 3: %i, press 4: %i, press 5: %i, press 6: %i", playcommand[0], playcommand[1], playcommand[2], playcommand[3], playcommand[4], playcommand[5]);
-        LOG_LOG("slide 1: %i, slide 2: %i, slide 3: %i, slide 4: %i, slide 5: %i, slide 6: %i", fret[0], fret[1], fret[2], fret[3], fret[4], fret[5]);
+        pController->executeEvent(frets, playcommands, pickings, strumAngle);
+        LOG_LOG("press 1: %i, press 2: %i, press 3: %i, press 4: %i, press 5: %i, press 6: %i", playcommands[0], playcommands[1], playcommands[2], playcommands[3], playcommands[4], playcommands[5]);
+        LOG_LOG("slide 1: %i, slide 2: %i, slide 3: %i, slide 4: %i, slide 5: %i, slide 6: %i", frets[0], frets[1], frets[2], frets[3], frets[4], frets[5]);
         LOG_LOG("strummer: %i", strumAngle);
         //delay(10);
     }
@@ -121,18 +123,18 @@ void ethernetEvent() {
       event = packetBuffer[0];
       if (event == 'L') {
         LOG_LOG("LH event");
-        playcommand[0] = static_cast<uint8_t>(packetBuffer[1]);
-        playcommand[1] = static_cast<uint8_t>(packetBuffer[2]);
-        playcommand[2] = static_cast<uint8_t>(packetBuffer[3]);
-        playcommand[3] = static_cast<uint8_t>(packetBuffer[4]);
-        playcommand[4] = static_cast<uint8_t>(packetBuffer[5]);
-        playcommand[5] = static_cast<uint8_t>(packetBuffer[6]);
-        fret[0] = static_cast<uint8_t>(packetBuffer[7]);
-        fret[1] = static_cast<uint8_t>(packetBuffer[8]);
-        fret[2] = static_cast<uint8_t>(packetBuffer[9]);
-        fret[3] = static_cast<uint8_t>(packetBuffer[10]);
-        fret[4] = static_cast<uint8_t>(packetBuffer[11]);
-        fret[5] = static_cast<uint8_t>(packetBuffer[12]);
+        playcommands[0] = static_cast<uint8_t>(packetBuffer[1]);
+        playcommands[1] = static_cast<uint8_t>(packetBuffer[2]);
+        playcommands[2] = static_cast<uint8_t>(packetBuffer[3]);
+        playcommands[3] = static_cast<uint8_t>(packetBuffer[4]);
+        playcommands[4] = static_cast<uint8_t>(packetBuffer[5]);
+        playcommands[5] = static_cast<uint8_t>(packetBuffer[6]);
+        frets[0] = static_cast<uint8_t>(packetBuffer[7]);
+        frets[1] = static_cast<uint8_t>(packetBuffer[8]);
+        frets[2] = static_cast<uint8_t>(packetBuffer[9]);
+        frets[3] = static_cast<uint8_t>(packetBuffer[10]);
+        frets[4] = static_cast<uint8_t>(packetBuffer[11]);
+        frets[5] = static_cast<uint8_t>(packetBuffer[12]);
       }
       else if (event == 'S') {
         LOG_LOG("Strum event");

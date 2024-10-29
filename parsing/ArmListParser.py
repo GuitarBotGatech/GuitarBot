@@ -249,9 +249,11 @@ class ArmListParser:
                     note = str.upper(chords[0])
                     #frets, command, dtraj, utraj = ArmListParser._get_chords_M("Chords - Chords.csv", note + key, type)
                     frets, command, dtraj, utraj = ArmListParser._get_chords_M("Alternate_Chords.csv", note + key, type)
-                    left_arm[mcount][bcount] = [frets, command]
+                    #LH = bytes('L', 'utf8')
+                    left_arm[mcount][bcount] = [[0],frets, command]
                     mtimings.append(time)
                     if not firstcfound:
+                        firstc.append([0])
                         firstc.append(frets)
                         firstc.append(command)
                         firstcfound = True
@@ -266,6 +268,8 @@ class ArmListParser:
                 if b == '':
                     continue
                 else:
+                    # LH = bytes('L', 'utf8')
+                    # justchords.append(LH)
                     justchords.append(b)
         print("jc", justchords)
         # return left_arm, firstc, mtimings
