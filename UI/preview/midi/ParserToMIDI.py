@@ -82,7 +82,6 @@ def arms_to_MIDI(left_arm, right_arm, bpm, subdiv_per_beat):
 
 # Takes in tab and timing information, mapping inputs to MIDI.
 ###        chord: name of chord
-### subdivisions: number of eigth notes chord rings
 ### is_downstrum: true if downstrum, false if upstrum
 def chord_name_to_MIDI(chord_name, is_downstrum):
     MIDI_note_ons, MIDI_note_offs = [], []
