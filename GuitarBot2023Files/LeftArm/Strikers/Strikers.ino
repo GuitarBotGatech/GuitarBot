@@ -39,8 +39,6 @@ void setup() {
     udp.begin(localPort); //begins udp on port specified above.
     Serial.begin(115200);
 
-
-    // put your setup code here, to run once:
     delay(2000); //Added delay for output reading
     LOG_LOG("Initializing GuitarBot...");
     pController = StrikerController::createInstance();
@@ -50,12 +48,11 @@ void setup() {
         LOG_ERROR("Controller Init failed");
         return;
     }
-//  int err = PController->init(MotorSpec::EC20); //Pressers
+
     if (err != 0) {
         LOG_ERROR("Controller Init failed");
         return;
     }
-    // delay(2000);
     // LOG_LOG("Successfully Initialized! Controller Starting....");
     delay(1000);
     pController->start();
@@ -90,11 +87,6 @@ void loop() {
 
     if (complete) {
       LOG_LOG("ETHERNET RECEIVED");
-      //test all 6 sliders
-
-      //30ms is in fact good and possible, just need a more stable setup -- AMIT
-      //40 ms is the max if continuous to test, change the two delays above. 
-      //100 ms is the max stable
         uint8_t idCode;
         uint8_t midiVelocity;
         uint8_t chPressure;
@@ -106,7 +98,7 @@ void loop() {
         complete = false;
         // //Unpress
 
-        pController->executeSlide(fret[0], fret[1], fret[2], fret[3], fret[4], fret[5], playcommand[0], playcommand[1], playcommand[2], playcommand[3], playcommand[4], playcommand[5]);
+        //pController->executeSlide(fret[0], fret[1], fret[2], fret[3], fret[4], fret[5], playcommand[0], playcommand[1], playcommand[2], playcommand[3], playcommand[4], playcommand[5]);
 
         if (err == kNoError) {
           LOG_LOG("playcommand 1: %i, playcommand 2: %i, playcommand 3: %i, playcommand 4: %i, playcommand 5: %i, playcommand 6: %i", playcommand[0], playcommand[1], playcommand[2], playcommand[3], playcommand[4], playcommand[5]);
