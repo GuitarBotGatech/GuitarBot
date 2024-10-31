@@ -334,24 +334,33 @@ public:
         // 3. Call executeStrum to process Strum events -- fills all_Trajs[14-15] (will eventually be all_Trajs[19-20] TODO: once we have a strummer prototype to test with
 //        executeStrum(strumAngle);
 
+        // 4. Append trajectories to super queue
+        Trajectory<int32_t>::point_t temp_point;
+        for (int i = 0; i < 60; i++) {
+            for(int x = 0; x < NUM_MOTORS; x++){
+                temp_point[x] = all_Trajs[x][i];
+            }
+            m_traj.push(temp_point);
+        }
+
     }
 
     void executeSlide(uint8_t *frets, uint8_t *playcommands) {
         int mult = -1;
 
-        strings[1] = fminf(frets[1], 9); // setting to max out at 9 for now
-        strings[2] = fminf(frets[2], 9);
-        strings[3] = fminf(frets[3], 9);
-        strings[4] = fminf(frets[4], 9);
-        strings[5] = fminf(frets[5], 9);
-        strings[6] = fminf(frets[6], 9);
+        strings[1] = fminf(frets[0], 9); // setting to max out at 9 for now
+        strings[2] = fminf(frets[1], 9);
+        strings[3] = fminf(frets[2], 9);
+        strings[4] = fminf(frets[3], 9);
+        strings[5] = fminf(frets[4], 9);
+        strings[6] = fminf(frets[5], 9);
 
-        strings[7] = playcommands[1];
-        strings[8] = playcommands[2];
-        strings[9] = playcommands[3];
-        strings[10] = playcommands[4];
-        strings[11] = playcommands[5];
-        strings[12] = playcommands[6];
+        strings[7] = playcommands[0];
+        strings[8] = playcommands[1];
+        strings[9] = playcommands[2];
+        strings[10] = playcommands[3];
+        strings[11] = playcommands[4];
+        strings[12] = playcommands[5];
 
         strings[13] = 0;
 
@@ -423,14 +432,6 @@ public:
                 }
             }
         }
-
-        Trajectory<int32_t>::point_t temp_point;
-        for (int i = 0; i < 60; i++) {
-            for(int x = 0; x < NUM_MOTORS; x++){
-                temp_point[x] = all_Trajs[x][i];
-            }
-            m_traj.push(temp_point);
-    }
   }
     void executePluckTest(int pluckType) {
 //        LOG_LOG("EXECUTE_PLUCK");
@@ -736,7 +737,7 @@ private:
     bool m_bSendDataRequest = true;
     bool m_bDataRequested = false;
 
-    float all_Trajs[13][60];
+    float all_Trajs[NUM_MOTORS][60];
 
     //Serial.println(all_Trajs);
 
