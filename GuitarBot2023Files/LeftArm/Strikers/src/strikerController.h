@@ -807,7 +807,7 @@ private:
 //            }
 //        }
 
-        bool run_bot = true; //false turns off motor, true turns on
+        bool run_bot = false; //false turns off motor, true turns on
 //        Serial.print("Traj Point: ");
 //        Serial.println(point[3]);
         //Serial.print(idx);
