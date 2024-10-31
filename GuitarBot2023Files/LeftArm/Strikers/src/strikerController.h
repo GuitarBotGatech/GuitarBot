@@ -316,6 +316,14 @@ public:
 //
 //
 //    }
+        void getPositions(int string_1, int string_2, int string_3, int string_4, int string_5, int string_6, int frets_1, int frets_2, int frets_3, int frets_4,  int frets_5, int frets_6) {
+            for(int i = 1; i < NUM_MOTORS + 1; i++) {
+                float q0 = m_striker[i].getPosition_ticks();
+                Serial.println("q0 is....");
+                Serial.println(q0);
+            }
+        }
+
 
 
         void executeSlide(int string_1, int string_2, int string_3, int string_4, int string_5, int string_6, int frets_1, int frets_2, int frets_3, int frets_4,  int frets_5, int frets_6) {
@@ -368,6 +376,8 @@ public:
             pos2pulse = mult * pos2pulse;
             float q0 = m_striker[i].getPosition_ticks();
             float qf = pos2pulse;
+            Serial.println("q0 is....");
+            Serial.println(q0);
             if (i > 6) {
                 qf = strings[i];
             }
@@ -807,7 +817,7 @@ private:
 //            }
 //        }
 
-        bool run_bot = false; //false turns off motor, true turns on
+        bool run_bot = true; //false turns off motor, true turns on
 //        Serial.print("Traj Point: ");
 //        Serial.println(point[3]);
         //Serial.print(idx);
