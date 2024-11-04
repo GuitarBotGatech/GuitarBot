@@ -120,7 +120,15 @@ class ArmListParser:
                 count += 1
             except:
                 break
+        rh_events = []
+        for x in strumOnsets:
+            pos = 0
+            if(x[1] == 'U'):
+                pos = 6
+            rh_events.append(['strum', pos,x[0]])
         print("ri", right_information, initialStrum)
+        print("These are the strumOnsets: ", strumOnsets)
+        print("These are the right hand events: ", rh_events)
         return right_information, initialStrum, strumOnsets
 
     # parse left arm (chords) input
@@ -261,12 +269,20 @@ class ArmListParser:
         print("queue: ", mtimings)
         # print(left_arm)
         justchords = []
+        lh_events = []
+        i = 0
         for m in left_arm:
             for b in m:
                 if b == '':
                     continue
                 else:
                     justchords.append(b)
+                    lh_events.append(["LH", b, mtimings[i]])
+                    i+=1
         print("jc", justchords)
+        print("These are the chord change onsets: ", mtimings)
+        # print("These are the LH Events: ", lh_events)
+        #Note, lh_events is the new list we'd like to return.
+
         # return left_arm, firstc, mtimings
         return justchords, firstc, mtimings
