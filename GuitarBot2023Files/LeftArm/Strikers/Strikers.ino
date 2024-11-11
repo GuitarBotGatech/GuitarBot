@@ -18,6 +18,7 @@ char packetBuffer[1024];
 uint8_t playcommand[6];
 uint8_t fret[6];
 uint8_t pickings[6];
+int8_t tremLength;
 int8_t strumAngle;
 char event;
 
@@ -44,22 +45,22 @@ void setup() {
 
     delay(2000); //Added delay for output reading
     LOG_LOG("Initializing GuitarBot...");
-    pController = StrikerController::createInstance();
-    LOG_LOG("Initializing Pressers and Striker...");
-    int err = pController->init(MotorSpec::EC45_Slider); //Sliders
-    if (err != 0) {
-        LOG_ERROR("Controller Init failed");
-        return;
-    }
-//  int err = PController->init(MotorSpec::EC20); //Pressers
-    if (err != 0) {
-        LOG_ERROR("Controller Init failed");
-        return;
-    }
-    delay(2000);
-    LOG_LOG("Successfully Initialized! Controller Starting....");
-    pController->start();
-    delay(2000);
+//     pController = StrikerController::createInstance();
+//     LOG_LOG("Initializing Pressers and Striker...");
+//     int err = pController->init(MotorSpec::EC45_Slider); //Sliders
+//     if (err != 0) {
+//         LOG_ERROR("Controller Init failed");
+//         return;
+//     }
+// //  int err = PController->init(MotorSpec::EC20); //Pressers
+//     if (err != 0) {
+//         LOG_ERROR("Controller Init failed");
+//         return;
+//     }
+//     delay(2000);
+//     LOG_LOG("Successfully Initialized! Controller Starting....");
+//     pController->start();
+//     delay(2000);
     
     LOG_LOG("Listening for commands...");   // "in format (ascii characters) <mode><id code><midi velocity>"
 }
@@ -74,12 +75,13 @@ void loop() {
         LOG_LOG("press 1: %i, press 2: %i, press 3: %i, press 4: %i, press 5: %i, press 6: %i", playcommand[0], playcommand[1], playcommand[2], playcommand[3], playcommand[4], playcommand[5]);
         LOG_LOG("pick 1: %i, pick 2: %i, pick 3: %i, pick 4: %i, pick 5: %i, pick 6: %i", pickings[0], pickings[1], pickings[2], pickings[3], pickings[4], pickings[5]);
         LOG_LOG("strummer: %i", strumAngle);
-        if (event == 'L') {
-          pController->executeSlide(fret[0], fret[1], fret[2], fret[3], fret[4], fret[5], playcommand[0], playcommand[1], playcommand[2], playcommand[3], playcommand[4], playcommand[5]);
-        }
-        else if (event == 'P') {
-          pController ->executePluckTest(pickings[3]);
-        }
+        LOG_LOG("tremolo length: %i", tremLength);
+        // if (event == 'L') {
+        //   pController->executeSlide(fret[0], fret[1], fret[2], fret[3], fret[4], fret[5], playcommand[0], playcommand[1], playcommand[2], playcommand[3], playcommand[4], playcommand[5]);
+        // }
+        // else if (event == 'P') {
+        //   pController ->executePluckTest(pickings[3]);
+        // }
         //delay(10);
     }
 }
@@ -114,6 +116,7 @@ void ethernetEvent() {
         for (int i = 1; i <= 6; i++) {
           pickings[i - 1] = static_cast<uint8_t>(packetBuffer[i]);
         }
+        tremLength = packetBuffer[7];
       }
       complete = true;
     }        

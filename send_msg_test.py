@@ -22,7 +22,7 @@ def send_msg(type, command):
         flattened.append(command)
     elif type == 'pick':
         message = pick
-        flattened = [i for i in command]
+        flattened = [i for list in command for i in list]
 
     print(type, ": ", flattened)
     pCommand = struct.pack(f'<{len(flattened)}b', *flattened)
@@ -38,16 +38,14 @@ def main():
     #Add/remove any LH/strum/pick events as desired to test
     #Format of event is:
     # [event type (LH/strum/pick),
-    # properties (LH can be slide, press lists, strum can be pick angle--45==down strum, -45==up strum, pick can be pick/don't pick),
+    # properties (LH can be slide, press lists, strum can be pick angle--45==down strum, -45==up strum, pick can be don't pick (0), pick (1), tremolo (2) + length of a quarter note IN TRAJ POINTS),
     # time]
     LH = [['LH', [[1, 2, 2, 1, 1, 1], [1, 2, 2, 1, 1, 1]], 0],
-          ['LH', [[1, 1, 1, 2, 3, 2], [3, 3, 1, 2, 2, 2]], 2.608],
-          ['LH', [[1, 1, 5, 4, 3, 3], [3, 3, 2, 2, 2, 2]], 4.173],
-          ['LH', [[1, 2, 2, 1, 1, 1], [1, 1, 1, 1, 1, 1]], 7]]
-    strum = [['strum', -45, 1.043],
-             ['strum', 45, 3.173]]
-    pick = [['pick', [1, 1, 1, 0, 1, 1], 5.217],
-            ['pick', [0, 1, 1, 1, 0, 1], 9.26]]
+          ['LH', [[1, 1, 5, 4, 3, 3], [3, 3, 2, 2, 2, 2]], 6.173]]
+    # strum = [['strum', -45, 1.043],
+    #          ['strum', 45, 3.173]]
+    pick = [['pick', [[1, 1, 1, 2, 1, 1], [20]], 2.217],
+            ['pick', [[0, 1, 1, 2, 0, 1], [30]], 7.26]]
 
     Events = []
     for event in LH:

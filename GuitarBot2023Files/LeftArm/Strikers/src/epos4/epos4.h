@@ -101,9 +101,11 @@ public:
     int setCurrentControlParameters();
     int setCurrentControlParameters_EC20();
     int setCurrentControlParameters_EC60();
+    int setCurrentControlParameters_EC45_Plucker();
     int setPositionControlParameters();
     int setPositionControlParameters_EC20();
     int setPositionControlParameters_EC60();
+    int setPositionControlParameters_EC45_Plucker();
     // Motor Data
     int setNominalCurrent(_DWORD current);
     int setOutputCurrentLimit(_DWORD currentLimit);
