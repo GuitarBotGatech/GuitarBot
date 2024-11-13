@@ -188,13 +188,13 @@ int Epos4::configEC45() {
         return err;
     }
 
-    err = setCurrentControlParameters_EC45_Plucker();
+    err = setCurrentControlParameters();
     if (err != 0) {
         LOG_ERROR("setCurrentControlParameters");
         return err;
     }
 
-    err = setPositionControlParameters_EC45_Plucker();
+    err = setPositionControlParameters();
     if (err != 0) {
         LOG_ERROR("setPositionControlParameters");
         return err;

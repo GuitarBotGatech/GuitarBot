@@ -153,6 +153,7 @@ public:
         }
         Serial.println("finished initializing and homing all controllers.");
 
+        Util::fill(pickerStates, NUM_PLUCKERS, 0); // Initializes picker states to be 0 (pickers start at the up state)
         return kNoError;
     }
 
@@ -414,21 +415,23 @@ public:
         }
 
     }
-    void executePluckTest(int pluckType) {
+    void executePluckTest(int pluckType, int tremLength = 5) {
 //        LOG_LOG("EXECUTE_PLUCK");
         // Make space for temporary trajs
         float temp_traj_1[5];
         float pluckLength = -1;
-        //handle diretion
-        switch(pluckType){
-            case 0:
-                //downstrum
-                pluckLength = 3;
-                break;
-            case 1:
-                //upstrum
-                pluckLength = 7;
-                break;
+        float tremTraj;
+        if (pluckType == 1) tremTraj = 5;
+        else if (pluckType == 2) tremTraj = 50;
+        //handle direction
+        if (pluckType == 1 || pluckType == 2){  //If command is pick/tremolo
+            if (!pickerStates[0]){
+                pluckLength = 3;    //downstrum
+            } else {
+                pluckLength = 7;    //upstrum
+            }
+        } else {
+            return;
         }
         //TODO: change for picker
         for(int i = 1; i < NUM_MOTORS + 1; i++) {
@@ -440,16 +443,35 @@ public:
                 float qf = pos2pulse;
                 //Interpolate Line
                 Util::interpWithBlend(q0, qf, 5, .25, temp_traj_1);
+                pickerStates[0] = !pickerStates[0];
                 // Put line into list of trajs
                 int index = 0;
                 for (int x = 0; x < 5; x++) {
                     all_Trajs[i - 1][index++] = temp_traj_1[x];
                 }
 
+                if (pluckType == 2) {
+                    Util::fill(temp_traj_1, 10, qf);
+                    for (int x = 0; x < 10; x++) {
+                        all_Trajs[i - 1][index++] = temp_traj_1[x];
+                    }
+
+                    Util::interpWithBlend(qf, q0, 5, .25, temp_traj_1);
+                    pickerStates[0] = !pickerStates[0];
+                    // Put line into list of trajs
+                    for (int x = 0; x < 5; x++) {
+                        all_Trajs[i - 1][index++] = temp_traj_1[x];
+                    }
+
+                    Util::fill(temp_traj_1, 10, q0);
+                    for (int x = 0; x < 10; x++) {
+                        all_Trajs[i - 1][index++] = temp_traj_1[x];
+                    }
+                }
             } else {
-                Util::fill(temp_traj_1, 5, q0);
+                Util::fill(temp_traj_1, tremTraj, q0);
                 int index = 0;
-                for (int x = 0; x < 5; x++) {
+                for (int x = 0; x < tremTraj; x++) {
                     all_Trajs[i - 1][index++] = temp_traj_1[x];
                 }
             }
@@ -458,12 +480,17 @@ public:
         //TODO: add to picker queue
         //Make and push traj points to queue
         Trajectory<int32_t>::point_t temp_point;
-        for (int i = 0; i < 5; i++) {
-            for(int x = 0; x < NUM_MOTORS; x++){
-                //I'd like to seperate all_trajs between left and right hand at some point.
-                temp_point[x] = all_Trajs[x][i];
+        for (int t = 0; t < tremLength/tremTraj; t++){
+            for (int i = 0; i < tremTraj; i++) {
+                for(int x = 0; x < NUM_MOTORS; x++){
+                    //I'd like to seperate all_trajs between left and right hand at some point.
+                    temp_point[x] = all_Trajs[x][i];
+                    Serial.print(temp_point[x]);
+                    Serial.print(" ");
+                }
+                Serial.println();
+                m_traj.push(temp_point);
             }
-            m_traj.push(temp_point);
         }
 //        LOG_LOG("END_EXECUTE_PLUCK_TEST");
     }
@@ -673,6 +700,7 @@ public:
 private:
     //NetworkHandler m_socket;
     Striker m_striker[NUM_MOTORS + 1]; // 0 is dummy
+    int pickerStates[NUM_PLUCKERS]; // Array to hold state of each picker (0=up state, 1=down state)
     static StrikerController* pInstance;
     volatile bool m_bPlaying = false;
     MotorSpec m_motorSpec = MotorSpec::EC45_Slider;
