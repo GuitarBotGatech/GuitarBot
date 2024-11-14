@@ -418,11 +418,12 @@ public:
     void executePluckTest(int pluckType, int tremLength = 5) {
 //        LOG_LOG("EXECUTE_PLUCK");
         // Make space for temporary trajs
-        float temp_traj_1[5];
-        float pluckLength = -1;
         float tremTraj;
         if (pluckType == 1) tremTraj = 5;
         else if (pluckType == 2) tremTraj = 50;
+        float temp_traj_1[tremTraj];
+        float pluckLength = -1;
+
         //handle direction
         if (pluckType == 1 || pluckType == 2){  //If command is pick/tremolo
             if (!pickerStates[0]){
