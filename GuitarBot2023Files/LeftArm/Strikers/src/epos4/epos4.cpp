@@ -549,6 +549,9 @@ int Epos4::setOpMode(OpMode opMode, uint8_t uiInterpolationTime, int8_t iInterpo
         if(m_uiNodeID > 6 && m_uiNodeID < 13){
             n = SetHomeOffset(-25);
         }
+        if (m_uiNodeID == 7){
+            n = SetHomeOffset(0);
+        }
 
         if(n != 0 ) {
             LOG_ERROR("setHomeOffset");
@@ -571,7 +574,7 @@ int Epos4::setOpMode(OpMode opMode, uint8_t uiInterpolationTime, int8_t iInterpo
             n = setHomingCurrentThreshold(500);
         }
         if(m_uiNodeID > 12){
-            n = setHomingCurrentThreshold(400);
+            n = setHomingCurrentThreshold(500);
         }
         if (n != 0) {
             LOG_ERROR("setHomingCurrentThreshold");

@@ -418,9 +418,9 @@ public:
     void executePluckTest(int pluckType, int tremLength = 5) {
 //        LOG_LOG("EXECUTE_PLUCK");
         // Make space for temporary trajs
-        float tremTraj;
+        int tremTraj;
         if (pluckType == 1) tremTraj = 5;
-        else if (pluckType == 2) tremTraj = 50;
+        else if (pluckType == 2) tremTraj = 30;
         float temp_traj_1[tremTraj];
         float pluckLength = -1;
 

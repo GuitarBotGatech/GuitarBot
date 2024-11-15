@@ -40,9 +40,9 @@ def main():
     # [event type (LH/strum/pick),
     # properties (LH can be slide, press lists, strum can be pick angle--45==down strum, -45==up strum, pick can be don't pick (0), pick (1), tremolo (2) + length of a quarter note IN TRAJ POINTS),
     # time]
-    LH = []
+    LH = [['LH', [[1, 1, 2, 2, 1, 1], [1, 1, 1, 2, 2, 2]], 0], ['LH', [[1, 3, 2, 2, 3, 1], [3, 3, 1, 2, 2, 1]], 3.352], ['LH', [[1, 1, 1, 4, 2, 2], [1, 1, 1, 2, 2, 2]], 5]]
     strum = []
-    pick = [['pick', [[1, 1, 1, 2, 1, 1], [90]], 2.217]]
+    pick = [['pick', [[1, 1, 1, 1, 1, 1], [5]], 1.217], ['pick', [[1, 1, 1, 1, 1, 1], [5]], 1.857], ['pick', [[1, 1, 1, 1, 1, 1], [5]], 2.517], ['pick', [[1, 1, 1, 2, 1, 1], [120]], 3.875], ['pick', [[1, 1, 1, 2, 1, 1], [120]], 5.5]]
 
     Events = []
     for event in LH:
