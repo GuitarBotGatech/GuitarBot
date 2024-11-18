@@ -415,12 +415,12 @@ public:
         }
 
     }
-    void executePluckTest(int pluckType, int tremLength = 5) {
+    void executePluckTest(int pluckType, int tremLength, int tremSpeed) {
 //        LOG_LOG("EXECUTE_PLUCK");
         // Make space for temporary trajs
         int tremTraj;
         if (pluckType == 1) tremTraj = 5;
-        else if (pluckType == 2) tremTraj = 30;
+        else if (pluckType == 2) tremTraj = (tremSpeed * 2) + 10;
         float temp_traj_1[tremTraj];
         float pluckLength = -1;
 
@@ -452,8 +452,8 @@ public:
                 }
 
                 if (pluckType == 2) {
-                    Util::fill(temp_traj_1, 10, qf);
-                    for (int x = 0; x < 10; x++) {
+                    Util::fill(temp_traj_1, tremSpeed, qf);
+                    for (int x = 0; x < tremSpeed; x++) {
                         all_Trajs[i - 1][index++] = temp_traj_1[x];
                     }
 
@@ -464,8 +464,8 @@ public:
                         all_Trajs[i - 1][index++] = temp_traj_1[x];
                     }
 
-                    Util::fill(temp_traj_1, 10, q0);
-                    for (int x = 0; x < 10; x++) {
+                    Util::fill(temp_traj_1, tremSpeed, q0);
+                    for (int x = 0; x < tremSpeed; x++) {
                         all_Trajs[i - 1][index++] = temp_traj_1[x];
                     }
                 }

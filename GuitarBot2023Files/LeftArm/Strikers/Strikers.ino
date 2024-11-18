@@ -19,6 +19,7 @@ uint8_t playcommand[6];
 uint8_t fret[6];
 uint8_t pickings[6];
 int8_t tremLength;
+int8_t tremSpeed;
 int8_t strumAngle;
 char event;
 
@@ -74,13 +75,13 @@ void loop() {
         LOG_LOG("slide 1: %i, slide 2: %i, slide 3: %i, slide 4: %i, slide 5: %i, slide 6: %i", fret[0], fret[1], fret[2], fret[3], fret[4], fret[5]);
         LOG_LOG("press 1: %i, press 2: %i, press 3: %i, press 4: %i, press 5: %i, press 6: %i", playcommand[0], playcommand[1], playcommand[2], playcommand[3], playcommand[4], playcommand[5]);
         LOG_LOG("pick 1: %i, pick 2: %i, pick 3: %i, pick 4: %i, pick 5: %i, pick 6: %i", pickings[0], pickings[1], pickings[2], pickings[3], pickings[4], pickings[5]);
+        LOG_LOG("tremolo length: %i, tremolo speed: %i", tremLength, tremSpeed);
         LOG_LOG("strummer: %i", strumAngle);
-        LOG_LOG("tremolo length: %i", tremLength);
         if (event == 'L') {
           pController->executeSlide(fret[0], fret[1], fret[2], fret[3], fret[4], fret[5], playcommand[0], playcommand[1], playcommand[2], playcommand[3], playcommand[4], playcommand[5]);
         }
         else if (event == 'P') {
-          pController ->executePluckTest(pickings[3], tremLength);
+          pController ->executePluckTest(pickings[3], tremLength, tremSpeed);
         }
         delay(10);
     }
@@ -117,6 +118,7 @@ void ethernetEvent() {
           pickings[i - 1] = static_cast<uint8_t>(packetBuffer[i]);
         }
         tremLength = packetBuffer[7];
+        tremSpeed = packetBuffer[8];
       }
       complete = true;
     }        
