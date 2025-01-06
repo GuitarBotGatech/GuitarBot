@@ -68,3 +68,25 @@ class HelpPopup(tk.Toplevel):
         # Add close button
         self.close_btn = tk.Button(self, text="Close")
         self.close_btn.pack()
+
+class AudioInputPopup(tk.Toplevel):
+    def __init__(self, master):
+        super().__init__()
+
+        self.title("Audio Input")
+        self.geometry('500x350')
+
+        explanation = 'Enter the number of seconds to record below.\nRecording will begin after clicking submit.\nEscape to exit without recording.'
+        self.explainer_text = tk.Label(self, text=explanation)
+        self.explainer_text.pack(pady=5)
+
+        self.input_box = tk.Entry(self, textvariable=tk.StringVar(value='20'))
+        self.input_box.pack()
+
+        # Add submit button
+        self.submit_btn = tk.Button(self, text="Submit")
+        self.submit_btn.pack()
+
+        # Add close button
+        self.escape_btn = tk.Button(self, text="Escape")
+        self.escape_btn.pack()

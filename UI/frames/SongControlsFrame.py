@@ -64,6 +64,10 @@ class SongControlsFrame(tk.Frame):
         self.help_btn = ctk.CTkButton(self, image=self.help_icon, width=0, border_width=0, border_spacing=0, text='', fg_color='transparent')
         self.help_btn.grid(row=1, column=6, sticky='W')
 
+        # Audio chord input button
+        self.audio_input_btn = ctk.CTkButton(self, width=0, border_width=0, border_spacing=0, text='Audio Input', fg_color='transparent')
+        self.audio_input_btn.grid(row=2, column=6, sticky='W')
+
         # BPM label and text entry
         self.bpm_label = tk.Label(self, text="BPM:")
         self.bpm_label.grid(row=0, column=8, sticky='E')

@@ -12,7 +12,7 @@ from time import time
 model = AutoModelForCausalLM.from_pretrained(SMALL_MODEL).cpu()
 
 # MIDI file, single track chord progression, set_tempo metadata required
-name = 'NAME_HERE'
+name = '2-5-1'
 filename = f'inputs/accompaniment/{name}.mid'
 midi = MidiFile(filename)
 
@@ -20,14 +20,15 @@ midi = MidiFile(filename)
 beats_per_bar = 4
 num_input_bars = 3
 
-before_running = time()
 # get usable parameters for generation
 events = midi_to_events(midi)
 bar_duration = tick2second(beats_per_bar*midi.ticks_per_beat, ticks_per_beat=midi.ticks_per_beat, tempo=get_tempo_from_midi(midi))
 first_n_bars = ops.clip(events, 0, num_input_bars*bar_duration, clip_duration=False)
 
 num_output_bars = 12
+before_running = time()
 extended_accompaniment = generate(model, start_time=num_input_bars*bar_duration, end_time=num_output_bars*bar_duration, inputs=first_n_bars, controls=None, top_p=.95)
+
 
 # use generated result
 mid = events_to_midi(extended_accompaniment)

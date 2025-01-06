@@ -1,10 +1,12 @@
 from Model import Model
-from View import View, ChordNotationsPopup, HelpPopup
+from View import View, ChordNotationsPopup, HelpPopup, AudioInputPopup
 from constants.bot_specs import MIN_BPM, MAX_BPM, DEFAULT_BPM
 # drag and drop
 from vis_entities.DraggableSectionLabel import DraggableSectionLabel
 # json saving/loading
 from saving_loading.JsonHelper import JsonHelper
+# chord input
+from audio_input.AudioInput import record_left_arm
 # preview functions
 from preview.midi.ParserToMIDI import arms_to_MIDI
 from preview.midi.PluginIntegration import play_midi_with_plugin
@@ -71,6 +73,9 @@ class Controller:
 
         # Help icon btn
         self.song_controls_frame.help_btn.configure(command=lambda: self._show_help_popup()) # use configure for CTk btn
+
+        # Audio input btn
+        self.song_controls_frame.audio_input_btn.configure(command=lambda: self._audio_input_popup()) 
 
         # New section btn
         self.new_section_btn.configure(command=self._new_section_handler) # use configure for CTk btn
@@ -178,6 +183,26 @@ class Controller:
     def _update_chord_mode_handler(self, event, *args):
         self.model.chord_mode = self.song_controls_frame.chord_mode.get()
 
+    def _record_chords_and_populate_ui(self):
+        # left_arm = record_left_arm()
+        left_arm = [['C', '', 'Am7', ''], ['G7', '', '', '']]
+        
+        section_frame, labels_frame = self._add_section(add_first_section_to_drag_drop=False)
+
+        # get section data from section_dict
+        name = 'Recorded'
+        strum_pattern = None # might error?
+        num_measures = len(left_arm)
+        right_arm = []
+        for i in range(len(left_arm)):
+            right_arm.append(['', '', '', ''])
+
+        self._populate_section_with_data(section_frame, labels_frame, name, strum_pattern, num_measures, left_arm, right_arm)
+        # section_name_vars[id] = labels_frame.name
+
+        # update sections data in the model
+        self._update_model_sections()
+
     def _show_chord_notations_popup(self):
         popup = ChordNotationsPopup(self.view)
 
@@ -189,6 +214,13 @@ class Controller:
 
         # when "Close" button is clicked, popup will be destroyed
         popup.close_btn.config(command=popup.destroy)
+
+    def _audio_input_popup(self):
+        popup = AudioInputPopup(self.view)        
+
+        popup.submit_btn.config(command=self._record_chords_and_populate_ui)
+        # when "Escape" button is clicked, popup will be destroyed
+        popup.escape_btn.config(command=popup.destroy)
 
     # Save btn
     def _save_song_handler(self):
