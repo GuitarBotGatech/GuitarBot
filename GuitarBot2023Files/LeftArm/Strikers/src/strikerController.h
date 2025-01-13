@@ -208,8 +208,10 @@ public:
 
         Serial.println("finished initializing and homing all controllers.");
 //        delay(45000);
-        //to test everything up to homing
+        //Init all variables needed
         Util::fill(pickerStates, NUM_PLUCKERS, 0); // Initializes picker states to be 0 (pickers start at the up state)
+        Util::fill(prev_frets, 6, 100); //Dummy inital values
+        Util::fill(prev_playcommands, 6, 100); //Dummy inital values
         return kNoError;
     }
 
@@ -650,17 +652,19 @@ public:
 
         float sixty_traj[60];
 
-        int slideChanger[6]; //Check to see if the sliders change so we know when to press + unpress
-        Util::fill(slideChanger,6,0);
-
 
         for(int i = 1; i< NUM_MOTORS + 1; i++) {
             mult = -1;
-            float fretLength = (SCALE_LENGTH - (SCALE_LENGTH / pow(2, (((strings[i])) / 12.f)))) - 20;
+            //float fretLength = (SCALE_LENGTH - (SCALE_LENGTH / pow(2, (((strings[i])) / 12.f)))) - 20;
+
+            float fretLength = FRET_LENGTHS[strings[i]] - 20;
             float pos2pulse = (fretLength * 2048) / 9.4;
             if (i == 2 || i == 3 || i == 6) {
                 mult = 1;
             }
+//            Serial.print("Fret Length at Slider ");
+//            Serial.println(i);
+//            Serial.println()
             pos2pulse = mult * pos2pulse;
             float q0 = m_striker[i].getPosition_ticks();
             float qf = pos2pulse;
@@ -668,10 +672,6 @@ public:
                 qf = strings[i];
             }
             if (i < 7) { // SLIDERS: q0 for 20, Slide for 20, qf for 20
-                if(frets[i] != prev_frets[i])
-                {
-                    slideChanger[i] = 1;
-                }
                 Util::fill(q0_traj, 20, q0);
                 Util::interpWithBlend(q0, qf, 20, .05, move_traj);
                 Util::fill(qf_traj, 20, qf);
@@ -686,17 +686,58 @@ public:
                     all_Trajs[i - 1][index++] = qf_traj[x];
                 }
 
-            } else if( i > 6 && i < 13) { //PRESSERS: Unpress for 20, hold for 20, press for 20;
-                if(slideChanger[i-6] == 0)
+            } else if( i > 6 && i < 13) { //PRESSERS
+                if(frets[i - 7] == prev_frets[i - 7]) //IF NO SLIDING
                 {
-                    Util::fill(sixty_traj, 60, qf);
-                    int index = 0;
-                    for (int x = 0; x < 60; x++) {
-                        all_Trajs[i - 1][index++] = sixty_traj[x];
+                    Serial.print("No fret change on string ");
+                    Serial.println(i-6);
+                    Serial.print("The previous fret at ");
+                    Serial.print(i-6);
+                    Serial.print(" is ");
+                    Serial.println(prev_frets[i - 7]);
+                    Serial.print("The fret at ");
+                    Serial.print(i);
+                    Serial.print(" is ");
+                    Serial.println(frets[i - 7]);
+//                    Serial.println(i);
+
+                    if(playcommands[i-7] != prev_playcommands[i-7]) //IF NO SLIDING AND NEED TO PRESS/UNPRESS
+                    {
+                        Serial.println("Same fret press/unpress on string ");
+//                        Serial.println(prev_playcommands[i-7]);
+//                        Serial.println(playcommands[i-7]);
+                        Serial.println(q0);
+                        Serial.println(qf);
+
+                        Util::interpWithBlend(q0, qf, 60, .05, sixty_traj);
+                        int index = 0;
+                        for (int x = 0; x < 60; x++) {
+                            all_Trajs[i - 1][index++] = sixty_traj[x];
+                        }
                     }
+                    else // NO SLIDING OR CHANGE IN PRESSING
+                    {
+                        Util::fill(sixty_traj, 60, q0);
+                        int index = 0;
+                        for (int x = 0; x < 60; x++) {
+                            all_Trajs[i - 1][index++] = sixty_traj[x];
+                        }
+                    }
+
                 }
-                else
-                {
+                else //SLIDING
+                {//PRESSERS: Unpress for 20, hold for 20, press for 20;
+                    Serial.print("Tripped regular change on string ");
+                    Serial.println(i);
+                    Serial.print("The previous fret at ");
+                    Serial.print(i);
+                    Serial.print(" is ");
+                    Serial.println(prev_frets[i - 7]);
+                    Serial.print("The fret at ");
+                    Serial.print(i);
+                    Serial.print(" is ");
+                    Serial.println(frets[i - 7]);
+
                     Util::interpWithBlend(q0, -10, 20, .25, unpress_traj);
                     Util::fill(hold_traj, 20, -10);
                     Util::interpWithBlend(-10, qf, 20, .25, press_traj);
@@ -726,10 +767,10 @@ public:
         Serial.print(": ");
             for(int x = 0; x < NUM_MOTORS; x++){
                 temp_point[x] = all_Trajs[x][i];
-//                Serial.print(temp_point[x]);
-//                Serial.print(" ");
+                Serial.print(temp_point[x]);
+                Serial.print(" ");
             }
-//            Serial.println();
+            Serial.println();
             m_traj.push(temp_point);
         }
 
@@ -1182,8 +1223,10 @@ private:
 
     float all_Trajs[15][200]; //CHANGE FOR MORE TRAJS
 
-    uint8_t prev_frets[6];
-    uint8_t prev_playcommands[6];
+    int prev_frets[6];
+    int prev_playcommands[6];
+
+
 
 
     //Serial.println(all_Trajs);
