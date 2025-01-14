@@ -125,7 +125,9 @@ class ArmListParser:
             pos = 45
             if(x[1] == 'U'):
                 pos = -45
-            rh_events.append(['strum', pos, round(x[0], 3)])
+            rh_events.append(['strum', [pos, 75, 0], round(x[0], 3)])      # Hardcoded value of 75 represents strum speed TODO: replace with actual variable
+            if (x[2] == 'C'):
+                rh_events.append(['strum', [-pos, 75, 1], round(x[0], 3)])  # Hardcoded value of 75 represents strum speed TODO: replace with actual variable
         # print("ri", right_information, initialStrum)
         print("These are the strumOnsets: ", strumOnsets)
         print("These are the right hand events: ", rh_events)

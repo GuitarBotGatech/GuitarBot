@@ -17,10 +17,10 @@ def send_msg(type, command):
         flattened = [i for list in command for i in list]
     elif type == 'strum':
         message = strum
-        flattened.append(command)
+        flattened = [i for i in command]
     elif type == 'pick':
         message = pick
-        flattened = [i for i in command]
+        flattened = [i for list in command for i in list]
 
     print(type, ": ", flattened)
     pCommand = struct.pack(f'<{len(flattened)}b', *flattened)
@@ -35,7 +35,7 @@ def send_msg(type, command):
 def main(strum, LH):
     #Format of event is:
     # [event type (LH/strum/pick),
-    # properties (LH can be press, slide lists, strum can be pick angle--45==down strum, -45==up strum, pick can be pick/don't pick),
+    # properties (LH can be press, slide lists, strum can be pick angle, strum speed, deflect, pick can be pick type, tremolo length, tremolo speed),
     # time]
 
     Events = []

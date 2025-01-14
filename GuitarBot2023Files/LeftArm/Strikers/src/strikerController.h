@@ -722,8 +722,8 @@ public:
 
         Trajectory<int32_t>::point_t temp_point;
         for (int i = 0; i < 60; i++) {
-        Serial.print(i);
-        Serial.print(": ");
+//        Serial.print(i);
+//        Serial.print(": ");
             for(int x = 0; x < NUM_MOTORS; x++){
                 temp_point[x] = all_Trajs[x][i];
 //                Serial.print(temp_point[x]);
@@ -922,10 +922,10 @@ public:
                 for(int x = 0; x < NUM_MOTORS; x++){
                     //I'd like to seperate all_trajs between left and right hand at some point.
                     temp_point[x] = all_Trajs[x][i];
-                    Serial.print(temp_point[x]);
-                    Serial.print(" ");
+//                    Serial.print(temp_point[x]);
+//                    Serial.print(" ");
                 }
-                Serial.println();
+//                Serial.println();
                 m_traj.push(temp_point);
             }
         }
