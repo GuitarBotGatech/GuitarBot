@@ -843,9 +843,9 @@ public:
 
     }
 
-    void executePluckTest(int pluckType, int tremLength, int tremSpeed) {
+    void executePluckTest(int pluckType, int tremLength, int tremSpeed) {   //TODO: expand to list of lists for each picker and their properties
 //        LOG_LOG("EXECUTE_PLUCK");
-        // Make space for temporary trajs
+        // Make space for temporary trajs   //TODO: When expanding, loop through each picker and set variables
         int tremTraj;
         if (pluckType == 1)
         {
@@ -869,10 +869,9 @@ public:
         } else {
             return;
         }
-        //TODO: change for picker
         for(int i = 1; i < NUM_MOTORS + 1; i++) {
             float q0 = m_striker[i].getPosition_ticks();
-            if(i == 13){
+            if(i == 13){    //TODO: would expand to i >= 13 to cover all pickers' trajs
                 // Get initial position in position ticks
                 //Translate pluckType to position ticks and assign to qf
                 float pos2pulse = (pluckLength * 1024) / 9.4;
