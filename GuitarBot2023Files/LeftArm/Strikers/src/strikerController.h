@@ -411,10 +411,10 @@ public:
         for (int i = 0; i < speed + 5; i++) {
             for(int x = 0; x < NUM_MOTORS; x++){
                 temp_point[x] = all_Trajs[x][i];
-//                Serial.print(all_Trajs[x][i]);
-//                Serial.print(" ");
+                Serial.print(all_Trajs[x][i]);
+                Serial.print(" ");
             }
-//            Serial.println("");
+            Serial.println("");
             m_traj.push(temp_point);
         }
 
