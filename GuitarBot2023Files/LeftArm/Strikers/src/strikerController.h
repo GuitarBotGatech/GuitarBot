@@ -323,15 +323,15 @@ public:
         float pickerMoving_2[speed];
         //Other motors
         float non_strummerIdle[speed + 5];
-        int strum_mm_qf = -115;
+        int strum_mm_qf = -145;
         float picker_mm_qf_1 = 8;
         float picker_mm_qf_2 = 10;
         switch(strumType){
             case -45:
                 //upstrum, point picker down
-                picker_mm_qf_1 = 9;
-                picker_mm_qf_2 = 9;
-                strum_mm_qf = -115;
+                picker_mm_qf_1 = 8;
+                picker_mm_qf_2 = 8;
+                strum_mm_qf = -125;
                 Serial.println("Recieved Upstrum"); //passed, same result
                 if(deflect == 1){
                     picker_mm_qf_1 = 4;
@@ -341,13 +341,13 @@ public:
 
             case 45:
                 //downstrum, point picker up
-                picker_mm_qf_1 = 9;
-                picker_mm_qf_2 = 9;
+                picker_mm_qf_1 = 11;
+                picker_mm_qf_2 = 10;
                 strum_mm_qf = -15;
                 Serial.println("Recieved Downstrum"); // passed, same result
                 if(deflect == 1){
-                    picker_mm_qf_1 = 4;
-                    picker_mm_qf_2 = 4;
+                    picker_mm_qf_1 = 14;
+                    picker_mm_qf_2 = 14;
                 }
                 break;
         }

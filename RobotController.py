@@ -2,6 +2,8 @@ import socket
 import struct
 import time
 
+strumPos = -45       #position of strummer for next strum (-45 = top, 45 = bottom) TODO: In the long run, strum position should be handled in armlistreceiver or another script that is not constantly reinstantiated
+
 def send_msg(type, command):
     sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     udp_ip = "10.2.1.177"
@@ -10,6 +12,7 @@ def send_msg(type, command):
     strum = bytes('S', 'utf8')
     pick = bytes('P', 'utf8')
 
+    global strumPos
     message = None
     flattened = []
     if type == 'LH':
@@ -17,6 +20,7 @@ def send_msg(type, command):
         flattened = [i for list in command for i in list]
     elif type == 'strum':
         message = strum
+        strumPos = command[0]
         flattened = [i for i in command]
     elif type == 'pick':
         message = pick
@@ -51,6 +55,15 @@ def main(strum, LH):
     #     Events.append(event)
 
     Events.sort(key=lambda x: x[2])
+
+    for event in Events:
+        if event[0] == 'strum':
+            if event[1][0] == strumPos:
+                if event[1][0] == 45:  # if initial strum is a downstrum, make sure strummer is positioned at top
+                    send_msg(type='strum', command=[-45, 75, 1])
+                else:  # if initial strum is an upstrum, make sure strummer is positioned at bottom
+                    send_msg(type='strum', command=[45, 75, 1])
+            break
 
     print("4")
     time.sleep(1)

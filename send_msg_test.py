@@ -10,8 +10,10 @@ udp_port = 8888
 LH = bytes('L', 'utf8')
 strum = bytes('S', 'utf8')
 pick = bytes('P', 'utf8')
+strumPos = -45       #position of strummer for next strum (-45 = top, 45 = bottom)  #TODO: Since script finishes and needs to be ran again, value resets
 
 def send_msg(type, command):
+    global strumPos
     message = None
     flattened = []
     if type == 'LH':
@@ -19,6 +21,7 @@ def send_msg(type, command):
         flattened = [i for list in command for i in list]
     elif type == 'strum':
         message = strum
+        strumPos = command[0]
         flattened = [i for i in command]
     elif type == 'pick':
         message = pick
@@ -44,9 +47,10 @@ def main():
     # [command type, [[Slide list], [press list]], timestamp]
 
     # Base Demo
-    # LH = [['LH', [[1, 3, 2, 1, 1, 1], [3, 2, 2, 1, 2, 1]], 0], ['LH', [[3, 2, 2, 1, 1, 3], [2, 2, 1, 1, 1, 2]], 3], ['LH', [[1, 1, 2, 2, 1, 1], [3, 1, 2, 2, 2, 1]], 6], ['LH', [[1, 1, 3, 2, 1, 1], [3, 3, 2, 2, 2, 2]], 9], ['LH', [[1, 3, 2, 1, 1, 1], [1, 1, 1, 1, 1, 1]], 12]]
-    # strum = [['strum', [45, 75, 0], 0], ['strum', [-45, 75, 0], 3], ['strum', [45, 75, 0], 6], ['strum', [-45, 75, 0], 9]] # 0, 3, 6, 9
+    LH = [['LH', [[1, 3, 2, 1, 1, 1], [3, 2, 2, 1, 2, 1]], 0], ['LH', [[3, 2, 2, 1, 1, 3], [2, 2, 1, 1, 1, 2]], 3], ['LH', [[1, 1, 2, 2, 1, 1], [3, 1, 2, 2, 2, 1]], 6], ['LH', [[1, 1, 3, 2, 1, 1], [3, 3, 2, 2, 2, 2]], 9], ['LH', [[1, 3, 2, 1, 1, 1], [1, 1, 1, 1, 1, 1]], 12]]
+    strum = [['strum', [45, 75, 0], 0], ['strum', [-45, 75, 0], 3], ['strum', [45, 75, 0], 6], ['strum', [-45, 75, 0], 9]] # 0, 3, 6, 9
     # pick = [['pick', [[1, 1, 1, 2, 1, 1], [120, 5]], 1], ['pick', [[1, 1, 1, 2, 1, 1], [120, 5]], 4], ['pick', [[1, 1, 1, 2, 1, 1], [120, 5]], 7], ['pick', [[1, 1, 1, 2, 1, 1], [120, 5]], 10]]
+    pick = []
 
     # Smoke on the Water Demo
     # LH = [['LH', [[1, 1, 1, 1, 1, 1], [1, 1, 1, 1, 1, 1]], 0], ['LH', [[1, 1, 1, 3, 1, 1], [1, 1, 1, 2, 1, 1]], 0.5],
@@ -116,6 +120,16 @@ def main():
         Events.append(event)
 
     Events.sort(key=lambda x: x[2])
+
+    for event in Events:
+        if event[0] == 'strum':
+            if event[1][0] == strumPos:
+                print("check")
+                if event[1][0] == 45:     #if initial strum is a downstrum, make sure strummer is positioned at top
+                    send_msg(type='strum', command=[-45, 75, 1])
+                else:                   #if initial strum is an upstrum, make sure strummer is positioned at bottom
+                    send_msg(type='strum', command=[45, 75, 1])
+            break
 
     print("4")
     time.sleep(1)
