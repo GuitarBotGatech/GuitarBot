@@ -18,8 +18,8 @@ class ArmListParser:
 
         for i in range(6):
             if fret_numbers_optimized[i] != -1:
-                dtraj = [i, 6]
-                utraj = [6, i]
+                dtraj = [i+1, 6]
+                utraj = [6, i+1]
                 break
 
         fret_numbers = fret_numbers_optimized.copy()
@@ -43,7 +43,7 @@ class ArmListParser:
 
     # parse right arm (strums) input
     @staticmethod
-    def parseright_M(right_arm, measure_time):
+    def parseright_M(right_arm, intervals, measure_time):
         initialStrum = "D"
         firstbfound = False
         mra = 0
@@ -66,9 +66,14 @@ class ArmListParser:
                         if beat == "D":
                             strumOnsets.append([time, 'D', 'N'])
                             right_information[mra][bra] = [beat, "N", measure_time / 8, 1]  # Change strum time here
+                            intervals[mra][bra] = intervals[mra][bra][0]
                         if beat == "U":
                             strumOnsets.append([time, 'U', 'N'])
                             right_information[mra][bra] = [beat, "N", measure_time / 8, 1]  # Change strum time here
+                            intervals[mra][bra] = intervals[mra][bra][1]
+                        if beat == "":
+                            bra += 1
+                            continue
 
                         firstbfound = True
                         initialStrum = beat
@@ -83,6 +88,7 @@ class ArmListParser:
                     if beat == "U":
                         strumOnsets.append([time, 'U', 'N'])
                         right_information[mra][bra] = [beat, "N", measure_time / 8, deltaT]  # Change strum time here
+                        intervals[mra][bra] = intervals[mra][bra][1]
                         if right_information[pmra][pbra][0] == "U":
                             right_information[pmra][pbra][1] = "C"
                         right_arm[pmra][pbra][3] = deltaT
@@ -95,6 +101,7 @@ class ArmListParser:
                     if beat == "D":
                         strumOnsets.append([time, 'D', 'N'])
                         right_information[mra][bra] = [beat, "N", measure_time / 8, deltaT]  # Change strum time here
+                        intervals[mra][bra] = intervals[mra][bra][0]
                         if right_information[pmra][pbra][0] == "D":
                             right_information[pmra][pbra][1] = "C"
                         right_information[pmra][pbra][3] = deltaT
@@ -103,6 +110,8 @@ class ArmListParser:
                         pbra -= pbra
                         pbra += bra
                         deltaT = 0
+                    if beat == "":
+                        intervals[mra][bra] = ''
                 else:
                     print(right_information, mra, bra)
                     raise Exception("Right Arm input incorrect")
@@ -111,6 +120,10 @@ class ArmListParser:
                 # print(right_information, mra, bra, "loop")
                 deltaT += measure_time / 8
             mra += 1
+        print("strum onsets: ", strumOnsets)
+        print("right hand: ", right_information)
+        print("strum intervals: ", intervals)
+
         count = 0
         for x in strumOnsets:
             try:
@@ -179,8 +192,12 @@ class ArmListParser:
         mcount = 0
         mtimings = []
         time = 0
+        intervals = [['']*8 for i in range(len(left_arm))]
+        prevStrum = ''
+
         for measure in left_arm:
             bcount = 0
+            scount = 0
             for chords in measure:
                 if len(chords) != 0:
                     # Parse each individual chord input
@@ -297,15 +314,21 @@ class ArmListParser:
                     # frets, command, dtraj, utraj = ArmListParser._get_chords_M("Chords - Chords.csv", note + key, type)
                     frets, command, dtraj, utraj = ArmListParser._get_chords_M("Alternate_Chords.csv", note + key, type)
                     left_arm[mcount][bcount] = [frets, command]
+                    prevStrum = [dtraj, utraj]
                     mtimings.append(time)
                     if not firstcfound:
                         firstc.append(frets)
                         firstc.append(command)
                         firstcfound = True
+                intervals[mcount][scount] = prevStrum
+                intervals[mcount][scount + 1] = prevStrum
                 time += measure_time / 4
                 bcount += 1
+                scount += 2
             mcount += 1
         print("queue: ", mtimings)
+        print("left arm: ", left_arm)
+        print("strum intervals: ", intervals)
         # print(left_arm)
         justchords = []
         lh_events = []
@@ -376,7 +399,7 @@ class ArmListParser:
         #print("These are the encoder tick slider/presser positions: ", lh_motor_positions)
         # return left_arm, firstc, mtimings
         # return lh_events, firstc, mtimings
-        return lh_interpolated_dictionary
+        return lh_interpolated_dictionary, intervals
 
     @staticmethod
     def interp_with_blend(q0, qf, N, tb_cent):
@@ -735,9 +758,9 @@ class ArmListParser:
         allpoints = {}
         #Dictionaries for LH and RH
         print("These are the dictionaries for left arm")
-        lh_dictionary = ArmListParser.parseleft_M(left_arm, measure_time)
+        lh_dictionary, intervals = ArmListParser.parseleft_M(left_arm, measure_time)
         print("These are the dictionaries for right arm")
-        rh_dictionary = ArmListParser.parseright_M(right_arm, measure_time)
+        rh_dictionary = ArmListParser.parseright_M(right_arm, intervals, measure_time)
 
         lh_maxtimestamp = max(lh_dictionary.keys())
         rh_maxtimestamp = max(rh_dictionary.keys())
