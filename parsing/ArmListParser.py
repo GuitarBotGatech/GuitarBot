@@ -120,10 +120,6 @@ class ArmListParser:
                 # print(right_information, mra, bra, "loop")
                 deltaT += measure_time / 8
             mra += 1
-        print("strum onsets: ", strumOnsets)
-        print("right hand: ", right_information)
-        print("strum intervals: ", intervals)
-
         count = 0
         for x in strumOnsets:
             try:
@@ -177,7 +173,13 @@ class ArmListParser:
         print("\nRH MM:")
         ArmListParser.print_Events(rh_motor_positions)
         print("DEFLECTIONS LIST: ", deflections)
-        rh_interpolated_dictionary = ArmListParser.rh_interpolate(rh_motor_positions, deflections)
+        strumIntervals = []
+        for interval in intervals:
+            for b in interval:
+                if b != '':
+                    strumIntervals.append(b)
+        print("STRUM INTERVALS: ", strumIntervals)
+        rh_interpolated_dictionary = ArmListParser.rh_interpolate(rh_motor_positions, deflections, strumIntervals)
         #print(rh_interpolated_list)
         #ArmListParser.print_Trajs(rh_interpolated_list)
 
@@ -507,7 +509,7 @@ class ArmListParser:
         return matrix #result
 
     @staticmethod
-    def rh_interpolate(rh_motor_positions, deflections, tb_cent = 0.2):
+    def rh_interpolate(rh_motor_positions, deflections, intervals, tb_cent = 0.2):
         initial_point = [-23965, 1960] # remember to change to dynamic later
         strummer_slider_q0 = -23965 # encoder ticks, CURRENT POINTS
         strummer_picker_q0 = 1960
@@ -526,6 +528,8 @@ class ArmListParser:
         print("RH UPDATED EVENTS LIST (NO SYNC RH EVENTS): ")
         ArmListParser.print_Events(rh_motor_positions)
 
+        index = 0
+        intervalCheck = True
         for event_index, event in enumerate(rh_motor_positions):
             strummer_slider_qf = event[0][0]
             strummer_slider_qf = (strummer_slider_qf * 2048) / 9.4
@@ -537,6 +541,19 @@ class ArmListParser:
             strummer_slider_interp1 = ArmListParser.interp_with_blend(strummer_slider_q0, strummer_slider_q0, 5, tb_cent)  # Change to fill later
             #2. Strummer slider move "speed" points
             strummer_slider_interp2 = ArmListParser.interp_with_blend(strummer_slider_q0, strummer_slider_qf, speed, tb_cent)
+
+            if intervalCheck:
+                if abs(intervals[index][0] - intervals[index][1]) == 5:
+                    print("full strum")
+                    #   generate trajectories like normal (steps 3 and 4)
+                    #
+                    #
+                else:
+                    print("STRUM INTERVAL IS DIFFERENT")
+                    #   change picker trajectory during strum depending on interval
+                    #
+                    #
+
             #3. Strummer Picker move 5 points
             strummer_picker_interp1 = ArmListParser.interp_with_blend(strummer_picker_q0, strummer_picker_qf, 5, tb_cent)
             #4. Strummer Picker hold "speed" points
@@ -551,6 +568,12 @@ class ArmListParser:
 
             strummer_slider_q0 = event[0][0]
             strummer_picker_q0 = event[0][1]
+
+            if event[0][1] == 10 or event[0][1] == 8:
+                index += 1
+                intervalCheck = True
+            else:
+                intervalCheck = False
 
         #ArmListParser.print_Trajs(temp)
         #print("len is: ", len(rh_points))
