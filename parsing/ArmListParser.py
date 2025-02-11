@@ -545,19 +545,21 @@ class ArmListParser:
             if intervalCheck:
                 if abs(intervals[index][0] - intervals[index][1]) == 5:
                     print("full strum")
-                    #   generate trajectories like normal (steps 3 and 4)
+                    #
                     #
                     #
                 else:
-                    print("STRUM INTERVAL IS DIFFERENT")
+                    print("interval strum")
                     #   change picker trajectory during strum depending on interval
                     #
                     #
 
-            #3. Strummer Picker move 5 points
-            strummer_picker_interp1 = ArmListParser.interp_with_blend(strummer_picker_q0, strummer_picker_qf, 5, tb_cent)
-            #4. Strummer Picker hold "speed" points
-            strummer_picker_interp2 = ArmListParser.interp_with_blend(strummer_picker_qf, strummer_picker_qf, speed, tb_cent)
+            # 3. Strummer Picker move 5 points
+            strummer_picker_interp1 = ArmListParser.interp_with_blend(strummer_picker_q0, strummer_picker_qf, 5,
+                                                                      tb_cent)
+            # 4. Strummer Picker hold "speed" points
+            strummer_picker_interp2 = ArmListParser.interp_with_blend(strummer_picker_qf, strummer_picker_qf,
+                                                                      speed, tb_cent)
             #5. Combine strummer_slider_interp1 with strummer_picker_interp1
             #picker_moving = [points1 + points2 for points1, points2 in zip(strummer_slider_interp1, strummer_picker_interp1)]
             interp_points_1 = [list(pair) for pair in zip(strummer_slider_interp1, strummer_picker_interp1)]
