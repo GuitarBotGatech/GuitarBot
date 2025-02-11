@@ -543,27 +543,48 @@ class ArmListParser:
             strummer_slider_interp2 = ArmListParser.interp_with_blend(strummer_slider_q0, strummer_slider_qf, speed, tb_cent)
 
             if intervalCheck:
-                if abs(intervals[index][0] - intervals[index][1]) == 5:
+                if abs(intervals[index][0] - intervals[index][1]) == 5: #case: full strum
                     print("full strum")
-                    #
-                    #
-                    #
+                    # 3. Strummer Picker move 5 points
+                    strummer_picker_interp1 = ArmListParser.interp_with_blend(strummer_picker_q0, strummer_picker_qf, 5,
+                                                                              tb_cent)
+                    # 4. Strummer Picker hold "speed" points
+                    strummer_picker_interp2 = ArmListParser.interp_with_blend(strummer_picker_qf, strummer_picker_qf,
+                                                                              speed, tb_cent)
+                elif intervals[index][0] == 6:  #interval case: upstrum starting at first string
+                    print("up strum skip last")
+                    last = intervals[index][1]
+                    strummer_picker_interp1 = ArmListParser.interp_with_blend(strummer_picker_q0, strummer_picker_qf, 5,
+                                                                              tb_cent)
+                    strummer_picker_interp2 = ArmListParser.interp_with_blend(strummer_picker_qf, strummer_picker_qf,
+                                                                              speed-(last*5), tb_cent)
+                    strummer_picker_interp3 = ArmListParser.interp_with_blend(strummer_picker_qf, 3050, 5, tb_cent) #Deflect last string
+                    strummer_picker_interp4 = ArmListParser.interp_with_blend(3050, 3050, 5, tb_cent)           #Hold deflection
+
+                    strummer_picker_interp2 = np.concatenate((strummer_picker_interp2, strummer_picker_interp3))
+                    strummer_picker_interp2 = np.concatenate((strummer_picker_interp2, strummer_picker_interp4))
                 else:
                     print("interval strum")
-                    #   change picker trajectory during strum depending on interval
-                    #
-                    #
+                    # 3. Strummer Picker move 5 points
+                    strummer_picker_interp1 = ArmListParser.interp_with_blend(strummer_picker_q0, strummer_picker_qf, 5,
+                                                                              tb_cent)
+                    # 4. Strummer Picker hold "speed" points
+                    strummer_picker_interp2 = ArmListParser.interp_with_blend(strummer_picker_qf, strummer_picker_qf,
+                                                                              speed, tb_cent)
+            else:
+                # 3. Strummer Picker move 5 points
+                strummer_picker_interp1 = ArmListParser.interp_with_blend(strummer_picker_q0, strummer_picker_qf, 5,
+                                                                          tb_cent)
+                # 4. Strummer Picker hold "speed" points
+                strummer_picker_interp2 = ArmListParser.interp_with_blend(strummer_picker_qf, strummer_picker_qf,
+                                                                          speed, tb_cent)
 
-            # 3. Strummer Picker move 5 points
-            strummer_picker_interp1 = ArmListParser.interp_with_blend(strummer_picker_q0, strummer_picker_qf, 5,
-                                                                      tb_cent)
-            # 4. Strummer Picker hold "speed" points
-            strummer_picker_interp2 = ArmListParser.interp_with_blend(strummer_picker_qf, strummer_picker_qf,
-                                                                      speed, tb_cent)
             #5. Combine strummer_slider_interp1 with strummer_picker_interp1
             #picker_moving = [points1 + points2 for points1, points2 in zip(strummer_slider_interp1, strummer_picker_interp1)]
             interp_points_1 = [list(pair) for pair in zip(strummer_slider_interp1, strummer_picker_interp1)]
             interp_points_2 = [list(pair) for pair in zip(strummer_slider_interp2, strummer_picker_interp2)]
+            print("points 1: ", interp_points_1)
+            print("points 2: ", interp_points_2)
             interp_points_1.extend(interp_points_2)
             rh_points.append([interp_points_1, timestamp])
             rh_points_only.append([interp_points_1])
