@@ -877,6 +877,23 @@ class ArmListParser:
         return lh_interpolated_dictionary, rh_interpolated_dictionary
 
 
+    @staticmethod
+    def parse_pick(events):
+        # Events will be in the format ["Note", type (between tremolo and pick), timestamp]
+        # 1. Assign note to a string.
+        # 2. Interpolate on that picker
+        # 3. Add to matrix at timestamp.
+
+        # Step 2:
+        # Tremolo length and speed set to default (120 and 5), get pluck type (pick or tremolo, 0,1)
+        # keep track of direction of each picker
+        
+
+
+
+        return
+
+
 
 
 
