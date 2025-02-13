@@ -1,3 +1,5 @@
+from math import floor
+
 import numpy as np
 import matplotlib.pyplot as plt
 from parsing.chord_selector import find_lowest_cost_chord
@@ -540,7 +542,7 @@ class ArmListParser:
                     strummer_picker_interp2 = ArmListParser.interp_with_blend(strummer_picker_qf, strummer_picker_qf,
                                                                               speed-(last*5), tb_cent)
                     strummer_picker_interp3 = ArmListParser.interp_with_blend(strummer_picker_qf, 3050, 5, tb_cent) #Deflect last string
-                    strummer_picker_interp4 = ArmListParser.interp_with_blend(3050, 3050, 5, tb_cent)           #Hold deflection
+                    strummer_picker_interp4 = ArmListParser.interp_with_blend(3050, 3050, 50 - (speed-(last*5)), tb_cent)           #Hold deflection
 
                     strummer_picker_interp2 = np.concatenate((strummer_picker_interp2, strummer_picker_interp3))
                     strummer_picker_interp2 = np.concatenate((strummer_picker_interp2, strummer_picker_interp4))
@@ -573,7 +575,9 @@ class ArmListParser:
             strummer_slider_q0 = event[0][0]
             strummer_picker_q0 = event[0][1]
 
-            if event[0][1] == 10 or event[0][1] == 8:
+            roundEvent = floor(event[0][1])
+
+            if roundEvent == 2178 or roundEvent == 1742:
                 index += 1
                 intervalCheck = True
             else:
