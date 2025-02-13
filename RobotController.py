@@ -101,10 +101,8 @@ def send_msg(pos):
 
     # print("pos: ", pos)
     pCommand = struct.pack('f' * len(pos), *pos)
-    time.sleep(0.005)
     sock.sendto(pCommand, (udp_ip, udp_port))
 
-    time.sleep(0.01)
     return 0
 
 def main(song_trajs):
@@ -126,17 +124,19 @@ def main(song_trajs):
     # for pos in toSend:
     #     send_msg(pos)
 
-    print("SONG TRAJS: ", song_trajs)
+    # print("SONG TRAJS: ", song_trajs)
+    interval = 0.005 
+    total_start_time = time.time()
+
     for i, point in enumerate(song_trajs):
         start_time = time.time()
         print(f"Sending {i}")
         send_msg(point)
 
-        tts = time.time() - start_time
+        elapsed_time = time.time() - start_time
+        sleep_time = max(0, interval - elapsed_time)
+        time.sleep(sleep_time)
 
-        while tts < 0.005:
-            tts = time.time() - start_time
-            time.sleep(0.0001)
-
-    print("done, exiting song")
+    total_elapsed_time = time.time() - total_start_time
+    print(f"Total elapsed time: {total_elapsed_time:.4f} seconds")
     return 0

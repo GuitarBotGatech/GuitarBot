@@ -39,8 +39,12 @@ int Epos4::init(int iNodeID, MotorSpec spec, bool inverted, unsigned long timeou
             m_iEncoderResolution = EC45_ENC_RES_SLIDER;
             err = configEC45Strummer_Picker();
             break;
-    case EC45_Plucker:
+    case EC45_Plucker_1024:
         m_iEncoderResolution = EC45_ENC_RES_PLUCKER;
+        err = configEC45();
+        break;
+    case EC45_Plucker_2048:
+        m_iEncoderResolution = EC45_ENC_RES_SLIDER;
         err = configEC45();
         break;
     case EC60:
@@ -677,7 +681,7 @@ int Epos4::setOpMode(OpMode opMode, uint8_t uiInterpolationTime, int8_t iInterpo
         n = SetHomeOffset(52000); //52000
 
         //CHANGE THIS PLUCKER
-        if(m_uiNodeID == 13){
+        if(m_uiNodeID >= 15){
             n = SetHomeOffset(0);
         }
         if(m_uiNodeID > 6 && m_uiNodeID < 13){
@@ -686,10 +690,10 @@ int Epos4::setOpMode(OpMode opMode, uint8_t uiInterpolationTime, int8_t iInterpo
         if(m_uiNodeID == 7){
             n = SetHomeOffset(0); //-25
         }
-        if(m_uiNodeID == 14){   // Strummer slider
+        if(m_uiNodeID == 13){   // Strummer slider
             n = SetHomeOffset(29500);
         }
-        if(m_uiNodeID == 15){   // Strummer picker
+        if(m_uiNodeID == 14){   // Strummer picker
             n = SetHomeOffset(100);
         }
         if(m_uiNodeID == 7){
@@ -719,11 +723,11 @@ int Epos4::setOpMode(OpMode opMode, uint8_t uiInterpolationTime, int8_t iInterpo
 //        if(m_uiNodeID == 7){
 //            n = setHomingCurrentThreshold(1500);; //-25
 //        }
-        if(m_uiNodeID == 14){ //Slider
-//            n = setHomingCurrentThreshold(400); //PLUCKER
-            n = setHomingCurrentThreshold(1000);
+        if(m_uiNodeID == 14){ //Strummer-Picker
+//            n = setHomingCurrentThreshold(400);
+            n = setHomingCurrentThreshold(300);
         }
-        if(m_uiNodeID == 15){//Picker
+        if(m_uiNodeID >= 15){//Picker
             n = setHomingCurrentThreshold(500);
         }
         if (n != 0) {

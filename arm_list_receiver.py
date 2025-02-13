@@ -1,7 +1,5 @@
 import socket
 from ast import literal_eval
-
-import RobotControllerAmit
 import RobotController
 from UI.messaging.udp_definitions import *
 from parsing.ArmListParser import ArmListParser

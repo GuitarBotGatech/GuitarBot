@@ -159,7 +159,8 @@ enum MotorSpec {
     EC45_Slider,
     EC45_StrummerSlider,
     EC45_StrummerPicker,
-    EC45_Plucker,
+    EC45_Plucker_1024,
+    EC45_Plucker_2048,
     EC60
 };
 #define EC20_ENC_RES 1024

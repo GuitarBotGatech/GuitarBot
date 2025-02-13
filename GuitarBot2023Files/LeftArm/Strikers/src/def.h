@@ -13,7 +13,7 @@
 //change num pressers, TRACE_ME
 #define NUM_STRIKERS 6
 #define NUM_PRESSERS 6
-#define NUM_PLUCKERS 1
+#define NUM_PLUCKERS 2
 #define NUM_STRUMMER_SLIDERS 1
 #define NUM_STRUMMER_PICKERS 1
 #define NUM_MOTORS NUM_PRESSERS+NUM_STRIKERS+NUM_PLUCKERS+NUM_STRUMMER_SLIDERS+NUM_STRUMMER_PICKERS
@@ -24,6 +24,7 @@
 
 
 const int kStrikerDirection[13] = { 0, 0, 1, 0, 0, 1, 1, 1, 0,0,0,0,0 }; // 0 is normal, 1 is flipped, idx 0 is dummy
+const int FRET_LENGTHS[10] = {0, 43, 76, 107, 134, 163, 187, 210, 234, 256};
 
 #define HOME_POSITION 25 // Deg
 #define P2P_MULT 100.f
