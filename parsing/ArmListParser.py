@@ -791,7 +791,7 @@ class ArmListParser:
         print("These are the dictionaries for left arm")
         lh_motor_positions, intervals = ArmListParser.parseleft_M(left_arm, measure_time)
         print("These are the dictionaries for right arm")
-        rh_motor_positions, deflections = ArmListParser.parseright_M(right_arm, intervals, measure_time)
+        rh_motor_positions, deflections, strumIntervals = ArmListParser.parseright_M(right_arm, intervals, measure_time)
 
         #2. PrepMovements (Adjust timestamps)
         lh_positions_adj, rh_positions_adj = ArmListParser.prepMovements(lh_motor_positions, rh_motor_positions)
@@ -799,7 +799,7 @@ class ArmListParser:
         ArmListParser.print_Events(rh_positions_adj)
 
         #3. Interpolate (dedicated interp function)
-        lh_dictionary, rh_dictionary = ArmListParser.interpolateEvents(lh_positions_adj, rh_positions_adj, deflections)
+        lh_dictionary, rh_dictionary = ArmListParser.interpolateEvents(lh_positions_adj, rh_positions_adj, deflections, strumIntervals)
 
         lh_maxtimestamp = max(lh_dictionary.keys())
         rh_maxtimestamp = max(rh_dictionary.keys())
@@ -907,9 +907,9 @@ class ArmListParser:
         return lh_motor_positions, rh_motor_positions
 
     @staticmethod
-    def interpolateEvents(lh_positions_adj, rh_positions_adj, deflections):
+    def interpolateEvents(lh_positions_adj, rh_positions_adj, deflections, strumIntervals):
         lh_interpolated_dictionary = ArmListParser.lh_interpolate(lh_positions_adj, plot=False)
-        rh_interpolated_dictionary = ArmListParser.rh_interpolate(rh_positions_adj, deflections)
+        rh_interpolated_dictionary = ArmListParser.rh_interpolate(rh_positions_adj, deflections, strumIntervals)
 
         return lh_interpolated_dictionary, rh_interpolated_dictionary
 
