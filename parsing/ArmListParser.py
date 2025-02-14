@@ -546,6 +546,7 @@ class ArmListParser:
 
                     strummer_picker_interp2 = np.concatenate((strummer_picker_interp2, strummer_picker_interp3))
                     strummer_picker_interp2 = np.concatenate((strummer_picker_interp2, strummer_picker_interp4))
+                    strummer_picker_qf = 3050.2127659574467   #new qf would be deflection angle
                 else:
                     print("interval strum")
                     # 3. Strummer Picker move 5 points
@@ -573,7 +574,7 @@ class ArmListParser:
             rh_points_only.append([interp_points_1])
 
             strummer_slider_q0 = event[0][0]
-            strummer_picker_q0 = event[0][1]
+            strummer_picker_q0 = strummer_picker_qf
 
             roundEvent = floor(event[0][1])
 
