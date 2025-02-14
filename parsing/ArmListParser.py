@@ -513,12 +513,19 @@ class ArmListParser:
         print("RH UPDATED EVENTS LIST (NO SYNC RH EVENTS): ")
         ArmListParser.print_Events(rh_motor_positions)
 
-        index = 0
-        intervalCheck = True
+        index = -1
         for event_index, event in enumerate(rh_motor_positions):
             strummer_slider_qf = event[0][0]
             strummer_picker_qf = event[0][1]
             timestamp = event[1]
+
+            roundEvent = floor(event[0][1])
+
+            if roundEvent == 2178 or roundEvent == 1742:
+                index += 1
+                intervalCheck = True
+            else:
+                intervalCheck = False
 
             #1. Strummer slider hold 5 points
             strummer_slider_interp1 = ArmListParser.interp_with_blend(strummer_slider_q0, strummer_slider_q0, 5, tb_cent)  # Change to fill later
@@ -526,7 +533,8 @@ class ArmListParser:
             strummer_slider_interp2 = ArmListParser.interp_with_blend(strummer_slider_q0, strummer_slider_qf, speed, tb_cent)
 
             if intervalCheck:
-                if abs(intervals[index][0] - intervals[index][1]) == 5: #case: full strum
+                intervalLength = abs(intervals[index][0] - intervals[index][1])
+                if intervalLength == 5: #case: full strum
                     print("full strum")
                     # 3. Strummer Picker move 5 points
                     strummer_picker_interp1 = ArmListParser.interp_with_blend(strummer_picker_q0, strummer_picker_qf, 5,
@@ -534,15 +542,14 @@ class ArmListParser:
                     # 4. Strummer Picker hold "speed" points
                     strummer_picker_interp2 = ArmListParser.interp_with_blend(strummer_picker_qf, strummer_picker_qf,
                                                                               speed, tb_cent)
-                elif intervals[index][0] == 6:  #interval case: upstrum starting at first string
-                    print("up strum skip last")
-                    last = intervals[index][1]
+                elif intervals[index][0] == 6 or intervals[index][0] == 1:  #interval case: upstrum/downstrum starting at first string
+                    print("skip last n strings")
                     strummer_picker_interp1 = ArmListParser.interp_with_blend(strummer_picker_q0, strummer_picker_qf, 5,
                                                                               tb_cent)
                     strummer_picker_interp2 = ArmListParser.interp_with_blend(strummer_picker_qf, strummer_picker_qf,
-                                                                              speed-(last*5), tb_cent)
-                    strummer_picker_interp3 = ArmListParser.interp_with_blend(strummer_picker_qf, 3050, 5, tb_cent) #Deflect last string
-                    strummer_picker_interp4 = ArmListParser.interp_with_blend(3050, 3050, 50 - (speed-(last*5)), tb_cent)           #Hold deflection
+                                                                              speed-(30-(intervalLength*5)), tb_cent)
+                    strummer_picker_interp3 = ArmListParser.interp_with_blend(strummer_picker_qf, 3050.2127659574467, 5, tb_cent)     #Deflect last string
+                    strummer_picker_interp4 = ArmListParser.interp_with_blend(3050.2127659574467, 3050.2127659574467, 50-(speed-(30-(intervalLength*5))), tb_cent)    #Hold deflection
 
                     strummer_picker_interp2 = np.concatenate((strummer_picker_interp2, strummer_picker_interp3))
                     strummer_picker_interp2 = np.concatenate((strummer_picker_interp2, strummer_picker_interp4))
@@ -575,14 +582,6 @@ class ArmListParser:
 
             strummer_slider_q0 = event[0][0]
             strummer_picker_q0 = strummer_picker_qf
-
-            roundEvent = floor(event[0][1])
-
-            if roundEvent == 2178 or roundEvent == 1742:
-                index += 1
-                intervalCheck = True
-            else:
-                intervalCheck = False
 
         #ArmListParser.print_Trajs(temp)
         #print("len is: ", len(rh_points))
