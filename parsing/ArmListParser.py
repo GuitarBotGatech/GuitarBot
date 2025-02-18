@@ -544,24 +544,42 @@ class ArmListParser:
                                                                               speed, tb_cent)
                 elif intervals[index][0] == 6 or intervals[index][0] == 1:  #interval case: upstrum/downstrum starting at first string
                     print("skip last n strings")
-                    strummer_picker_interp1 = ArmListParser.interp_with_blend(strummer_picker_q0, strummer_picker_qf, 5,
-                                                                              tb_cent)
-                    strummer_picker_interp2 = ArmListParser.interp_with_blend(strummer_picker_qf, strummer_picker_qf,
-                                                                              speed-(30-(intervalLength*5)), tb_cent)
-                    strummer_picker_interp3 = ArmListParser.interp_with_blend(strummer_picker_qf, 3050.2127659574467, 5, tb_cent)     #Deflect last string
-                    strummer_picker_interp4 = ArmListParser.interp_with_blend(3050.2127659574467, 3050.2127659574467, 50-(speed-(30-(intervalLength*5))), tb_cent)    #Hold deflection
+                    # 3. Strummer Picker move 5 points
+                    strummer_picker_interp1 = ArmListParser.interp_with_blend(strummer_picker_q0, strummer_picker_qf, 5, tb_cent)
+                    strummer_picker_interp2 = ArmListParser.interp_with_blend(strummer_picker_qf, strummer_picker_qf, speed-(33-(intervalLength*5)), tb_cent)
+                    if intervals[index][0] == 1:    # if downstrum
+                        strummer_picker_interp3 = ArmListParser.interp_with_blend(strummer_picker_qf,2614.4680851063827, 5,tb_cent)  # Deflect last string
+                        strummer_picker_interp4 = ArmListParser.interp_with_blend(2614.4680851063827,2614.4680851063827, 50-(speed-(33-(intervalLength*5))), tb_cent)  # Hold deflection
+                        strummer_picker_qf = 2614.4680851063827  # new qf would be deflection angle
+                    else:   #if upstrum
+                        strummer_picker_interp3 = ArmListParser.interp_with_blend(strummer_picker_qf,1307.2340425531913, 5,tb_cent)  # Deflect last string
+                        strummer_picker_interp4 = ArmListParser.interp_with_blend(1307.2340425531913,1307.2340425531913, 50-(speed-(33-(intervalLength*5))), tb_cent)  # Hold deflection
+                        strummer_picker_qf = 1307.2340425531913  # new qf would be deflection angle
 
                     strummer_picker_interp2 = np.concatenate((strummer_picker_interp2, strummer_picker_interp3))
                     strummer_picker_interp2 = np.concatenate((strummer_picker_interp2, strummer_picker_interp4))
-                    strummer_picker_qf = 3050.2127659574467   #new qf would be deflection angle
                 else:
-                    print("interval strum")
-                    # 3. Strummer Picker move 5 points
-                    strummer_picker_interp1 = ArmListParser.interp_with_blend(strummer_picker_q0, strummer_picker_qf, 5,
-                                                                              tb_cent)
-                    # 4. Strummer Picker hold "speed" points
-                    strummer_picker_interp2 = ArmListParser.interp_with_blend(strummer_picker_qf, strummer_picker_qf,
-                                                                              speed, tb_cent)
+                    print("skip first n strings")
+                    # # 3. Strummer Picker move 5 points
+                    # strummer_picker_interp1 = ArmListParser.interp_with_blend(strummer_picker_q0, strummer_picker_qf, 5,
+                    #                                                           tb_cent)
+                    # # 4. Strummer Picker hold "speed" points
+                    # strummer_picker_interp2 = ArmListParser.interp_with_blend(strummer_picker_qf, strummer_picker_qf,
+                    #                                                           speed, tb_cent)
+
+                    if intervals[index][0] - intervals[index][1] < 0:   #if downstrum
+                        strummer_picker_interp1 = ArmListParser.interp_with_blend(strummer_picker_q0, 2614.4680851063827, 5, tb_cent)  # Deflect first string
+                        strummer_picker_interp2 = ArmListParser.interp_with_blend(2614.4680851063827, 2614.4680851063827, 50-(speed-(33-(intervalLength*5))), tb_cent)   # Hold deflection
+                        strummer_picker_interp3 = ArmListParser.interp_with_blend(2614.4680851063827, strummer_picker_qf, 5, tb_cent)
+                        strummer_picker_interp4 = ArmListParser.interp_with_blend(strummer_picker_qf, strummer_picker_qf, speed-(33-(intervalLength*5)), tb_cent)
+                    else:   #if upstrum
+                        strummer_picker_interp1 = ArmListParser.interp_with_blend(strummer_picker_q0,1307.2340425531913, 5, tb_cent)  # Deflect first string
+                        strummer_picker_interp2 = ArmListParser.interp_with_blend(1307.2340425531913,1307.2340425531913, 50-(speed-(33-(intervalLength*5))), tb_cent)  # Hold deflection
+                        strummer_picker_interp3 = ArmListParser.interp_with_blend(1307.2340425531913,strummer_picker_qf, 5, tb_cent)
+                        strummer_picker_interp4 = ArmListParser.interp_with_blend(strummer_picker_qf, strummer_picker_qf, speed-(33-(intervalLength*5)), tb_cent)
+
+                    strummer_picker_interp2 = np.concatenate((strummer_picker_interp2, strummer_picker_interp3))
+                    strummer_picker_interp2 = np.concatenate((strummer_picker_interp2, strummer_picker_interp4))
             else:
                 # 3. Strummer Picker move 5 points
                 strummer_picker_interp1 = ArmListParser.interp_with_blend(strummer_picker_q0, strummer_picker_qf, 5,
@@ -734,10 +752,10 @@ class ArmListParser:
 
                     if strummer_slider_qf == -3268.0851063829787: # if coming from a down strum, insert an upstrum
                         deflect_SS_qf = -115
-                        deflect_SP_qf = 14
+                        deflect_SP_qf = 6
                     else:
                         deflect_SS_qf = -15
-                        deflect_SP_qf = 14
+                        deflect_SP_qf = 12
 
                     deflect_SS_qf = (deflect_SS_qf * 2048) / 9.4
                     deflect_SP_qf = (deflect_SP_qf * 2048) / 9.4
