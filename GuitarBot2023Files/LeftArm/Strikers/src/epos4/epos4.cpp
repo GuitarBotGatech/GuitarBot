@@ -1292,7 +1292,7 @@ int Epos4::setPositionControlParameters_StrummerSlider() {
 
 int Epos4::setPositionControlParameters_StrummerPicker() {
     int n;
-    n = writeObj(POS_CTRL_PARAM_ADDR, PC_P_GAIN, 5172512);
+    n = writeObj(POS_CTRL_PARAM_ADDR, PC_P_GAIN, 5172512);  //Multiply by k^2
     if (n != 0) {
         LOG_ERROR("Write Obj failed. Error code: ", m_uiError);
         return -1;
@@ -1305,25 +1305,25 @@ int Epos4::setPositionControlParameters_StrummerPicker() {
         return -1;
     }
 
-    n = writeObj(POS_CTRL_PARAM_ADDR, PC_I_GAIN, 12699311);
+    n = writeObj(POS_CTRL_PARAM_ADDR, PC_I_GAIN, 12699311);     //Multiply by k^3
     if (n != 0) {
         LOG_ERROR("Write Obj failed. Error code: ", m_uiError);
         return -1;
     }
 
-    n = writeObj(POS_CTRL_PARAM_ADDR, PC_D_GAIN, 20000);
+    n = writeObj(POS_CTRL_PARAM_ADDR, PC_D_GAIN, 20000);        //Multiply by k
     if (n != 0) {
         LOG_ERROR("Write Obj failed. Error code: ", m_uiError);
         return -1;
     }
 
-    n = writeObj(POS_CTRL_PARAM_ADDR, PC_FF_V_GAIN, 47393);
+    n = writeObj(POS_CTRL_PARAM_ADDR, PC_FF_V_GAIN, 0/*47393*/);
     if (n != 0) {
         LOG_ERROR("Write Obj failed. Error code: ", m_uiError);
         return -1;
     }
 
-    n = writeObj(POS_CTRL_PARAM_ADDR, PC_FF_A_GAIN, 870);
+    n = writeObj(POS_CTRL_PARAM_ADDR, PC_FF_A_GAIN, 0/*870*/);
     if (n != 0) {
         LOG_ERROR("Write Obj failed. Error code: ", m_uiError);
         return -1;
