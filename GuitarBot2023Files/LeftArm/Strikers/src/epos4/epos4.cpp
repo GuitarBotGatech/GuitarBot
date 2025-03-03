@@ -1317,13 +1317,13 @@ int Epos4::setPositionControlParameters_StrummerPicker() {
         return -1;
     }
 
-    n = writeObj(POS_CTRL_PARAM_ADDR, PC_FF_V_GAIN, 0/*47393*/);
+    n = writeObj(POS_CTRL_PARAM_ADDR, PC_FF_V_GAIN, 47393);
     if (n != 0) {
         LOG_ERROR("Write Obj failed. Error code: ", m_uiError);
         return -1;
     }
 
-    n = writeObj(POS_CTRL_PARAM_ADDR, PC_FF_A_GAIN, 0/*870*/);
+    n = writeObj(POS_CTRL_PARAM_ADDR, PC_FF_A_GAIN, 870);
     if (n != 0) {
         LOG_ERROR("Write Obj failed. Error code: ", m_uiError);
         return -1;
