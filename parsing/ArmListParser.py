@@ -184,7 +184,9 @@ class ArmListParser:
 
         for i in range(len(rh_motor_positions)):
             if strumIntervals[i][0] - strumIntervals[i][1] < 0 and strumIntervals[i][0] != 1:
-                rh_motor_positions[i][0][1] = 2614.4680851063827
+                rh_motor_positions[i][0][1] = 2614.4680851063828
+            elif strumIntervals[i][0] - strumIntervals[i][1] > 0 and strumIntervals[i][0] != 6:
+                rh_motor_positions[i][0][1] = 1307.2340425531912
 
         print("\nRH MM:")
         ArmListParser.print_Events(rh_motor_positions)
@@ -536,7 +538,7 @@ class ArmListParser:
 
             roundEvent = floor(strummer_picker_q0)
 
-            if not first and (roundEvent == 2178 or roundEvent == 1742):
+            if not first and (roundEvent == 2178 or roundEvent == 1742 or strummer_picker_q0 == 2614.4680851063828 or strummer_picker_q0 == 1307.2340425531912):
                 index += 1
                 intervalCheck = True
             else:
@@ -600,7 +602,6 @@ class ArmListParser:
                                                                                   tb_cent)
                     elif intervals[index][0] == 6 or intervals[index][0] == 1:  #interval case: upstrum/downstrum starting at first string
                         print("INTERVAL: SKIP LAST STRING(S)")
-                        print(event)
                         # 3. Strummer Picker holds set position
                         strummer_picker_interp1 = ArmListParser.interp_with_blend(strummer_picker_q0,
                                                                                   strummer_picker_q0,
@@ -627,35 +628,24 @@ class ArmListParser:
                         strummer_picker_interp1 = np.concatenate((strummer_picker_interp1, strummer_picker_interp4))
                     else:
                         print("INTERVAL: SKIP FIRST STRING(S)")
+                        # 3. Strummer Picker holds set position
+                        strummer_picker_interp1 = ArmListParser.interp_with_blend(strummer_picker_q0,
+                                                                                  strummer_picker_q0,
+                                                                                  50-(speed-(38-(intervalLength*5))),
+                                                                                  tb_cent)
                         if intervals[index][0] - intervals[index][1] < 0:   #if downstrum
-                            # strummer_picker_interp1 = ArmListParser.interp_with_blend(strummer_picker_q0,
-                            #                                                           strummer_picker_q0,
-                            #                                                           speed,
-                            #                                                           tb_cent)  # picker holds set position
-                            # strummer_picker_interp2 = ArmListParser.interp_with_blend(strummer_picker_q0,
-                            #                                                           strummer_picker_qf,
-                            #                                                           5,
-                            #                                                           tb_cent)  # picker moves to next position
-                            strummer_picker_interp1 = ArmListParser.interp_with_blend(strummer_picker_q0, 2614.4680851063827, 5, tb_cent)  # Deflect first string
-                            strummer_picker_interp2 = ArmListParser.interp_with_blend(2614.4680851063827, 2614.4680851063827, 50-(speed-(34-(intervalLength*5))), tb_cent)   # Hold deflection
-                            strummer_picker_interp3 = ArmListParser.interp_with_blend(2614.4680851063827, strummer_picker_qf, 5, tb_cent)
-                            strummer_picker_interp4 = ArmListParser.interp_with_blend(strummer_picker_qf, strummer_picker_qf, speed-(34-(intervalLength*5)), tb_cent)
+                            # 4. Strummer Picker moves to hit strings
+                            strummer_picker_interp3 = ArmListParser.interp_with_blend(strummer_picker_q0, 2178.723404255319, 5, tb_cent)
+                            strummer_picker_interp4 = ArmListParser.interp_with_blend(2178.723404255319, 2178.723404255319, speed-(38-(intervalLength*5)), tb_cent)
+                            strummer_picker_interp2 = ArmListParser.interp_with_blend(2178.723404255319, strummer_picker_qf, 5, tb_cent) # Set picker to next position
                         else:   #if upstrum
-                            # strummer_picker_interp1 = ArmListParser.interp_with_blend(strummer_picker_q0,
-                            #                                                           strummer_picker_q0,
-                            #                                                           speed,
-                            #                                                           tb_cent)  # picker holds set position
-                            # strummer_picker_interp2 = ArmListParser.interp_with_blend(strummer_picker_q0,
-                            #                                                           strummer_picker_qf,
-                            #                                                           5,
-                            #                                                           tb_cent)  # picker moves to next position
-                            strummer_picker_interp1 = ArmListParser.interp_with_blend(strummer_picker_q0,1307.2340425531913, 5, tb_cent)  # Deflect first string
-                            strummer_picker_interp2 = ArmListParser.interp_with_blend(1307.2340425531913,1307.2340425531913, 50-(speed-(34-(intervalLength*5))), tb_cent)  # Hold deflection
-                            strummer_picker_interp3 = ArmListParser.interp_with_blend(1307.2340425531913,strummer_picker_qf, 5, tb_cent)
-                            strummer_picker_interp4 = ArmListParser.interp_with_blend(strummer_picker_qf, strummer_picker_qf, speed-(34-(intervalLength*5)), tb_cent)
+                            # 4. Strummer Picker moves to hit strings
+                            strummer_picker_interp3 = ArmListParser.interp_with_blend(strummer_picker_q0, 1742.9787234042553, 5, tb_cent)
+                            strummer_picker_interp4 = ArmListParser.interp_with_blend(1742.9787234042553, 1742.9787234042553, speed-(38-(intervalLength*5)), tb_cent)
+                            strummer_picker_interp2 = ArmListParser.interp_with_blend(1742.9787234042553, strummer_picker_qf, 5, tb_cent)  # Set picker to next position
 
-                        strummer_picker_interp2 = np.concatenate((strummer_picker_interp2, strummer_picker_interp3))
-                        strummer_picker_interp2 = np.concatenate((strummer_picker_interp2, strummer_picker_interp4))
+                        strummer_picker_interp1 = np.concatenate((strummer_picker_interp1, strummer_picker_interp3))
+                        strummer_picker_interp1 = np.concatenate((strummer_picker_interp1, strummer_picker_interp4))
                 else:
                     strummer_picker_interp1 = ArmListParser.interp_with_blend(strummer_picker_q0,
                                                                               strummer_picker_q0,
