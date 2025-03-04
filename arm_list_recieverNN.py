@@ -8,12 +8,15 @@ from parsing.ArmListParser import ArmListParser
 from pythonosc.osc_message import OscMessage
 from pythonosc.parsing import osc_types
 
-# Define UDP settings
-UDP_IP = "192.168.1.1"
+# For External
+# UDP_IP = "192.168.1.1"
+# For Local
+UDP_IP = "127.0.0.1"
 UDP_PORT = 12000
 # initial_point = [0,0,0,0,0,0,-10,-10,-10,-10,-10,-10, -115, 9, 7,7]
 # 6 sliders, 6 pressers, 1 strummer-slider, 1 strummer-plucker, Two pluckers for now, convert to encoder_ticks
 message_queue = queue.SimpleQueue()
+# chords = strum = pluck = None
 
 def decode_osc_message(data):
     print("Message In")
@@ -36,10 +39,12 @@ def udp_listener():
         if message_type:
             message_queue.put((message_type, message_body))
             print(f"Received {message_type}: {message_body}")
+            print(f"QUEUE SIZE",message_queue.qsize())
 
 def process_messages():
     """Process messages from the queue and handle them."""
     chords = strum = pluck = None
+    initial_point = [0, 0, 0, 0, 0, 0, -10, -10, -10, -10, -10, -10, -23965, 1960, 762, 873, 1743]
 
     while True:
         try:
@@ -52,11 +57,12 @@ def process_messages():
                 elif message_type == "Pluck":
                     pluck = data
 
-                if chords and strum:
+                if chords and strum and pluck:
                     print("Starting Song")
-                    song_trajectories_dict = ArmListParser.parseAllMIDI(chords, strum)
+                    song_trajectories_dict = ArmListParser.parseAllMIDI(chords, strum, pluck, initial_point)
                     song_trajectories_list = [value for value in song_trajectories_dict.values()]
                     RobotController.main(song_trajectories_list)
+                    initial_point = song_trajectories_list[-1]
                     chords = strum = pluck = None
         except queue.Empty:
             pass
