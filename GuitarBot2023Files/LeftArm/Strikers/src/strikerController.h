@@ -183,7 +183,8 @@ public:
             //CHANGE ME
             isHoming_1 = m_striker[15].homingStatus();
             isHoming_2 = m_striker[16].homingStatus();
-            isHoming_all = isHoming_1 || isHoming_2;
+            isHoming_3 = m_striker[17].homingStatus();
+            isHoming_all = isHoming_1 || isHoming_2 || isHoming_3;
             if (ii++ > 200) break;
         }
         LOG_LOG("Homing for pluckers complete, starting strummer. ");
@@ -550,7 +551,7 @@ public:
     */
     void processTrajPoints(float *trajPoint)
     {
-        int packetSize = 13;
+        int packetSize = 15;
         Serial.print("RECEIVED: ");
         for(int i = 0; i<packetSize; i++)
         {
@@ -560,14 +561,14 @@ public:
         Serial.println();
 
         for(int x = 0; x < NUM_MOTORS; x++){
-            if(x < 14)
+            if(x < 17)
             {
                 all_Trajs[x][0] = trajPoint[x];
             }
-            else if(x == 14 || x == 15) // picker set to default number for now
-            {
-                all_Trajs[x][0] = 762; //default value in encoder ticks, same as in start()
-            }
+//            else if(x == 14 || x == 15) // picker set to default number for now
+//            {
+//                all_Trajs[x][0] = 762; //default value in encoder ticks, same as in start()
+//            }
         }
 
         //Serial.println("PROCESSED TRAJ: ");
@@ -1088,7 +1089,7 @@ public:
     void start() {
         float start_state_SS = -110;
         float start_state_SP = 9;
-        float start_state_PICK = 7;
+        float start_state_PICK = 9;
         float pos2pulse = 0;
 
         float temp_traj_1[50];
@@ -1108,8 +1109,11 @@ public:
 
             if(i >= 15){ //Picker
                 pos2pulse = (start_state_PICK * 1024) / 9.4;
-                if(i == 16){
+                if(i == 16 || i == 17){
                     start_state_PICK = 4;
+                    if(i == 17){
+                        start_state_PICK = 8;
+                    }
                     pos2pulse = (start_state_PICK * 2048) / 9.4;
                 }
                 qf = pos2pulse;
@@ -1287,8 +1291,8 @@ private:
     bool m_bDataRequested = false;
 
 
-    float all_Trajs[15][200]; //CHANGE FOR MORE TRAJS
-    float curr_point[15];
+    float all_Trajs[17][200]; //CHANGE FOR MORE TRAJS
+    float curr_point[17];
 
     int prev_frets[6];
     int prev_playcommands[6];
@@ -1389,8 +1393,8 @@ private:
             errorAtPop = false;
         } else {
             if (pInstance->m_traj.count() > 0) {
-                Serial.println("HERE: TRAJ COUNT IS ");
-                Serial.println(pInstance->m_traj.count());
+//                Serial.println("TRAJ COUNT IS ");
+//                Serial.println(pInstance->m_traj.count());
 
                 //slider array.count() == 0 && press
 
@@ -1430,16 +1434,16 @@ private:
                 }
             }
         }
-        Serial.println("------------------");
-        Serial.print("Index: ");
-        Serial.println(idx);
-        Serial.print("Traj Point: ");
-        for (int i = 0; i < NUM_MOTORS; ++i) {
-
-                Serial.print(point[i]);
-                Serial.print(" ");
-        }
-        Serial.println(" ");
+//        Serial.println("------------------");
+//        Serial.print("Index: ");
+//        Serial.println(idx);
+//        Serial.print("Traj Point: ");
+//        for (int i = 0; i < NUM_MOTORS; ++i) {
+//
+//                Serial.print(point[i]);
+//                Serial.print(" ");
+//        }
+//        Serial.println(" ");
 
 
         bool run_bot = true; //false turns off motor, true turns on

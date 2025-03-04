@@ -687,17 +687,11 @@ int Epos4::setOpMode(OpMode opMode, uint8_t uiInterpolationTime, int8_t iInterpo
         if(m_uiNodeID > 6 && m_uiNodeID < 13){
             n = SetHomeOffset(-25); //-25
         }
-        if(m_uiNodeID == 7){
-            n = SetHomeOffset(0); //-25
-        }
         if(m_uiNodeID == 13){   // Strummer slider
             n = SetHomeOffset(29500);
         }
         if(m_uiNodeID == 14){   // Strummer picker
             n = SetHomeOffset(100);
-        }
-        if(m_uiNodeID == 7){
-            n = SetHomeOffset(0); //-25
         }
 
         if(n != 0 ) {

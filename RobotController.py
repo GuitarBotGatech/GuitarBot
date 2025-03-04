@@ -106,10 +106,6 @@ def send_msg(pos):
     return 0
 
 def main(song_trajs):
-    # left = [x for pos in song_trajs for x in pos]
-    # print("left: ", len(left))
-    # print(left)
-
     print("4")
     time.sleep(1)
     print("3")
@@ -119,18 +115,13 @@ def main(song_trajs):
     print("1")
     time.sleep(1)
 
-    # size = 360
-    # toSend = [left[i:i+size] for i in range(0, len(left), size)]
-    # for pos in toSend:
-    #     send_msg(pos)
-
     # print("SONG TRAJS: ", song_trajs)
     interval = 0.005 
     total_start_time = time.time()
 
     for i, point in enumerate(song_trajs):
         start_time = time.time()
-        print(f"Sending {i}")
+        # print(f"Sending {i}")
         send_msg(point)
 
         elapsed_time = time.time() - start_time
