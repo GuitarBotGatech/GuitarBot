@@ -544,26 +544,6 @@ class ArmListParser:
             else:
                 intervalCheck = False
 
-            # if first:
-            #     strummer_slider_interp1 = ArmListParser.interp_with_blend(strummer_slider_q0, strummer_slider_q0, 5,
-            #                                                               tb_cent)  #slider holds
-            #     strummer_picker_interp1 = ArmListParser.interp_with_blend(strummer_picker_q0, strummer_picker_qf,
-            #                                                               5, tb_cent)  # picker moves to next position
-            #     strummer_slider_interp2 = ArmListParser.interp_with_blend(strummer_slider_q0, strummer_slider_qf, speed,
-            #                                                               tb_cent)  #slider stays at initial position
-            #     strummer_picker_interp2 = ArmListParser.interp_with_blend(strummer_picker_qf, strummer_picker_qf,
-            #                                                               speed, tb_cent)  # picker holds set position
-            #     first = False
-            # else:
-            #     strummer_slider_interp1 = ArmListParser.interp_with_blend(strummer_slider_q0, strummer_slider_qf, speed,
-            #                                                               tb_cent)  #slider moves
-            #     strummer_picker_interp1 = ArmListParser.interp_with_blend(strummer_picker_q0, strummer_picker_q0,
-            #                                                               speed, tb_cent)   #picker holds set position
-            #     strummer_slider_interp2 = ArmListParser.interp_with_blend(strummer_slider_qf, strummer_slider_qf, 5,
-            #                                                               tb_cent)   #slider holds
-            #     strummer_picker_interp2 = ArmListParser.interp_with_blend(strummer_picker_q0, strummer_picker_qf,
-            #                                                               5, tb_cent)   #picker moves to next position
-
             if first:
                 strummer_slider_interp1 = ArmListParser.interp_with_blend(strummer_slider_q0, strummer_slider_q0, 5,
                                                                           tb_cent)  # slider holds
