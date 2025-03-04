@@ -1,10 +1,9 @@
+from math import floor
+
 import numpy as np
 import matplotlib.pyplot as plt
-import math
 from parsing.chord_selector import find_lowest_cost_chord
-import plotly.graph_objects as go
-from plotly.subplots import make_subplots
-import copy
+
 
 class ArmListParser:
     current_fret_positions = [0, 0, 0, 0, 0, 0]  # begins by preferring voicings near first position
@@ -420,184 +419,93 @@ class ArmListParser:
         return curve
 
     @staticmethod
-    def lh_interpolate(lh_motor_positions, lh_pick_pos, initial_point, num_points=20, tb_cent=0.2, plot=False):
-        # initial_point = [0, 0, 0, 0, 0, 0, -10, -10, -10, -10, -10, -10]  # Initial position, remember to make dynamic later.
-        initial_point = initial_point[0:12]
+    def lh_interpolate(lh_motor_positions, num_points=20, tb_cent=0.2, plot=True):
+        initial_point = [0, 0, 0, 0, 0, 0, -10, -10, -10, -10, -10, -10]  # Initial position, remember to make dynamic later.
         current_encoder_position = []
-        if not lh_pick_pos:
-            max_timestamp = lh_motor_positions[-1][1] + 0.3
-        else:
-            max_timestamp = max(lh_motor_positions[-1][1] + 0.3, lh_pick_pos[-1][2] + .3)
-        full_matrix = {}
-        for t in np.arange(0, max_timestamp + 0.005, 0.005):
-            full_matrix[round(t, 3)] = [100000] * 12  # 12 zeros for 12 motors
-
         for i, value in enumerate(initial_point):
             if i < 6:
-                # encoder_tick = (value * 2048) / 9.4
-                current_encoder_position.append(value)
+                encoder_tick = (value * 2048) / 9.4
+                current_encoder_position.append(encoder_tick)
             else:
                 current_encoder_position.append(value)
+
+        result = []
+        points_only = []
 
         #1. Check to make sure no syncrhonous LH Events
         print("LH UPDATED EVENTS LIST (NO SYNC LH EVENTS): ")
         lh_motor_positions = ArmListParser.checkSyncEvents("LH", lh_motor_positions)
         ArmListParser.print_Events(lh_motor_positions)
-        curr_ts = 0
-        # combine pick and chord lists and add headers
-        full_LH = []
 
-        # Process lh_motor_positions
-        for motor_pos, timestamp in lh_motor_positions:
-            full_LH.append({
-                'type': 'chord',
-                'positions': motor_pos,
-                'timestamp': timestamp
-            })
+        for event_index, event in enumerate(lh_motor_positions):
+            points = []
+            target_positions_slider = event[0][:6]  # First 6 values of the nested list
+            target_positions_presser = event[0][6:12]
+            timestamp = event[1]
+            # First 20 points
+            interpolated_values_1 = [
+                ArmListParser.interp_with_blend(current_encoder_position[i], current_encoder_position[i], num_points, tb_cent) #Change to fill later
+                for i in range(len(target_positions_slider))
+            ]
 
-        # Process lh_pick_pos
+            interpolated_points_1 = list(map(list, zip(*interpolated_values_1)))
+            interpolated_values_2 = [
+                ArmListParser.interp_with_blend(current_encoder_position[i+6], -10, num_points, tb_cent)
+                for i in range(len(target_positions_presser))
+            ]
+            interpolated_points_2 = list(map(list, zip(*interpolated_values_2)))
 
-        for motor_id, position, timestamp in lh_pick_pos:
-            full_LH.append({
-                'type': 'note',
-                'motor_id': motor_id,
-                'position': position,
-                'timestamp': timestamp
-            })
+            f_20 = [points1 + points2 for points1, points2 in zip(interpolated_points_1, interpolated_points_2)]
+            points.extend(f_20)
 
-        # Sort the combined dictionary by timestamp
-        full_LH.sort(key=lambda x: x['timestamp'])
-        full_matrix[0] = initial_point
-        for event in full_LH:
-            timestamp = round(event['timestamp'], 3)
-            if timestamp in full_matrix:
-                if event['type'] == 'chord':
-                    points = []
-                    target_positions_slider = event['positions'][:6]  # First 6 values of the nested list
-                    target_positions_presser = event['positions'][6:12]  # last 6
-                    curr_pos = current_encoder_position.copy()
-                    interpolated_values_1 = [
-                        ArmListParser.interp_with_blend(curr_pos[i], curr_pos[i],
-                                                        num_points, tb_cent)  # Change to fill later
-                        for i in range(len(target_positions_slider))
-                    ]
+            # Second 20 points
+            interpolated_values_3 = [
+                ArmListParser.interp_with_blend(current_encoder_position[i], target_positions_slider[i], num_points, tb_cent)
+                for i in range(len(target_positions_slider))
+            ]
+            interpolated_points_3 = list(map(list, zip(*interpolated_values_3)))
+            interpolated_values_4 = [
+                ArmListParser.interp_with_blend(-10, -10, num_points, tb_cent) #Change to fill later
+                for i in range(len(target_positions_presser))
+            ]
+            interpolated_points_4 = list(map(list, zip(*interpolated_values_4)))
 
-                    interpolated_points_1 = list(map(list, zip(*interpolated_values_1)))
-                    interpolated_values_2 = [
-                        ArmListParser.interp_with_blend(curr_pos[i + 6], -10, num_points, tb_cent)
-                        for i in range(len(target_positions_presser))
-                    ]
-                    interpolated_points_2 = list(map(list, zip(*interpolated_values_2)))
+            s_20 = [points1 + points2 for points1, points2 in zip(interpolated_points_3, interpolated_points_4)]
+            points.extend(s_20)
 
-                    f_20 = [points1 + points2 for points1, points2 in zip(interpolated_points_1, interpolated_points_2)]
-                    points.extend(f_20)
+            # Third 20 points
+            interpolated_values_5 = [
+                ArmListParser.interp_with_blend(target_positions_slider[i], target_positions_slider[i], num_points, tb_cent) # Change to fill later
+                for i in range(len(target_positions_slider))
+            ]
+            interpolated_points_5 = list(map(list, zip(*interpolated_values_5)))
+            interpolated_values_6 = [
+                ArmListParser.interp_with_blend(-10, target_positions_presser[i], num_points, tb_cent)
+                for i in range(len(target_positions_presser))
+            ]
+            interpolated_points_6 = list(map(list, zip(*interpolated_values_6)))
 
-                    # Second 20 points
-                    interpolated_values_3 = [
-                        ArmListParser.interp_with_blend(curr_pos[i], target_positions_slider[i],
-                                                        num_points, tb_cent)
-                        for i in range(len(target_positions_slider))
-                    ]
-                    interpolated_points_3 = list(map(list, zip(*interpolated_values_3)))
-                    interpolated_values_4 = [
-                        ArmListParser.interp_with_blend(-10, -10, num_points, tb_cent)  # Change to fill later
-                        for i in range(len(target_positions_presser))
-                    ]
-                    interpolated_points_4 = list(map(list, zip(*interpolated_values_4)))
+            t_20 = [points1 + points2 for points1, points2 in zip(interpolated_points_5, interpolated_points_6)]
 
-                    s_20 = [points1 + points2 for points1, points2 in zip(interpolated_points_3, interpolated_points_4)]
-                    points.extend(s_20)
+            points.extend(t_20)
+            result.append([points, timestamp])
+            points_only.append([points])
+            #print("\n")
+            #print("debug_1", points)
+            #print("debug_2", len(result))
+            current_encoder_position = event[0]
 
-                    # Third 20 points
-                    interpolated_values_5 = [
-                        ArmListParser.interp_with_blend(target_positions_slider[i], target_positions_slider[i],
-                                                        num_points, tb_cent)  # Change to fill later
-                        for i in range(len(target_positions_slider))
-                    ]
-                    interpolated_points_5 = list(map(list, zip(*interpolated_values_5)))
-                    interpolated_values_6 = [
-                        ArmListParser.interp_with_blend(-10, target_positions_presser[i], num_points, tb_cent)
-                        for i in range(len(target_positions_presser))
-                    ]
-                    interpolated_points_6 = list(map(list, zip(*interpolated_values_6)))
-
-                    t_20 = [points1 + points2 for points1, points2 in zip(interpolated_points_5, interpolated_points_6)]
-                    curr_t = timestamp
-                    points.extend(t_20)
-                    for curr_p in points:
-                        full_matrix[curr_t] = curr_p
-                        curr_t = round(curr_t + .005, 3)
-                        current_encoder_position = copy.deepcopy(curr_p)
-
-
-                elif event['type'] == 'note':
-                    slider_points = []
-                    presser_points = []
-                    motor_index = event['motor_id']
-
-                    q0_slider_motor = current_encoder_position[motor_index]
-                    q0_presser_motor = current_encoder_position[motor_index + 6]
-                    qf_slider = int(event['position'])
-                    qf_presser = 38
-                    if int(event['position']) == -1: # open string
-                        qf_slider = q0_slider_motor
-                        qf_presser = -10
-
-                    s1 = ArmListParser.interp_with_blend(q0_slider_motor, q0_slider_motor, num_points, tb_cent)
-                    p1 = ArmListParser.interp_with_blend(q0_presser_motor, -10, num_points, tb_cent)
-                    slider_points.extend(s1)
-                    presser_points.extend(p1)
-                    s2 = ArmListParser.interp_with_blend(q0_slider_motor, qf_slider, num_points, tb_cent)
-                    p2 = ArmListParser.interp_with_blend(-10, -10, num_points, tb_cent)
-                    slider_points.extend(s2)
-                    presser_points.extend(p2)
-                    s3 = ArmListParser.interp_with_blend(qf_slider, qf_slider, num_points, tb_cent)
-                    p3 = ArmListParser.interp_with_blend(-10, qf_presser, num_points, tb_cent)
-                    slider_points.extend(s3)
-                    presser_points.extend(p3)
-                    curr_t = timestamp
-                    for curr_p in slider_points:
-                        full_matrix[curr_t][motor_index] = copy.deepcopy(curr_p)
-                        curr_t = round(curr_t + .005, 3)
-                    curr_t = timestamp
-                    for curr_p in presser_points:
-                        full_matrix[curr_t][motor_index + 6] = copy.deepcopy(curr_p)
-                        curr_t = round(curr_t + .005, 3)
-
-                    current_encoder_position[motor_index] = s3[-1]
-                    current_encoder_position[motor_index + 6] = p3[-1]
-
-        # Fill in gaps
-        prev_values = initial_point.copy()
-        for t in sorted(full_matrix.keys()):
-            for i in range(12):
-                if full_matrix[t][i] == initial_point[i]:
-                    full_matrix[t][i] = prev_values[i]
-                else:
-                    prev_values[i] = full_matrix[t][i]
-
-        sorted_timestamps = sorted(full_matrix.keys())
-        previous_values = copy.deepcopy(initial_point)
-
-        for timestamp in sorted_timestamps:
-            current_values = full_matrix[timestamp]
-            for i in range(len(current_values)):
-                if current_values[i] == 100000:
-                    current_values[i] = previous_values[i]
-                else:
-                    previous_values[i] = current_values[i]
-            full_matrix[timestamp] = current_values
-
-        return full_matrix
+        print("\nLH FULL MATRIX")
+        matrix = ArmListParser.getFullMatrix(result, initial_point, plot = plot)
+        if plot:
+            ArmListParser.plot_interpolation(result, 12)
+        return matrix #result
 
     @staticmethod
-    def rh_interpolate(rh_motor_positions, deflections, intervals, initial_point, tb_cent = 0.2):
-        # initial_point = [-23965, 1960] # remember to change to dynamic later
-        # strummer_slider_q0 = -23965  # encoder ticks, CURRENT POINTS
-        # strummer_picker_q0 = 1960
-        initial_point = initial_point[12:14]
-        strummer_slider_q0 = initial_point[0] # encoder ticks, CURRENT POINTS
-        strummer_picker_q0 = initial_point[1]
+    def rh_interpolate(rh_motor_positions, deflections, intervals, tb_cent = 0.2):
+        initial_point = [-23965, 1960] # remember to change to dynamic later
+        strummer_slider_q0 = -23965 # encoder ticks, CURRENT POINTS
+        strummer_picker_q0 = 1960
         rh_points = []
         rh_points_only = []
         prev_timestamp = 0
@@ -628,7 +536,7 @@ class ArmListParser:
             strummer_picker_qf = event[0][1]
             timestamp = event[1]
 
-            roundEvent = math.floor(strummer_picker_q0)
+            roundEvent = floor(strummer_picker_q0)
 
             if not first and (roundEvent == 2178 or roundEvent == 1742 or strummer_picker_q0 == 2614.4680851063828 or strummer_picker_q0 == 1307.2340425531912):
                 index += 1
@@ -948,8 +856,6 @@ class ArmListParser:
         #Initialize full dictionary
         allpoints = {}
         #Dictionaries for LH and RH
-
-        # 1. Get events + Timestamps
         print("These are the dictionaries for left arm")
         lh_motor_positions, intervals = ArmListParser.parseleft_M(left_arm, measure_time)
         print("These are the dictionaries for right arm")
@@ -961,8 +867,8 @@ class ArmListParser:
         ArmListParser.print_Events(rh_positions_adj)
 
         #3. Interpolate (dedicated interp function)
-        # lh_dictionary, rh_dictionary = ArmListParser.interpolateEvents(lh_positions_adj, rh_positions_adj, deflections, strumIntervals)
-        lh_dictionary, rh_dictionary = None # refactor to initial point to work
+        lh_dictionary, rh_dictionary = ArmListParser.interpolateEvents(lh_positions_adj, rh_positions_adj, deflections, strumIntervals)
+
         lh_maxtimestamp = max(lh_dictionary.keys())
         rh_maxtimestamp = max(rh_dictionary.keys())
         print("Key sizes:")
@@ -1069,101 +975,96 @@ class ArmListParser:
         return lh_motor_positions, rh_motor_positions
 
     @staticmethod
-    def interpolateEvents(lh_positions_adj, rh_positions_adj, deflections, strumIntervals, picker_motor_positions_adj, initial_point):
-        # lh_interpolated_dictionary = ArmListParser.lh_interpolate(lh_positions_adj, plot=False)
-        # rh_interpolated_dictionary = ArmListParser.rh_interpolate(rh_positions_adj, deflections, strumIntervals)
+    def interpolateEvents(lh_positions_adj, rh_positions_adj, deflections, strumIntervals):
+        lh_interpolated_dictionary = ArmListParser.lh_interpolate(lh_positions_adj, plot=False)
+        rh_interpolated_dictionary = ArmListParser.rh_interpolate(rh_positions_adj, deflections, strumIntervals)
 
-        rh_interpolated_dictionary = ArmListParser.rh_interpolate(rh_positions_adj, deflections, initial_point)
-        pick_interpolated_dictionary, lh_pick_pos = ArmListParser.interpPick(picker_motor_positions_adj, initial_point)
-        lh_interpolated_dictionary = ArmListParser.lh_interpolate(lh_positions_adj, lh_pick_pos, initial_point, plot=False)
-
-        return lh_interpolated_dictionary, rh_interpolated_dictionary, pick_interpolated_dictionary
+        return lh_interpolated_dictionary, rh_interpolated_dictionary
 
     @staticmethod
-    def parseAllMIDI(chords, strum, pluck, initial_point):
+    def parseAllMIDI(chords, strum):
         #Initialize full dictionary
         allpoints = {}
         #Dictionaries for LH and RH
 
-        #1. Get events + Timestamps
+        # 1. Get events + Timestamps
         lh_motor_positions = ArmListParser.parseleftMIDI(chords)
         rh_motor_positions, deflections = ArmListParser.parserightMIDI(strum)
-        picker_motor_positions = ArmListParser.parsePickMIDI(pluck)
 
-        #2. PrepMovements (Adjust timestamps) LH changes occur before a strum,
+        #2. PrepMovements (Adjust timestamps)
         lh_positions_adj, rh_positions_adj = ArmListParser.prepMovements(lh_motor_positions, rh_motor_positions)
-        # Make sure no LH movements happen at the same time as a picker movement.
-        picker_motor_positions_adj = ArmListParser.prepPicker(lh_motor_positions, picker_motor_positions)
-        print("LH events")
         ArmListParser.print_Events(lh_positions_adj)
-        print("RH events")
         ArmListParser.print_Events(rh_positions_adj)
-        print("Picker events")
-        ArmListParser.print_Events(picker_motor_positions_adj)
+
         #3. Interpolate (dedicated interp function)
-        lh_dictionary, rh_dictionary, pick_dictionary = ArmListParser.interpolateEvents(lh_positions_adj, rh_positions_adj, deflections, picker_motor_positions_adj, initial_point)
+        lh_dictionary, rh_dictionary = ArmListParser.interpolateEvents(lh_positions_adj, rh_positions_adj, deflections)
 
-        # Find the maximum timestamp across all dictionaries
-        max_timestamp = max(max(lh_dictionary.keys()), max(rh_dictionary.keys()), max(pick_dictionary.keys()))
+        lh_maxtimestamp = max(lh_dictionary.keys())
+        rh_maxtimestamp = max(rh_dictionary.keys())
+        print("Key sizes:")
+        print(lh_maxtimestamp)
+        print(rh_maxtimestamp)
+        if lh_maxtimestamp > rh_maxtimestamp:
+            shorterDict = rh_dictionary
+            highkey = lh_maxtimestamp
+            lowkey = rh_maxtimestamp
+            reset = "Right"
+        else:
+            shorterDict = lh_dictionary
+            highkey = rh_maxtimestamp
+            lowkey = lh_maxtimestamp
+            reset = "Left"
+        # Filling short matrix first
+        last_point = shorterDict[lowkey]
+        #shorterDict[highkey] = last_point
+        max_time = highkey
+        #max_time = max(shorterDict.keys())
 
-        # Create a list of all timestamps, including interpolated ones
-        all_timestamps = sorted(set(
-            list(lh_dictionary.keys()) +
-            list(rh_dictionary.keys()) +
-            list(pick_dictionary.keys()) +
-            [round(t, 3) for t in np.arange(0, max_timestamp + 0.005, 0.005)]
-        ))
+        # Create a list of all timestamps, including the original ones
+        all_timestamps = sorted(set(list(shorterDict.keys()) +
+                                    [round(t, 3) for t in np.arange(0, max_time + .005, .005)]))
 
-        # Interpolate all dictionaries
-        lh_interpolated = ArmListParser.interpolate_dict(lh_dictionary, all_timestamps)
-        rh_interpolated = ArmListParser.interpolate_dict(rh_dictionary, all_timestamps)
-        pick_interpolated = ArmListParser.interpolate_dict(pick_dictionary, all_timestamps)
+        last_value = None
 
-        # Combine all dictionaries
-        combined_dict = {}
+        # Iterate through all timestamps
         for timestamp in all_timestamps:
-            combined_dict[timestamp] = (
-                    lh_interpolated.get(timestamp, []) +
-                    rh_interpolated.get(timestamp, []) +
-                    pick_interpolated.get(timestamp, [])
-            )
+            if timestamp in shorterDict:
+                last_value = shorterDict[timestamp]
+            elif last_value is not None:
+                # If it's an interpolated timestamp, use the last known value
+                shorterDict[timestamp] = last_value
+
+        # print resulting dictionary
         i = 0
+        # print("Debuig Matrix: ")
+        # for key, value in shorterDict.items():
+        #     print(f"{i}| {key} : {value}")
+        #     i += 1
+        # shorterDict = dict(sorted(shorterDict.items()))
+        lh_copied_dictionary = {}
+        rh_copied_dictionary = {}
+        if reset == "Left":
+            lh_copied_dictionary = shorterDict
+            combined_dict = {
+                timestamp: lh_copied_dictionary[timestamp] + [
+                    x for x in rh_dictionary[timestamp]
+                ]
+                for timestamp in lh_copied_dictionary
+            }
+        if reset == "Right":
+            rh_copied_dictionary = shorterDict
+            combined_dict = {
+                timestamp: lh_dictionary[timestamp] + [
+                    x for x in rh_copied_dictionary[timestamp]
+                ]
+                for timestamp in lh_dictionary
+            }
         print("Full Matrix: ")
         for key, value in combined_dict.items():
             print(f"{i}| {key} : {value}")
             i += 1
 
-        fig = go.Figure()
-
-        #Add a trace for each motor
-        for motor in range(17):
-            #if motor == 14 or motor == 15 or motor == 16:
-            y_values = [values[motor] for values in combined_dict.values()]
-            fig.add_trace(go.Scatter(x=list(combined_dict.keys()), y=y_values, mode='lines', name=f'Motor {motor + 1}'))
-
-        # Update layout
-        fig.update_layout(
-            title='Motor Positions Over Time',
-            xaxis_title='Timestamp',
-            yaxis_title='Motor Position',
-            legend_title='Motors'
-        )
-
-        # Show the plot
-        fig.show()
-
         return combined_dict
-
-    @staticmethod
-    def interpolate_dict(dictionary, all_timestamps):
-        interpolated = {}
-        last_value = None
-        for timestamp in all_timestamps:
-            if timestamp in dictionary:
-                last_value = dictionary[timestamp]
-            if last_value is not None:
-                interpolated[timestamp] = last_value
-        return interpolated
 
     @staticmethod
     def parseleftMIDI(chords):
@@ -1180,16 +1081,14 @@ class ArmListParser:
             lh_events.append(["LH", [frets, command], timestamp])
 
         lh_motor_positions = []
-        slider_mm_values = [19, 54, 87, 114, 141, 165, 188, 212, 234]
-        # slider_mm_values = [23, 23, 23, 23, 23, 23, 23, 23, 23] # for testing
+        slider_mm_values = [23, 56, 87, 114, 143, 167, 190, 214, 236]
         slider_encoder_values = []
         mult = -1
         for value in slider_mm_values:
             encoder_tick = (value * 2048) / 9.4
             slider_encoder_values.append(encoder_tick)
 
-        presser_encoder_values = [-10, 40, 23]
-        # presser_encoder_values = [-10, -10, -10] # for testing
+        presser_encoder_values = [-10, 38, 23]
         for events in lh_events:
             # for lh_events[1][0] AND for lh_events[1][1]
             # convert from fret position/finger position to encoder tick position respectively
@@ -1206,6 +1105,8 @@ class ArmListParser:
                     temp[0].append(presser_encoder_values[presser_value - 1])
             temp.append(events[2])
             lh_motor_positions.append(temp)
+        print("LH EVENTS LIST: ")
+        ArmListParser.print_Events(lh_motor_positions)
 
         return lh_motor_positions
     @staticmethod
@@ -1226,10 +1127,6 @@ class ArmListParser:
             -45: [-115, 8],  # US
             45: [-15, 10]  # DS
         }
-        # strummer_dict = { # for testing
-        #     -45: [-115, 8],  # US
-        #     45: [-115, 8]  # DS
-        # }
 
         rh_motor_positions = []
         deflections = []
@@ -1250,299 +1147,10 @@ class ArmListParser:
                 deflections.append(0)
             rh_motor_positions.append([[strum_mm_qf, picker_mm_qf], time_stamp])
 
-        # print("\nRH MM:")
-        # ArmListParser.print_Events(rh_motor_positions)
-        # print("DEFLECTIONS LIST: ", deflections)
+        print("\nRH MM:")
+        ArmListParser.print_Events(rh_motor_positions)
+        print("DEFLECTIONS LIST: ", deflections)
         return rh_motor_positions, deflections
 
-    @staticmethod
-    def parsePickMIDI(picks):
-        pick_events = []
-        # MIDI note ranges for each string
-        string_ranges = [
-            (40, 50),  # String 1
-            (45, 55),  # String 2
-            (50, 60),  # String 3
-            (55, 65),  # String 4
-            (59, 69),  # String 5
-            (64, 74)   # String 6
-        ]
-        tremolo_threshold = .5
 
-        active_pickers = [-.5] * len(string_ranges)
-        last_notes = [None] * len(string_ranges)
-        for note, duration, speed, timestamp in picks:
-            assigned = False
-            timestamp = round(timestamp * 200) / 200
-            duration = round(duration, 3)
-            if duration < tremolo_threshold:
-                duration = .025
-
-            for pickerID, (low, high) in enumerate(string_ranges):
-                # print("Active Pickers: ", active_pickers)
-                if low <= note <= high:  # Check if the note falls within the string's range
-                    if last_notes[pickerID] == note:
-                        # If the note is the same as the last one on this picker, only check if it's free
-                        if timestamp >= active_pickers[pickerID]:
-                            assigned = True
-                    else:
-                        # If the note is different, check for 325ms gap (300 to slide and press, 25 to pluck)
-                        if timestamp >= active_pickers[pickerID] and timestamp - 0.325 >= active_pickers[pickerID]:
-                            assigned = True
-
-                    if assigned:
-                        end = timestamp + duration
-                        pick_events.append(["pick", [pickerID, note, duration, speed, timestamp]])
-                        active_pickers[pickerID] = end
-                        last_notes[pickerID] = note
-                        # print(f"Assigning Picker {pickerID} for note {note}")
-                        break
-
-            if not assigned:
-                print(f"Warning: No available picker for note {note} at timestamp {timestamp}")
-
-        # pick_events = [["pick", [MotorID, midival, duration,  timestamp]]]
-
-        pick_motor_positions = []
-        # [[[motor_ID, qf_encoder_picker, duration, speed] * num_pickers], timestamp]],]
-        num_pickers = 3
-        pickerStates = [1] * num_pickers #TODO: Need to keep track of this at the end of songs similar to LH and RH last positions
-        motorInformation = { # motor_id : [down_pluck mm, up_pluck mm]
-            0 : [3, 7, 1024],
-            1 : [0, 4, 2048],
-            2 : [4, 8, 2048]
-        }
-        for event in pick_events:
-            motor_id = event[1][0]
-            note = event[1][1]
-            duration = round(event[1][2], 3)
-            speed = round(event[1][3])
-            timestamp = event[1][4]
-            timestamp = round(timestamp * 200) / 200
-            curr_event = [motor_id, note, 0, duration, speed]
-            # 1. Get Motors that need to slide and press.
-            slide_MotorID = motor_id + 6
-            press_MotorID = motor_id + 12
-            # 2. Get the timestamp that the event should happen.
-            lh_tmstmp = timestamp - .325
-
-
-
-            if duration < tremolo_threshold:
-                pick_state = pickerStates[motor_id]
-                qf_mm = int(motorInformation[motor_id][not pick_state])
-                pos2pulse = (qf_mm * motorInformation[motor_id][2]) / 9.4
-                curr_event[2] = round(pos2pulse,3)
-                pickerStates[motor_id] = not pick_state
-            else:
-                pick_state = pickerStates[motor_id]
-                qf_mm = int(motorInformation[motor_id][pick_state])
-                pos2pulse = (qf_mm * motorInformation[motor_id][2]) / 9.4
-                curr_event[2] = round(pos2pulse,3)
-            full_event = [curr_event, timestamp]
-            pick_motor_positions.append(full_event)
-
-        return pick_motor_positions
-
-    @staticmethod
-    def prepPicker(lh_motor_positions, pick_motor_positions):
-        lh_motor_positions_prepped = []
-        pick_motor_positions_prepped = []
-        lh_index = 0
-        pick_index = 0
-        prev_timestamp = -.500 # prep time
-        prev_motor = -1 # simulates no motor as the previous
-        prev_note = 0
-        idx = 0
-        # Check that no picker events happen with a LH event
-        while pick_index < len(pick_motor_positions):
-            pick_element = pick_motor_positions[pick_index]
-            pick_timestamp = pick_element[1]
-            # Check if there's a corresponding lh_motor_position within 300ms before
-            while lh_index < len(lh_motor_positions) and lh_motor_positions[lh_index][1] <= pick_timestamp:
-                if pick_timestamp - lh_motor_positions[lh_index][1] <= .300:
-                    break
-                lh_index += 1
-            if lh_index == len(lh_motor_positions) or pick_timestamp - lh_motor_positions[lh_index][1] > .300:
-                pick_motor_positions_prepped.append(pick_element)
-            pick_index += 1
-        return pick_motor_positions_prepped
-
-    @staticmethod
-    def interpPick(pick_events, initial_point, num_points=20, tb_cent=0.2):
-        # initial_point = [762, 873, 1743]  # encoder ticks for Low E and D strings
-        initial_point = initial_point[14:]
-        current_positions = initial_point.copy()
-        result = {}
-        motorInformation = {  # motor_id : [down_pluck mm qf, up_pluck mm qf, encoder resolution]
-            0 : [4, 9, 1024],
-            1 : [0, 4, 2048],
-            2: [4, 8,  2048]
-        }
-        # NEED TO HANDLE SLIDER/PRESSER
-        pick_states = [1, 1, 1, 1, 1, 1]  # curr states positions initialized as all 'up'
-        #pick_states = [0, 0, 0, 0, 0, 0]
-        events_list = []
-        lh_pick_events = []
-
-        for event in pick_events:
-            picker_actions, timestamp = event[0], event[1]
-            event_points = [0]
-            motor_id, note, qf_encoder_picker, duration, speed = event[0]
-            is_pluck = duration < 0.500
-
-            start_pos = current_positions[motor_id]
-
-            if is_pluck:
-                # Single pluck
-                pick_states[motor_id] = not pick_states[motor_id]
-                qf_encoder_picker = (motorInformation[motor_id][pick_states[motor_id]] * motorInformation[motor_id][2]) / 9.4
-
-                all_points = ArmListParser.interp_with_blend(start_pos, qf_encoder_picker, 5, tb_cent)
-                # print("pluck on ", motor_id, " ", timestamp, " ", duration)
-                events_list.append([all_points, motor_id, timestamp])
-            else:
-                # Tremolo # CHANGE TO SIN WAVE
-                # picker 1, change to dictionary of values for all 6 motors
-                # max_mm, min_mm = motorInformation[motor_id][0:2]
-                # max = (max_mm * motorInformation[motor_id][2]) / 9.4
-                # min = (min_mm * motorInformation[motor_id][2]) / 9.4
-                # vert_shift = (max + min) / 2  # 544
-                # amp = abs((max - min)) / 2  # Default: 218
-                #
-                # all_points = ArmListParser.maketremolo(vert_shift, amp, duration, speed, pick_states[motor_id])
-
-
-                # Slowest number of points is .300 seconds between evens  = 60 points
-                # fastest number of points 5 point (25 ms)
-                fill_points = min(30, int(30 - (speed - 1) * (25 / 9)))
-                num_tremolos = math.floor(duration / (((fill_points * .005) + .025) * 2))
-                qf_encoder_picker = (motorInformation[motor_id][not pick_states[motor_id]] * motorInformation[motor_id][2]) / 9.4
-                all_points = []
-                for _ in range(num_tremolos):
-                    points1 = ArmListParser.interp_with_blend(start_pos, qf_encoder_picker, 5, tb_cent) # (move)
-                    points2 = ArmListParser.interp_with_blend(qf_encoder_picker, qf_encoder_picker, fill_points, tb_cent) # (fill)
-                    points3 = ArmListParser.interp_with_blend(qf_encoder_picker, start_pos, 5, tb_cent) # (move)
-                    points4 = ArmListParser.interp_with_blend(start_pos, start_pos, fill_points, tb_cent) # (fill)
-
-                    all_points.extend(points1)
-                    all_points.extend(points2)
-                    all_points.extend(points3)
-                    all_points.extend(points4)
-
-                events_list.append([all_points,motor_id, timestamp])
-
-
-            # Update the event_points for this motor
-            current_positions[motor_id] = all_points[-1]
-            # [Slider_MotorID, enc_val target position, TS]
-            # max midi_va for MotorID - note
-            string_ranges = [
-                (40, 50, -1),  # String 1
-                (45, 55,  1),  # String 2
-                (50, 60,  1),  # String 3
-                (55, 65, -1),  # String 4
-                (59, 69, -1),  # String 5
-                (64, 74,  1)   # String 6
-            ]
-            slider_mm_values = [23, 56, 87, 114, 143, 167, 190, 214, 236]
-
-            fret = note - string_ranges[motor_id][0]
-            if fret == 0:
-                lh_enc_val = -1
-            else:
-                lh_enc_val = ((slider_mm_values[fret] * 2048) / 9.4) * string_ranges[motor_id][2]
-            curr_lhp_event = [motor_id, lh_enc_val, timestamp - .3]
-            lh_pick_events.append(curr_lhp_event)
-
-
-        # initialize dictionary with initial point for every .005 ms for every point
-        # Find max timestamp by looping through events and determining end times
-        max_timestamp = 0
-        max_timestamp_event = None
-        for i, pick_event in enumerate(events_list):
-            timestamp = pick_event[2]
-            duration = 0.005 * len(pick_event[0])
-            event_time = round((timestamp + duration) * 200) / 200
-            # print("Current Max Timestamp: ", max_timestamp, max_timestamp_event)
-            # print("Current Event Time: ", event_time)
-            if event_time > max_timestamp:
-                max_timestamp = event_time
-                max_timestamp_event = i
-
-        #max_timestamp = events_list[-1][2] + (.005 * len(events_list[-1][0]))
-        # print("Max Timestep + event: ", max_timestamp, max_timestamp_event)
-        curr_timestamp = 0
-        while curr_timestamp <= max_timestamp:
-            result[curr_timestamp] = [762, 863, 1743] # be careful, changing to a list will change all elements!
-            curr_timestamp = round(curr_timestamp + .005, 3)
-        for event in events_list:
-            points, id, timestamp = event
-            curr = round(timestamp * 200) /200
-            for p in points:
-                result[curr][id] = p
-                curr = round(curr + .005, 3)
-                prev_pos = p
-            while curr <= max_timestamp:
-                result[curr][id] = prev_pos
-                curr = round(curr + .005, 3)
-
-        return result, lh_pick_events
-
-
-
-    @staticmethod
-    def scale_speed(value):
-        usermin = 1
-        usermax = 10
-        fastest = 0.025
-        slowest = 0.15
-        scaled = (10 + 2* ((slowest/0.005)-(value-1)*((fastest*1000)/(usermax-usermin)))) * 0.005
-
-        return scaled
-
-    @staticmethod
-    def tremolocos(curT, period, amp, vert_shift, pick_state):
-        if pick_state == 1:
-            tremolo_s = vert_shift + amp * math.cos((2 * math.pi * (curT)) / period)
-        else:
-            tremolo_s = vert_shift + amp * -math.cos((2 * math.pi * (curT)) / period)
-        return tremolo_s #produces one tremolo point at a time
-
-    @staticmethod
-    def maketremolo(vert_shift, amp, duration, speed, pick_state): # Todo: Test case of starting at 326, should work
-        # print("Duration: ", duration)
-        # Calculate the period based on the user's inputted speed value 1-10
-        period = ArmListParser.scale_speed(speed)
-        # print("period: ", period)
-        # print("frequency: ", 1/period)
-        # Determine max number of tremolos we can achieve in the duration for the given speed
-        tstep = 0.005
-        num_tremolos = (duration // period)  # amount of tremolos we can do and end at the top or bottom
-        # print("Max number of tremolos: ", num_tremolos)
-        # Interpolate the cosine wave for every point in num_tremolos
-        trem_times = np.arange(0, (num_tremolos*period)+tstep, tstep)
-        #print("Times: ", trem_times)
-        tremoloArray = [ ArmListParser.tremolocos(t,period, amp, vert_shift, pick_state) for t in trem_times]
-        #fullarray[:len(tremoloArray)] = tremoloArray
-        #print("Tremolo Points: ", tremoloArray)
-
-        # Add in a fill at the very end if needed
-        end_fill = duration - trem_times[-1]
-        fill_array = []
-        if end_fill >0 :
-            fill_array = np.full(int(period//0.005), ArmListParser.tremolocos(trem_times[-1], period, amp, vert_shift, pick_state))
-            # print("Fill array: ", fill_array)
-        tremoloArray.extend(fill_array)
-        # print("Full Tremolo Array: ", tremoloArray)
-
-        return tremoloArray
-
-    @staticmethod
-    def scaleAmplitude(max_amplitude, min_amplitude, speed):
-        print("Max Amplitude, Min Amplitude: ", max_amplitude, min_amplitude)
-        low_speed = 1
-        high_speed = 10
-        scaledAmp = max_amplitude + ((speed - low_speed) / (high_speed - low_speed)) * (min_amplitude - max_amplitude)
-        return scaledAmp
 
