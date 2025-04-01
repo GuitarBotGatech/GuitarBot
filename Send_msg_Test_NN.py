@@ -9,6 +9,9 @@ UDP_PORT = 12000
 # strum_message = [["DOWN"/"UP"], timestamp]
 # pluck_message = [[note (midi value), duration, speed, timestamp]]
 
+chords_message = [["On", 0]]
+strum_message = [["UP", 0]]
+pluck_message = [[65, 2, 10, 1]]
 # chords_message = [["A", 0.0], ["D", 4.0], ["E", 5.0], ["A", 6.0], ["On", 8.0]] # Marcus Demo 3/6/2025
 # strum_message = [ ["DOWN", 1.0], ["UP", 2.0], ["DOWN", 4.0], ["UP", 5.0], ["DOWN", 6.0]] # Marcus Demo 3/6/2025
 # pluck_message = [[45, .1, 10, 1], [47, .5, 10, 2], [48, 3, 4, 3], ] # Marcus Demo 3/6/2025
@@ -21,9 +24,9 @@ UDP_PORT = 12000
 
 # pluck_message = [[56, 1, 2, 5]]
 # Final Countdown
-chords_message = [["F#m", 1.0], ["D", 2.0], ["Bm", 4.0], ["E", 6.0], ["Fdim7", 7.0],["F#m", 8.0], ["D", 10.0], ["Bm", 12.0], ["On", 14.0]]
-strum_message =  [["UP", 0.0]]
-pluck_message =  [[50, 1, 5, 0]]
+# chords_message = [["F#m", 1.0], ["D", 2.0], ["Bm", 4.0], ["E", 6.0], ["Fdim7", 7.0],["F#m", 8.0], ["D", 10.0], ["Bm", 12.0], ["On", 14.0]]
+# strum_message =  [["UP", 0.0]]
+# pluck_message =  [[50, 1, 5, 0]]
 # Testing multiple phrases
 # chords_message = [["On", 3]]
 # strum_message =  [["UP", 0]]
@@ -31,7 +34,8 @@ pluck_message =  [[50, 1, 5, 0]]
 
 #
 # chords_message_2 = [["On", 2]]
-# pluck_message_2 = [[65, .5, 10, 3]]
+# pluck_message_2 = [[50, .5, 10, 1]]
+# strum_message_2 = [["UP", 1]]
 # strum_message_2 =  [["UP", 2.3], ["DOWN", 2]]
 #Two plucker Derrick Demo
 # pluck_message = [[60, 1, 1, 1], [60, 1, 2, 2], [60, 1, 3, 3], [60, 1, 4, 4], [60, 1, 5, 5], [60, 1, 6, 6], [60, 1, 7, 7], [60, 1, 8, 8], [60, 1, 9, 9], [60, 1, 10, 10]]
@@ -45,7 +49,7 @@ pluck_message =  [[50, 1, 5, 0]]
 # chords_message_2 = [["On", 32]]
 # strum_message =  [["UP", 0.0]]
 # strum_message_2 =  [["UP", 0.0]]
-# pluck_message =[
+# pluck_message = [
 #         [50, 1, 5, 0],
 #         [55, 0.5, 2, .5],
 #         [62, 1.0, 4, 1.0],
@@ -87,8 +91,8 @@ pluck_message =  [[50, 1, 5, 0]]
 #         [66, 0.5, 7, 29.5],
 #         [64, 1.0, 7, 30.0],
 #         [52, 0.5, 4, 31.0]]
-#
-#         # Second Message
+
+        # Second Message
 # pluck_message_2 = [[50, 0.5, 1, 0],
 #         [59, 0.5, 3, 0.5],
 #         [62, 1.0, 5, 1.0],
@@ -132,7 +136,7 @@ pluck_message =  [[50, 1, 5, 0]]
 #         [50, 0.5, 2, 29.5],
 #         [60, 1.0, 4, 30.0],
 #         [64, 0.5, 6, 31.0]]
-
+#
 # , [51, .1, 10, 2], [61, .1, 10, 3]
 # Derrick Demo for 2/27/2025 -- Randomly generated three picker tremolos with amplitude scaling
 def create_tremolo_message():
@@ -179,7 +183,7 @@ def main():
     # time.sleep(10)
     # send_osc_message(client, "/Chords", chords_message_2)
     # send_osc_message(client, "/Strum", strum_message_2)
-    # # pluck_message = create_tremolo_message()
+    # pluck_message = create_tremolo_message()
     # send_osc_message(client, "/Pluck", pluck_message_2)
     # time.sleep(1)
 

@@ -984,7 +984,7 @@ class ArmListParser:
         return lh_interpolated_dictionary, rh_interpolated_dictionary, pick_interpolated_dictionary
 
     @staticmethod
-    def parseAllMIDI(chords, strum, pluck, initial_point, graph = False):
+    def parseAllMIDI(chords, strum, pluck, initial_point, graph = True):
         #Initialize full dictionary
         allpoints = {}
         #Dictionaries for LH and RH
@@ -1294,7 +1294,7 @@ class ArmListParser:
         pickerStates = [1] * num_pickers #TODO: Need to keep track of this at the end of songs similar to LH and RH last positions
         motorInformation = { # motor_id : [down_pluck mm, up_pluck mm]
             0 : [3, 7, 1024],
-            1 : [0, 3.5, 2048],
+            1 : [0, 3.25, 2048],
             2 : [4, 7, 2048]
         }
         for event in pick_events:
