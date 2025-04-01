@@ -747,11 +747,17 @@ int Epos4::setOpMode(OpMode opMode, uint8_t uiInterpolationTime, int8_t iInterpo
         if(m_uiNodeID > 6 && m_uiNodeID < 13){
             n = SetHomeOffset(-25); //-25
         }
+        if(m_uiNodeID == 7){
+            n = SetHomeOffset(0); //-25
+        }
         if(m_uiNodeID == 13){   // Strummer slider
             n = SetHomeOffset(29500);
         }
         if(m_uiNodeID == 14){   // Strummer picker
             n = SetHomeOffset(100);
+        }
+        if(m_uiNodeID == 7){
+            n = SetHomeOffset(0); //-25
         }
 
         if(n != 0 ) {
@@ -1363,7 +1369,7 @@ int Epos4::setPositionControlParameters_StrummerSlider() {
 
 int Epos4::setPositionControlParameters_StrummerPicker() {
     int n;
-    n = writeObj(POS_CTRL_PARAM_ADDR, PC_P_GAIN, 5172512);
+    n = writeObj(POS_CTRL_PARAM_ADDR, PC_P_GAIN, 7448417/*5172512*/);  //Multiply by k^2
     if (n != 0) {
         LOG_ERROR("Write Obj failed. Error code: ", m_uiError);
         return -1;
@@ -1376,13 +1382,13 @@ int Epos4::setPositionControlParameters_StrummerPicker() {
         return -1;
     }
 
-    n = writeObj(POS_CTRL_PARAM_ADDR, PC_I_GAIN, 12699311);
+    n = writeObj(POS_CTRL_PARAM_ADDR, PC_I_GAIN, 21944409/*12699311*/);     //Multiply by k^3
     if (n != 0) {
         LOG_ERROR("Write Obj failed. Error code: ", m_uiError);
         return -1;
     }
 
-    n = writeObj(POS_CTRL_PARAM_ADDR, PC_D_GAIN, 20000);
+    n = writeObj(POS_CTRL_PARAM_ADDR, PC_D_GAIN, 24000/*20000*/);        //Multiply by k
     if (n != 0) {
         LOG_ERROR("Write Obj failed. Error code: ", m_uiError);
         return -1;
