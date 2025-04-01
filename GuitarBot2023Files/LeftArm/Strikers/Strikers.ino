@@ -25,7 +25,7 @@ int8_t strumAngle;
 uint8_t strumSpeed;
 uint8_t deflect; 
 char event;
-float trajPoint[12] = {1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1};
+float trajPoint[16] = {1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1};
 
 
 EthernetUDP udp;
@@ -51,15 +51,10 @@ void setup() {
 
     delay(2000); //Added delay for output reading
     LOG_LOG("Initializing GuitarBot...");
-    pController = StrikerController::createInstance();               //Uncomment commented block to use bot
+    pController = StrikerController::createInstance();              
     LOG_LOG("Initializing Pressers and Striker...");
     int err = pController->init(MotorSpec::EC45_Slider); //Sliders
    
-    if (err != 0) {
-        LOG_ERROR("Controller Init failed");
-        return;
-    }
-//  int err = PController->init(MotorSpec::EC20); //Pressers
     if (err != 0) {
         LOG_ERROR("Controller Init failed");
         return;
@@ -152,7 +147,7 @@ void ethernetEvent() {
             // Serial.print(*point);
             // Serial.print(" ");
         }
-        //Serial.println();
+        // Serial.println();
         complete = true;
     }
 }        

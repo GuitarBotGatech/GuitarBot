@@ -22,8 +22,8 @@ class ArmListParser:
 
         for i in range(6):
             if fret_numbers_optimized[i] != -1:
-                dtraj = [i+1, 6]
-                utraj = [6, i+1]
+                dtraj = [i, 6]
+                utraj = [6, i]
                 break
 
         fret_numbers = fret_numbers_optimized.copy()
@@ -47,7 +47,7 @@ class ArmListParser:
 
     # parse right arm (strums) input
     @staticmethod
-    def parseright_M(right_arm, intervals, measure_time):
+    def parseright_M(right_arm, measure_time):
         initialStrum = "D"
         firstbfound = False
         mra = 0
@@ -70,14 +70,9 @@ class ArmListParser:
                         if beat == "D":
                             strumOnsets.append([time, 'D', 'N'])
                             right_information[mra][bra] = [beat, "N", measure_time / 8, 1]  # Change strum time here
-                            intervals[mra][bra] = intervals[mra][bra][0]
                         if beat == "U":
                             strumOnsets.append([time, 'U', 'N'])
                             right_information[mra][bra] = [beat, "N", measure_time / 8, 1]  # Change strum time here
-                            intervals[mra][bra] = intervals[mra][bra][1]
-                        if beat == "":
-                            bra += 1
-                            continue
 
                         firstbfound = True
                         initialStrum = beat
@@ -92,7 +87,6 @@ class ArmListParser:
                     if beat == "U":
                         strumOnsets.append([time, 'U', 'N'])
                         right_information[mra][bra] = [beat, "N", measure_time / 8, deltaT]  # Change strum time here
-                        intervals[mra][bra] = intervals[mra][bra][1]
                         if right_information[pmra][pbra][0] == "U":
                             right_information[pmra][pbra][1] = "C"
                         right_arm[pmra][pbra][3] = deltaT
@@ -105,7 +99,6 @@ class ArmListParser:
                     if beat == "D":
                         strumOnsets.append([time, 'D', 'N'])
                         right_information[mra][bra] = [beat, "N", measure_time / 8, deltaT]  # Change strum time here
-                        intervals[mra][bra] = intervals[mra][bra][0]
                         if right_information[pmra][pbra][0] == "D":
                             right_information[pmra][pbra][1] = "C"
                         right_information[pmra][pbra][3] = deltaT
@@ -114,8 +107,6 @@ class ArmListParser:
                         pbra -= pbra
                         pbra += bra
                         deltaT = 0
-                    if beat == "":
-                        intervals[mra][bra] = ''
                 else:
                     print(right_information, mra, bra)
                     raise Exception("Right Arm input incorrect")
@@ -178,18 +169,7 @@ class ArmListParser:
                 deflections.append(0)
             rh_motor_positions.append([[strum_mm_qf, picker_mm_qf], time_stamp])
 
-        strumIntervals = []
-        for interval in intervals:
-            for b in interval:
-                if b != '':
-                    strumIntervals.append(b)
-        print("STRUM INTERVALS: ", strumIntervals)
 
-        for i in range(len(rh_motor_positions)):
-            if strumIntervals[i][0] - strumIntervals[i][1] < 0 and strumIntervals[i][0] != 1:
-                rh_motor_positions[i][0][1] = 2700
-            elif strumIntervals[i][0] - strumIntervals[i][1] > 0 and strumIntervals[i][0] != 6:
-                rh_motor_positions[i][0][1] = 1307.2340425531912
 
         print("\nRH MM:")
         ArmListParser.print_Events(rh_motor_positions)
@@ -204,12 +184,8 @@ class ArmListParser:
         mcount = 0
         mtimings = []
         time = 0
-        intervals = [['']*8 for i in range(len(left_arm))]
-        prevStrum = ''
-
         for measure in left_arm:
             bcount = 0
-            scount = 0
             for chords in measure:
                 if len(chords) != 0:
                     # Parse each individual chord input
@@ -326,21 +302,15 @@ class ArmListParser:
                     # frets, command, dtraj, utraj = ArmListParser._get_chords_M("Chords - Chords.csv", note + key, type)
                     frets, command, dtraj, utraj = ArmListParser._get_chords_M("Alternate_Chords.csv", note + key, type)
                     left_arm[mcount][bcount] = [frets, command]
-                    prevStrum = [dtraj, utraj]
                     mtimings.append(time)
                     if not firstcfound:
                         firstc.append(frets)
                         firstc.append(command)
                         firstcfound = True
-                intervals[mcount][scount] = prevStrum
-                intervals[mcount][scount + 1] = prevStrum
                 time += measure_time / 4
                 bcount += 1
-                scount += 2
             mcount += 1
         print("queue: ", mtimings)
-        print("left arm: ", left_arm)
-        print("strum intervals: ", intervals)
         # print(left_arm)
         justchords = []
         lh_events = []
@@ -396,7 +366,7 @@ class ArmListParser:
         print("LH EVENTS LIST: ")
         ArmListParser.print_Events(lh_motor_positions)
 
-        return lh_motor_positions, intervals
+        return lh_motor_positions
 
     @staticmethod
     def interp_with_blend(q0, qf, N, tb_cent):
@@ -443,9 +413,6 @@ class ArmListParser:
                 current_encoder_position.append(value)
             else:
                 current_encoder_position.append(value)
-
-        result = []
-        points_only = []
 
         #1. Check to make sure no syncrhonous LH Events
         print("LH UPDATED EVENTS LIST (NO SYNC LH EVENTS): ")
@@ -631,7 +598,7 @@ class ArmListParser:
 
         return full_matrix
 
-    @staticmethod #TODO: Add intervals to list of parameters for interval strumming
+    @staticmethod
     def rh_interpolate(rh_motor_positions, deflections, initial_point, tb_cent = 0.2):
         # initial_point = [-23965, 1960] # remember to change to dynamic later
         initial_point = initial_point[12:14]
@@ -652,121 +619,19 @@ class ArmListParser:
         print("RH UPDATED EVENTS LIST (NO SYNC RH EVENTS): ")
         ArmListParser.print_Events(rh_motor_positions)
 
-        #3. Arrange RH events correctly with the added initial picker angle
-        print("RH FINAL EVENTS LIST (WITH INITIAL PICK ANGLE): ")
-        rh_motor_positions.insert(0, [[strummer_slider_q0, rh_motor_positions[0][0][1]], 0.0])
-        for i in range(1, len(rh_motor_positions) - 1):
-            rh_motor_positions[i][0][1] = rh_motor_positions[i + 1][0][1]
-        for event in rh_motor_positions:
-            print(event)
-
-        index = -1
-        first = True
         for event_index, event in enumerate(rh_motor_positions):
             strummer_slider_qf = event[0][0]
             strummer_picker_qf = event[0][1]
             timestamp = event[1]
 
-            roundEvent = math.floor(strummer_picker_q0)
-
-            if not first and (roundEvent == 2178 or roundEvent == 1742 or strummer_picker_q0 == 2700 or strummer_picker_q0 == 1307.2340425531912):
-                index += 1
-                intervalCheck = True
-            else:
-                intervalCheck = False
-
-            if first:
-                strummer_slider_interp1 = ArmListParser.interp_with_blend(strummer_slider_q0, strummer_slider_q0, 5,
-                                                                          tb_cent)  # slider holds
-                strummer_picker_interp1 = ArmListParser.interp_with_blend(strummer_picker_q0, strummer_picker_qf,
-                                                                          5,
-                                                                          tb_cent)  # picker moves to next position
-                strummer_slider_interp2 = ArmListParser.interp_with_blend(strummer_slider_q0, strummer_slider_qf,
-                                                                          speed,
-                                                                          tb_cent)  # slider stays at initial position
-                strummer_picker_interp2 = ArmListParser.interp_with_blend(strummer_picker_qf, strummer_picker_qf,
-                                                                          speed,
-                                                                          tb_cent)  # picker holds set position
-                first = False
-            else:
-                #1. Strummer slider moves "speed" points
-                strummer_slider_interp1 = ArmListParser.interp_with_blend(strummer_slider_q0, strummer_slider_qf,
-                                                                          speed,
-                                                                          tb_cent)
-                #2. Strummer slider holds 5 points
-                strummer_slider_interp2 = ArmListParser.interp_with_blend(strummer_slider_qf, strummer_slider_qf, 5,
-                                                                          tb_cent)
-
-                if intervalCheck:
-                    intervalLength = abs(intervals[index][0] - intervals[index][1])
-                    if intervalLength == 5: #case: full strum
-                        print("FULL STRUM")
-                        # 3. Strummer Picker holds set position
-                        strummer_picker_interp1 = ArmListParser.interp_with_blend(strummer_picker_q0,
-                                                                                  strummer_picker_q0,
-                                                                                  speed,
-                                                                                  tb_cent)
-                        # 4. Strummer Picker moves to next position
-                        strummer_picker_interp2 = ArmListParser.interp_with_blend(strummer_picker_q0,
-                                                                                  strummer_picker_qf,
-                                                                                  5,
-                                                                                  tb_cent)
-                    elif intervals[index][0] == 6 or intervals[index][0] == 1:  #interval case: upstrum/downstrum starting at first string
-                        print("INTERVAL: SKIP LAST STRING(S)")
-                        # 3. Strummer Picker holds set position
-                        strummer_picker_interp1 = ArmListParser.interp_with_blend(strummer_picker_q0,
-                                                                                  strummer_picker_q0,
-                                                                                  speed-(34-(intervalLength*5)),
-                                                                                  tb_cent)
-                        if intervals[index][0] == 1:    # if downstrum
-                            strummer_picker_interp3 = ArmListParser.interp_with_blend(strummer_picker_q0,2614.4680851063827, 5,tb_cent)  # Deflect last string
-                            strummer_picker_interp4 = ArmListParser.interp_with_blend(2614.4680851063827,2614.4680851063827, 50-(speed-(34-(intervalLength*5))), tb_cent)  # Hold deflection
-                            # 4. Strummer Picker moves to next position
-                            strummer_picker_interp2 = ArmListParser.interp_with_blend(2614.4680851063827,
-                                                                                      strummer_picker_qf,
-                                                                                      5,
-                                                                                      tb_cent)
-                        else:   #if upstrum
-                            strummer_picker_interp3 = ArmListParser.interp_with_blend(strummer_picker_q0,1307.2340425531913, 5,tb_cent)  # Deflect last string
-                            strummer_picker_interp4 = ArmListParser.interp_with_blend(1307.2340425531913,1307.2340425531913, 50-(speed-(34-(intervalLength*5))), tb_cent)  # Hold deflection
-                            # 4. Strummer Picker moves to next position
-                            strummer_picker_interp2 = ArmListParser.interp_with_blend(1307.2340425531913,
-                                                                                      strummer_picker_qf,
-                                                                                      5,
-                                                                                      tb_cent)
-
-                        strummer_picker_interp1 = np.concatenate((strummer_picker_interp1, strummer_picker_interp3))
-                        strummer_picker_interp1 = np.concatenate((strummer_picker_interp1, strummer_picker_interp4))
-                    else:
-                        print("INTERVAL: SKIP FIRST STRING(S)")
-                        # 3. Strummer Picker holds set position
-                        strummer_picker_interp1 = ArmListParser.interp_with_blend(strummer_picker_q0,
-                                                                                  strummer_picker_q0,
-                                                                                  50-(speed-(45-(intervalLength*5))),
-                                                                                  tb_cent)
-                        if intervals[index][0] - intervals[index][1] < 0:   #if downstrum
-                            # 4. Strummer Picker moves to hit strings
-                            strummer_picker_interp3 = ArmListParser.interp_with_blend(strummer_picker_q0, 2178.723404255319, 5, tb_cent)
-                            strummer_picker_interp4 = ArmListParser.interp_with_blend(2178.723404255319, 2178.723404255319, speed-(45-(intervalLength*5)), tb_cent)
-                            strummer_picker_interp2 = ArmListParser.interp_with_blend(2178.723404255319, strummer_picker_qf, 5, tb_cent) # Set picker to next position
-                        else:   #if upstrum
-                            # 4. Strummer Picker moves to hit strings
-                            strummer_picker_interp3 = ArmListParser.interp_with_blend(strummer_picker_q0, 1742.9787234042553, 5, tb_cent)
-                            strummer_picker_interp4 = ArmListParser.interp_with_blend(1742.9787234042553, 1742.9787234042553, speed-(45-(intervalLength*5)), tb_cent)
-                            strummer_picker_interp2 = ArmListParser.interp_with_blend(1742.9787234042553, strummer_picker_qf, 5, tb_cent)  # Set picker to next position
-
-                        strummer_picker_interp1 = np.concatenate((strummer_picker_interp1, strummer_picker_interp3))
-                        strummer_picker_interp1 = np.concatenate((strummer_picker_interp1, strummer_picker_interp4))
-                else:
-                    strummer_picker_interp1 = ArmListParser.interp_with_blend(strummer_picker_q0,
-                                                                              strummer_picker_q0,
-                                                                              speed,
-                                                                              tb_cent)  # picker holds set position
-                    strummer_picker_interp2 = ArmListParser.interp_with_blend(strummer_picker_q0,
-                                                                              strummer_picker_qf,
-                                                                              5,
-                                                                              tb_cent)  # picker moves to next position
-
+            #1. Strummer slider hold 5 points
+            strummer_slider_interp1 = ArmListParser.interp_with_blend(strummer_slider_q0, strummer_slider_q0, 5, tb_cent)  # Change to fill later
+            #2. Strummer slider move "speed" points
+            strummer_slider_interp2 = ArmListParser.interp_with_blend(strummer_slider_q0, strummer_slider_qf, speed, tb_cent)
+            #3. Strummer Picker move 5 points
+            strummer_picker_interp1 = ArmListParser.interp_with_blend(strummer_picker_q0, strummer_picker_qf, 5, tb_cent)
+            #4. Strummer Picker hold "speed" points
+            strummer_picker_interp2 = ArmListParser.interp_with_blend(strummer_picker_qf, strummer_picker_qf, speed, tb_cent)
             #5. Combine strummer_slider_interp1 with strummer_picker_interp1
             #picker_moving = [points1 + points2 for points1, points2 in zip(strummer_slider_interp1, strummer_picker_interp1)]
             interp_points_1 = [list(pair) for pair in zip(strummer_slider_interp1, strummer_picker_interp1)]
@@ -776,14 +641,14 @@ class ArmListParser:
             rh_points_only.append([interp_points_1])
 
             strummer_slider_q0 = event[0][0]
-            strummer_picker_q0 = strummer_picker_qf
+            strummer_picker_q0 = event[0][1]
 
         #ArmListParser.print_Trajs(temp)
         #print("len is: ", len(rh_points))
 
         # ArmListParser.plot_interpolation(rh_points, 2)
         print("\nRH FULL MATRIX")
-        matrix = ArmListParser.getFullMatrix(rh_points, initial_point, plot = True)
+        matrix = ArmListParser.getFullMatrix(rh_points, initial_point, plot = False)
 
             # print("PICKER MOVING: ", x, "\n")
 
@@ -860,7 +725,7 @@ class ArmListParser:
                 print("\n")
 
     @staticmethod
-    def getFullMatrix(events_list, initial_point, plot = True):
+    def getFullMatrix(events_list, initial_point, plot = False):
 
         full_matrix = {}
         full_matrix[0.000] = initial_point
@@ -929,10 +794,10 @@ class ArmListParser:
 
                     if strummer_slider_qf == -3268.0851063829787: # if coming from a down strum, insert an upstrum
                         deflect_SS_qf = -115
-                        deflect_SP_qf = 6
+                        deflect_SP_qf = 14
                     else:
                         deflect_SS_qf = -15
-                        deflect_SP_qf = 12
+                        deflect_SP_qf = 14
 
                     deflect_SS_qf = (deflect_SS_qf * 2048) / 9.4
                     deflect_SP_qf = (deflect_SP_qf * 2048) / 9.4
@@ -990,9 +855,9 @@ class ArmListParser:
 
         # 1. Get events + Timestamps
         print("These are the dictionaries for left arm")
-        lh_motor_positions, intervals = ArmListParser.parseleft_M(left_arm, measure_time)
+        lh_motor_positions = ArmListParser.parseleft_M(left_arm, measure_time)
         print("These are the dictionaries for right arm")
-        rh_motor_positions, deflections, strumIntervals = ArmListParser.parseright_M(right_arm, intervals, measure_time)
+        rh_motor_positions, deflections = ArmListParser.parseright_M(right_arm, measure_time)
 
         #2. PrepMovements (Adjust timestamps)
         lh_positions_adj, rh_positions_adj = ArmListParser.prepMovements(lh_motor_positions, rh_motor_positions)
@@ -1000,8 +865,7 @@ class ArmListParser:
         ArmListParser.print_Events(rh_positions_adj)
 
         #3. Interpolate (dedicated interp function)
-        # TODO: Line below works for interval strumming----------------
-        # lh_dictionary, rh_dictionary = ArmListParser.interpolateEvents(lh_positions_adj, rh_positions_adj, deflections, strumIntervals)
+        # lh_dictionary, rh_dictionary = ArmListParser.interpolateEvents(lh_positions_adj, rh_positions_adj, deflections)
         lh_dictionary, rh_dictionary = None # refactor to initial point to work
         lh_maxtimestamp = max(lh_dictionary.keys())
         rh_maxtimestamp = max(rh_dictionary.keys())
@@ -1106,9 +970,11 @@ class ArmListParser:
                 lh_timestamp -=offset
                 lh_motor_positions[i][1] = lh_timestamp
 
+        # 3. For every pick event, check that the
+
         return lh_motor_positions, rh_motor_positions
 
-    @staticmethod #TODO: add strumIntervals to list of parameters
+    @staticmethod
     def interpolateEvents(lh_positions_adj, rh_positions_adj, deflections, picker_motor_positions_adj, initial_point):
 
         rh_interpolated_dictionary = ArmListParser.rh_interpolate(rh_positions_adj, deflections, initial_point)
@@ -1317,8 +1183,6 @@ class ArmListParser:
                     temp[0].append(presser_encoder_values[presser_value - 1])
             temp.append(events[2])
             lh_motor_positions.append(temp)
-        print("LH EVENTS LIST: ")
-        ArmListParser.print_Events(lh_motor_positions)
 
         return lh_motor_positions
     @staticmethod
@@ -1363,9 +1227,9 @@ class ArmListParser:
                 deflections.append(0)
             rh_motor_positions.append([[strum_mm_qf, picker_mm_qf], time_stamp])
 
-        print("\nRH MM:")
-        ArmListParser.print_Events(rh_motor_positions)
-        print("DEFLECTIONS LIST: ", deflections)
+        # print("\nRH MM:")
+        # ArmListParser.print_Events(rh_motor_positions)
+        # print("DEFLECTIONS LIST: ", deflections)
         return rh_motor_positions, deflections
 
     @staticmethod
