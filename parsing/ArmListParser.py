@@ -1361,7 +1361,7 @@ class ArmListParser:
         result = {}
         motorInformation = {  # motor_id : [down_pluck mm qf, up_pluck mm qf, encoder resolution]
             0 : [3.75, 7.5, 1024],
-            1 : [-3.0, 1.3, 2048],
+            1 : [0, 3.5, 2048],
             2: [4.5, 8,  2048]
         }
         # NEED TO HANDLE SLIDER/PRESSER

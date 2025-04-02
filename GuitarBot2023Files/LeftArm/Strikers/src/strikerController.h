@@ -558,7 +558,7 @@ public:
     */
     void processTrajPoints(float *trajPoint)
     {
-        int packetSize = 15;
+        int packetSize = 17;
         Serial.print("RECEIVED: ");
         for(int i = 0; i<packetSize; i++)
         {
@@ -1117,7 +1117,7 @@ public:
             if(i >= 15){ //Picker
                 pos2pulse = (start_state_PICK * 1024) / 9.4;
                 if(i == 16){
-                    start_state_PICK = 3.25;
+                    start_state_PICK = 3.5;
                     pos2pulse = (start_state_PICK * 2048) / 9.4;
                     }
                 if(i == 17){
@@ -1443,16 +1443,16 @@ private:
                 }
             }
         }
-//        Serial.println("------------------");
-//        Serial.print("Index: ");
-//        Serial.println(idx);
-//        Serial.print("Traj Point: ");
-//        for (int i = 0; i < NUM_MOTORS; ++i) {
-//
-//                Serial.print(point[i]);
-//                Serial.print(" ");
-//        }
-//        Serial.println(" ");
+        Serial.println("------------------");
+        Serial.print("Index: ");
+        Serial.println(idx);
+        Serial.print("Traj Point: ");
+        for (int i = 0; i < NUM_MOTORS; ++i) {
+
+                Serial.print(point[i]);
+                Serial.print(" ");
+        }
+        Serial.println(" ");
 
 
         bool run_bot = true; //false turns off motor, true turns on

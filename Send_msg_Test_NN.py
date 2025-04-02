@@ -9,9 +9,9 @@ UDP_PORT = 12000
 # strum_message = [["DOWN"/"UP"], timestamp]
 # pluck_message = [[note (midi value), duration, speed, timestamp]]
 
-chords_message = [["On", 0]]
+chords_message = [["On", 2]]
 strum_message = [["UP", 0]]
-pluck_message = [[65, 2, 10, 1]]
+pluck_message = [[50, 5, 10, 1]]
 # chords_message = [["A", 0.0], ["D", 4.0], ["E", 5.0], ["A", 6.0], ["On", 8.0]] # Marcus Demo 3/6/2025
 # strum_message = [ ["DOWN", 1.0], ["UP", 2.0], ["DOWN", 4.0], ["UP", 5.0], ["DOWN", 6.0]] # Marcus Demo 3/6/2025
 # pluck_message = [[45, .1, 10, 1], [47, .5, 10, 2], [48, 3, 4, 3], ] # Marcus Demo 3/6/2025
