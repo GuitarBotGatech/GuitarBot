@@ -1443,16 +1443,16 @@ private:
                 }
             }
         }
-        Serial.println("------------------");
-        Serial.print("Index: ");
-        Serial.println(idx);
-        Serial.print("Traj Point: ");
-        for (int i = 0; i < NUM_MOTORS; ++i) {
-
-                Serial.print(point[i]);
-                Serial.print(" ");
-        }
-        Serial.println(" ");
+//        Serial.println("------------------");
+//        Serial.print("Index: ");
+//        Serial.println(idx);
+//        Serial.print("Traj Point: ");
+//        for (int i = 0; i < NUM_MOTORS; ++i) {
+//
+//                Serial.print(point[i]);
+//                Serial.print(" ");
+//        }
+//        Serial.println(" ");
 
 
         bool run_bot = true; //false turns off motor, true turns on
