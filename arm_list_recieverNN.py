@@ -86,20 +86,22 @@ def song_creator():
                 #     chords.extend(chords_queue.get_nowait())
                 # for i in range(strum_queue.qsize()):
                 #     strum.extend(strum_queue.get_nowait())
+                # If there's more than one pluck message with the same note and speed, reduce to single message with combined durations
                 if pluck_queue.qsize() > 1:
-                    prev_timestamp = 1
-                    prev_duration = 0
+                    # Add checks to ensure theyre the same note and speed
+                    data = pluck_queue.get_nowait()[0]
+                    note = data[0]
+                    duration = data[1]
+                    speed = data[2]
+                    timestamp = data[3]
                     for i in range(pluck_queue.qsize()):
                         data = pluck_queue.get_nowait()[0]
-                        print("HERE DATA: ", data)
-                        note = data[0]
-                        duration = data[1]
-                        speed = data[2]
-                        timestamp = prev_timestamp + prev_duration
-                        new_data = [note, duration, speed, timestamp]
-                        pluck.append(new_data)
-                        prev_timestamp = timestamp
-                        prev_duration = duration
+                        curr_duration = data[1]
+                        # sum durations
+                        duration += curr_duration
+                    new_data = [note, duration, speed, timestamp]
+                    pluck.append(new_data)
+
                 print("ALL CHORDS: ", chords)
                 print("ALL STRUMS: ", strum)
                 print("ALL PLUCKS: ", pluck)
