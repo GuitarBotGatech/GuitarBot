@@ -389,8 +389,11 @@ UDP_PORT = 12000
 # Testing Start / Stop Button
 chords_message = [["On", 0]]
 strum_message =  [["UP", 0.0]]
-pluck_message = [[40, 1, 10, 1]] # Pressing start on one of the strings in the UI will interpolate one tremolo and keep appending it until a stop message is received
+pluck_message = [[40, 2, 10, 1]] # Pressing start on one of the strings in the UI will interpolate one tremolo and keep appending it until a stop message is received
 
+# chords_message_2 = [["On", 3]]
+# strum_message_2 =  [["UP", 0.0]]
+# pluck_message_2 = [[40, 2, 10, 0]] # Pressing start on one of the strings in the UI will interpolate one tremolo and keep appending it until a stop message is received
 
 # Derrick Demo for 2/27/2025 -- Randomly generated three picker tremolos with amplitude scaling
 def create_tremolo_message():
@@ -454,7 +457,7 @@ def main():
         send_osc_message(client, "/Strum", strum_message)
         send_osc_message(client, "/Pluck", pluck_message)
         counter +=1
-        time.sleep(1)
+        time.sleep(0.005)
 
 
 

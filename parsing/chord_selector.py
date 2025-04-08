@@ -8,9 +8,9 @@ def find_lowest_cost_chord(current_fret_positions, filepath, chord_letter, chord
 
     chord_voicings = np.array(_get_chord_voicings_list(filepath, chord_letter, chord_type))
     for chord_voicing in chord_voicings:
-        print("Current Fret Positions: ", current_fret_positions)
+        # print("Current Fret Positions: ", current_fret_positions)
         cost = _calculate_cost(current_fret_positions, chord_voicing)
-        print("COST: ", cost)
+        # print("COST: ", cost)
         if cost < min_cost:
             min_cost = cost
             easiest_frets = chord_voicing
@@ -29,7 +29,7 @@ def find_lowest_cost_chord(current_fret_positions, filepath, chord_letter, chord
     # dist = np.sqrt(current_squared + voicing_squared.T - 2 * dot_prod)
     #
     # print("Distance: ", dist)
-    print("Easiest Frets: ", easiest_frets)
+    # print("Easiest Frets: ", easiest_frets)
     return easiest_frets
 
 def _get_chord_voicings_list(filepath, chord_letter, chord_type):
@@ -46,7 +46,7 @@ def _get_chord_voicings_list(filepath, chord_letter, chord_type):
     while row < 351 and df_chords.iloc[row].iloc[0] == chord_letter and df_chords.iloc[row].iloc[1] == chord_type:
         chord_possibilities.append(_chord_from_row(df_chords, row))
         row += 1
-    print("ALL CHORD POSSIBILITIES: ", chord_possibilities)
+    # print("ALL CHORD POSSIBILITIES: ", chord_possibilities)
     return chord_possibilities
 
 def _chord_from_row(df_chords, row):

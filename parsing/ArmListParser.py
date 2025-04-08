@@ -11,7 +11,7 @@ class ArmListParser:
 
     @staticmethod
     def _get_chords_M(filepath, chord_letter, chord_type):
-        # print("chord stats: ", chord_type, chord_letter)
+        # #print("chord stats: ", chord_type, chord_letter)
 
         fret_numbers_optimized = find_lowest_cost_chord(ArmListParser.current_fret_positions, filepath, chord_letter,
                                                         chord_type)
@@ -40,8 +40,8 @@ class ArmListParser:
             else:
                 fret_play.append(2)
 
-        # print(fret_numbers, fret_play)
-        # print(dtraj, utraj)
+        # #print(fret_numbers, fret_play)
+        # #print(dtraj, utraj)
 
         return fret_numbers, fret_play, dtraj, utraj
 
@@ -57,7 +57,7 @@ class ArmListParser:
         strumOnsets = []
         time = 0
         right_information = right_arm.copy()
-        # print("right arm, parseright: ",right_arm)
+        # #print("right arm, parseright: ",right_arm)
         for measure in right_information:
             tempM = []
             bra = 0
@@ -95,7 +95,7 @@ class ArmListParser:
                         pbra -= pbra
                         pbra += bra
                         deltaT = 0
-                        # print(pmra, pbra)
+                        # #print(pmra, pbra)
                     if beat == "D":
                         strumOnsets.append([time, 'D', 'N'])
                         right_information[mra][bra] = [beat, "N", measure_time / 8, deltaT]  # Change strum time here
@@ -108,11 +108,11 @@ class ArmListParser:
                         pbra += bra
                         deltaT = 0
                 else:
-                    print(right_information, mra, bra)
+                    # #print(right_information, mra, bra)
                     raise Exception("Right Arm input incorrect")
                 bra += 1
                 time += (measure_time / 8)
-                # print(right_information, mra, bra, "loop")
+                # #print(right_information, mra, bra, "loop")
                 deltaT += measure_time / 8
             mra += 1
         count = 0
@@ -137,11 +137,11 @@ class ArmListParser:
             timestamp = round(x[0] * 200) / 200 # Rounding to nearest 0.005 = PDO_RATE
             rh_events.append(['strum', [pos, 75, deflect], timestamp]) # Later, 75 is default speed, change later
             prev_strum = x[1] #For detecting deflects
-        print("LEN RH: ", len(rh_events))
-        # print("ri", right_information, initialStrum)
-        #print("These are the strumOnsets: ", strumOnsets)
-        #print("These are the right hand events: ", rh_events)
-        print("RH EVENTS LIST: ")
+        #print("LEN RH: ", len(rh_events))
+        # #print("ri", right_information, initialStrum)
+        ##print("These are the strumOnsets: ", strumOnsets)
+        ##print("These are the right hand events: ", rh_events)
+        #print("RH EVENTS LIST: ")
 
         ArmListParser.print_Events(rh_events)
 
@@ -171,9 +171,9 @@ class ArmListParser:
 
 
 
-        print("\nRH MM:")
+        #print("\nRH MM:")
         ArmListParser.print_Events(rh_motor_positions)
-        print("DEFLECTIONS LIST: ", deflections)
+        #print("DEFLECTIONS LIST: ", deflections)
         return rh_motor_positions, deflections
 
     # parse left arm (chords) input
@@ -211,91 +211,91 @@ class ArmListParser:
                         if len(remaining_input) == 1:
                             if remaining_input == 'm':
                                 type = "MINOR"
-                                # print("MINOR CHORD")
+                                # #print("MINOR CHORD")
 
                             # TODO: split these into individual chords once chords library is updated
                             elif remaining_input == '7' or remaining_input == '9' or remaining_input == '13':
                                 type = "DOMINANT"
-                                # print("DOMINANT CHORD")
+                                # #print("DOMINANT CHORD")
                             elif remaining_input == 'o':
                                 type = "HALF-DIM"
-                                # print("HALF-DIM CHORD")
+                                # #print("HALF-DIM CHORD")
 
                             # # TODO: add this to chords library, then uncomment
                             # elif remaining_input == '+':
                             #     type = "AUGMENTED"
-                            #     # print("AUGMENTED CHORD")
+                            #     # #print("AUGMENTED CHORD")
 
                             elif remaining_input == '5':
                                 type = "FIFTH"
                                 # Power chord
-                                # print("FIFTH CHORD")
+                                # #print("FIFTH CHORD")
 
                         # check two-letter notations
                         elif len(remaining_input) == 2:
                             if remaining_input == "M6":
                                 type = "MAJOR6"
-                                # print("MAJOR6 CHORD")
+                                # #print("MAJOR6 CHORD")
                             elif remaining_input == "M7":
                                 type = "MAJOR7"
-                                # print("MAJOR7 CHORD")
+                                # #print("MAJOR7 CHORD")
                             elif remaining_input == "M9":
                                 type = "MAJOR9"
-                                # print("MAJOR9 CHORD")
+                                # #print("MAJOR9 CHORD")
                             elif remaining_input == "m6":
                                 type = "MINOR6"
-                                # print("MINOR6 CHORD")
+                                # #print("MINOR6 CHORD")
                             elif remaining_input == "m7":
                                 type = "MINOR7"
-                                # print("MINOR7 CHORD")
+                                # #print("MINOR7 CHORD")
                             elif remaining_input == "m9":
                                 type = "MINOR9"
-                                # print("MINOR9 CHORD")
+                                # #print("MINOR9 CHORD")
 
                             # # TODO: uncomment once added to chords library
                             # elif remaining_input == "m11":
                             #     type = "MINOR11"
-                            #     # print("MINOR11 CHORD")
+                            #     # #print("MINOR11 CHORD")
 
                         # check three-letter+ notations
                         elif len(remaining_input) >= 3:
                             if remaining_input == "sus" or remaining_input == "sus4":
                                 type = "SUS4"
-                                # print("SUS4 CHORD")
+                                # #print("SUS4 CHORD")
                             elif remaining_input == "sus2":
                                 type = "SUS2"
-                                # print("SUS2 CHORD")
+                                # #print("SUS2 CHORD")
 
                             # TODO: split these into individual chords once chords library is updated
                             elif remaining_input == "dim" or remaining_input == "dim7":
                                 type = "DIMINISHED"
-                                # print("DIMINISHED CHORD")
+                                # #print("DIMINISHED CHORD")
 
                             # check for test chord inputs
                             if remaining_input == "TEST0" or remaining_input == "TEST":
                                 type = "TEST0"
-                                print("test 0 accepted")
+                                #print("test 0 accepted")
                             if remaining_input == "TEST1":
                                 type = "TEST1"
-                                print("test 1 accepted")
+                                #print("test 1 accepted")
                             if remaining_input == "TEST2":
                                 type = "TEST2"
-                                print("test 2 accepted")
+                                #print("test 2 accepted")
                             if remaining_input == "TEST3":
                                 type = "TEST3"
-                                print("test 3 accepted")
+                                #print("test 3 accepted")
                             if remaining_input == "TEST4":
                                 type = "TEST4"
-                                print("test 4 accepted")
+                                #print("test 4 accepted")
                             if remaining_input == "TEST5":
                                 type = "TEST5"
-                                print("test 5 accepted")
+                                #print("test 5 accepted")
                             if remaining_input == "TEST6":
                                 type = "TEST6"
-                                print("test 6 accepted")
+                                #print("test 6 accepted")
                             if remaining_input == "TEST7":
                                 type = "TEST7"
-                                print("test 7 accepted")
+                                #print("test 7 accepted")
 
                     # read chord from csv
                     note = str.upper(chords[0])
@@ -310,8 +310,8 @@ class ArmListParser:
                 time += measure_time / 4
                 bcount += 1
             mcount += 1
-        print("queue: ", mtimings)
-        # print(left_arm)
+        #print("queue: ", mtimings)
+        # #print(left_arm)
         justchords = []
         lh_events = []
         i = 0
@@ -324,9 +324,9 @@ class ArmListParser:
                     timestamp = round(mtimings[i] * 200) /200 # Rounding to nearest 0.005 = PDO_RATE
                     lh_events.append(["LH", b, timestamp])
                     i += 1
-        # print("jc", justchords)
-        #print("These are the chord change onsets: ", mtimings)
-        #print("These are the LH Events: ", lh_events)
+        # #print("jc", justchords)
+        ##print("These are the chord change onsets: ", mtimings)
+        ##print("These are the LH Events: ", lh_events)
         # Note, lh_events is the new list we'd like to return.
         # Plan for LH Conversions to points
         # For each event, we want to send n x [[m], timestamp] where n is the number of points for an event and m are the 18 motor values.
@@ -363,7 +363,7 @@ class ArmListParser:
         #
 
         # Generate the interpolated list
-        print("LH EVENTS LIST: ")
+        #print("LH EVENTS LIST: ")
         ArmListParser.print_Events(lh_motor_positions)
 
         return lh_motor_positions
@@ -393,14 +393,14 @@ class ArmListParser:
     @staticmethod
     def lh_interpolate(lh_motor_positions, lh_pick_pos, initial_point, num_points=20, tb_cent=0.2, plot=False):
         # initial_point = [0, 0, 0, 0, 0, 0, -10, -10, -10, -10, -10, -10]  # Initial position, remember to make dynamic later.
-        #print("lh_pick_pos: ", lh_pick_pos)
+        ##print("lh_pick_pos: ", lh_pick_pos)
         initial_point = initial_point[0:12]
         current_encoder_position = []
         if not lh_pick_pos:
             max_timestamp = lh_motor_positions[-1][1] + 0.3
         else:
-            #print("LAST LH MOTOR POSITION: ", lh_motor_positions[-1], lh_motor_positions[-1][1])
-            #print("LAST PICK MOTOR POSITION: ", lh_pick_pos[-1], lh_pick_pos[-1][2])
+            ##print("LAST LH MOTOR POSITION: ", lh_motor_positions[-1], lh_motor_positions[-1][1])
+            ##print("LAST PICK MOTOR POSITION: ", lh_pick_pos[-1], lh_pick_pos[-1][2])
             max_timestamp = max(lh_motor_positions[-1][1] + 0.3, lh_pick_pos[-1][2] + .325) # 6
 
         full_matrix = {}
@@ -415,7 +415,7 @@ class ArmListParser:
                 current_encoder_position.append(value)
 
         #1. Check to make sure no syncrhonous LH Events
-        print("LH UPDATED EVENTS LIST (NO SYNC LH EVENTS): ")
+        #print("LH UPDATED EVENTS LIST (NO SYNC LH EVENTS): ")
         lh_motor_positions = ArmListParser.checkSyncEvents("LH", lh_motor_positions)
         ArmListParser.print_Events(lh_motor_positions)
         curr_ts = 0
@@ -442,7 +442,7 @@ class ArmListParser:
 
         # Sort the combined dictionary by timestamp
         full_LH.sort(key=lambda x: x['timestamp'])
-        #print("FULL LH MATRIX SORTED: ", full_LH)
+        ##print("FULL LH MATRIX SORTED: ", full_LH)
         full_matrix[0] = initial_point
         prev_type = None
         prev_position = None
@@ -531,7 +531,7 @@ class ArmListParser:
                         qf_slider = q0_slider_motor
                         qf_presser = -10
                     if prev_type == 'chord' or not(current_type == prev_type and prev_position == current_position and prev_motor_id == current_motor_id): # If the prior is not the same MIDI note
-                        print("DIFFERENT NOTE")
+                        #print("DIFFERENT NOTE")
                         s1 = ArmListParser.interp_with_blend(q0_slider_motor, q0_slider_motor, num_points, tb_cent)
                         p1 = ArmListParser.interp_with_blend(q0_presser_motor, -10, num_points, tb_cent)
                         slider_points.extend(s1)
@@ -548,7 +548,7 @@ class ArmListParser:
                         presser_points.extend(p3)
 
                     else: # Same note back to back
-                        print("Same NOTE")
+                        #print("Same NOTE")
                         s3 = ArmListParser.interp_with_blend(q0_slider_motor, qf_slider, num_points_note, tb_cent)
                         p3 = ArmListParser.interp_with_blend(q0_presser_motor, qf_presser, num_points, tb_cent)
                         slider_points.extend(s3)
@@ -584,7 +584,7 @@ class ArmListParser:
                     prev_values[i] = full_matrix[t][i]
 
         sorted_timestamps = sorted(full_matrix.keys())
-        #print("Sorted Timestamps: ", sorted_timestamps) # up to 6
+        ##print("Sorted Timestamps: ", sorted_timestamps) # up to 6
         previous_values = copy.deepcopy(initial_point)
 
         for timestamp in sorted_timestamps:
@@ -611,12 +611,12 @@ class ArmListParser:
 
         #1. Check for any deflections
         rh_motor_positions = ArmListParser.checkDeflect(rh_motor_positions, deflections)
-        print("RH UPDATED EVENTS LIST (WITH DEFLECTIONS): ")
+        #print("RH UPDATED EVENTS LIST (WITH DEFLECTIONS): ")
         ArmListParser.print_Events(rh_motor_positions)
 
         #2. Check for any syncrhonous RH events
         rh_motor_positions = ArmListParser.checkSyncEvents("strum", rh_motor_positions)
-        print("RH UPDATED EVENTS LIST (NO SYNC RH EVENTS): ")
+        #print("RH UPDATED EVENTS LIST (NO SYNC RH EVENTS): ")
         ArmListParser.print_Events(rh_motor_positions)
 
         for event_index, event in enumerate(rh_motor_positions):
@@ -644,13 +644,13 @@ class ArmListParser:
             strummer_picker_q0 = event[0][1]
 
         #ArmListParser.print_Trajs(temp)
-        #print("len is: ", len(rh_points))
+        ##print("len is: ", len(rh_points))
 
         # ArmListParser.plot_interpolation(rh_points, 2)
-        print("\nRH FULL MATRIX")
+        #print("\nRH FULL MATRIX")
         matrix = ArmListParser.getFullMatrix(rh_points, initial_point, plot = False)
 
-            # print("PICKER MOVING: ", x, "\n")
+            # #print("PICKER MOVING: ", x, "\n")
 
         return matrix
 
@@ -668,8 +668,8 @@ class ArmListParser:
                 for event in data:
                     points, timestamp = event
                     # Round to nearest 0.005
-                    #print("debug, ", points)
-                    #print("debug, ", timestamp)
+                    ##print("debug, ", points)
+                    ##print("debug, ", timestamp)
                     points = np.array(points)
                     time_values = np.arange(len(points)) * 0.005 + timestamp  # 5ms per point
 
@@ -710,19 +710,19 @@ class ArmListParser:
 
     @staticmethod
     def print_Events(motor_positions):
-        print("PRINTING EVENTS: ")
+        #print("PRINTING EVENTS: ")
         for event in motor_positions:
             print(event)
 
     @staticmethod
     def print_Trajs(interpolated_list):
-        print("INTERPOLATED LIST:")
+        #print("INTERPOLATED LIST:")
         for e, event in enumerate(interpolated_list):
-            print("Event: ", e)
+            #print("Event: ", e)
             for traj in event:
                 for i, points in enumerate(traj):
                     print(i, points)
-                print("\n")
+                #print("\n")
 
     @staticmethod
     def getFullMatrix(events_list, initial_point, plot = False):
@@ -732,8 +732,8 @@ class ArmListParser:
 
         for event in events_list:
             points, timestamp = event
-            # print("debug, ", points)
-            # print("debug, ", timestamp)
+            # #print("debug, ", points)
+            # #print("debug, ", timestamp)
             points = np.array(points)
             time_values = np.arange(len(points)) * 0.005 + timestamp  # 5ms per point
             for time, point in zip(time_values, points):
@@ -760,7 +760,7 @@ class ArmListParser:
         i = 0
         full_matrix = dict(sorted(full_matrix.items()))
         for key, value in full_matrix.items():
-            print(f"{i}| {key} : {value}")
+            #print(f"{i}| {key} : {value}")
             i+=1
         if plot:
             ArmListParser.plot_interpolation(mode="matrix", matrix=full_matrix)
@@ -787,7 +787,7 @@ class ArmListParser:
                 strum_time = (total_strum_speed * 0.005) + buffer_time #ms
                 delta = round(timestamp - prev_timestamp, 3)
                 required_delta = 2 * strum_time
-                print(f"{timestamp} - {prev_timestamp} = {delta}")
+                #print(f"{timestamp} - {prev_timestamp} = {delta}")
 
                 if delta > required_delta:  # Insert deflect message, TODO: ELSE, ignore the message because there's not enough time to deflect
                     num_deflections += 1
@@ -802,17 +802,17 @@ class ArmListParser:
                     deflect_SS_qf = (deflect_SS_qf * 2048) / 9.4
                     deflect_SP_qf = (deflect_SP_qf * 2048) / 9.4
                     # If deflection, add a deflect event right after the previous event
-                    #print("INSERTING DEFLECTION BEFORE EVENT: ", idx)
+                    ##print("INSERTING DEFLECTION BEFORE EVENT: ", idx)
                     new_rh_motor_positions.insert(idx, [[deflect_SS_qf, deflect_SP_qf], prev_timestamp + strum_time]) # add deflect event after first event finishes
                     idx+=1 # Because inserting into new list, need to increment properly to stay on track (double increment only when inserting)
                 else: # NOT ENOUGH SPACE IN BETWEEN EVENTS TO DEFLECT SO IGNORE SECOND EVENT
-                    print("Not enough space to deflect, ignoring event:", idx)
+                    #print("Not enough space to deflect, ignoring event:", idx)
                     new_rh_motor_positions.pop(idx)
                     idx-=1
 
             idx+=1
             prev_timestamp = timestamp
-        print("NUMBER OF DEFLECTIONS ADDED: ", num_deflections)
+        #print("NUMBER OF DEFLECTIONS ADDED: ", num_deflections)
 
         return new_rh_motor_positions
 
@@ -836,9 +836,9 @@ class ArmListParser:
             required_delta = event_trajs.get(event_type) * 0.005 # The amount of time to complete the trajectory based on event type
             if delta < required_delta:
                 new_motor_positions.pop(idx)
-                print("Not enough space between events, ignoring event: ", idx)
-                print("REQUIRED DELTA: ", required_delta)
-                print(f"RESULTING DELTA: {timestamp} - {prev_timestamp} = {delta}")
+                #print("Not enough space between events, ignoring event: ", idx)
+                #print("REQUIRED DELTA: ", required_delta)
+                #print(f"RESULTING DELTA: {timestamp} - {prev_timestamp} = {delta}")
                 idx-=1
 
             idx+=1
@@ -854,9 +854,9 @@ class ArmListParser:
         #Dictionaries for LH and RH
 
         # 1. Get events + Timestamps
-        print("These are the dictionaries for left arm")
+        #print("These are the dictionaries for left arm")
         lh_motor_positions = ArmListParser.parseleft_M(left_arm, measure_time)
-        print("These are the dictionaries for right arm")
+        #print("These are the dictionaries for right arm")
         rh_motor_positions, deflections = ArmListParser.parseright_M(right_arm, measure_time)
 
         #2. PrepMovements (Adjust timestamps)
@@ -869,9 +869,9 @@ class ArmListParser:
         lh_dictionary, rh_dictionary = None # refactor to initial point to work
         lh_maxtimestamp = max(lh_dictionary.keys())
         rh_maxtimestamp = max(rh_dictionary.keys())
-        print("Key sizes:")
-        print(lh_maxtimestamp)
-        print(rh_maxtimestamp)
+        #print("Key sizes:")
+        #print(lh_maxtimestamp)
+        #print(rh_maxtimestamp)
         if lh_maxtimestamp > rh_maxtimestamp:
             shorterDict = rh_dictionary
             highkey = lh_maxtimestamp
@@ -904,9 +904,9 @@ class ArmListParser:
 
         # print resulting dictionary
         i = 0
-        # print("Debuig Matrix: ")
+        # #print("Debuig Matrix: ")
         # for key, value in shorterDict.items():
-        #     print(f"{i}| {key} : {value}")
+        #     #print(f"{i}| {key} : {value}")
         #     i += 1
         # shorterDict = dict(sorted(shorterDict.items()))
         lh_copied_dictionary = {}
@@ -927,9 +927,9 @@ class ArmListParser:
                 ]
                 for timestamp in lh_dictionary
             }
-        print("Full Matrix: ")
+        #print("Full Matrix: ")
         for key, value in combined_dict.items():
-            print(f"{i}| {key} : {value}")
+            #print(f"{i}| {key} : {value}")
             i += 1
 
         return combined_dict
@@ -959,14 +959,14 @@ class ArmListParser:
                 try:
                     rh_timestamp = rh_motor_positions[idx][1]
                 except:
-                    # print("END LIST")
+                    # #print("END LIST")
                     return lh_motor_positions, rh_motor_positions
 
             delta = round(rh_timestamp - lh_timestamp, 3)
             required_delta = 60 * 0.005  # The amount of time to complete the trajectory based on event type
             offset = round(required_delta-delta, 3)
             if delta < required_delta:
-                # print(f"delta: {delta} is less than required delta: {required_delta}")
+                # #print(f"delta: {delta} is less than required delta: {required_delta}")
                 lh_timestamp -=offset
                 lh_motor_positions[i][1] = lh_timestamp
 
@@ -998,23 +998,23 @@ class ArmListParser:
         lh_positions_adj, rh_positions_adj = ArmListParser.prepMovements(lh_motor_positions, rh_motor_positions)
         # Make sure no LH movements happen at the same time as a picker movement.
         picker_motor_positions_adj = ArmListParser.prepPicker(lh_motor_positions, picker_motor_positions)
-        print("LH events")
+        #print("LH events")
         ArmListParser.print_Events(lh_positions_adj)
-        print("RH events")
+        #print("RH events")
         ArmListParser.print_Events(rh_positions_adj)
-        print("Picker events")
+        #print("Picker events")
         ArmListParser.print_Events(picker_motor_positions_adj)
         #3. Interpolate (dedicated interp function)
         lh_dictionary, rh_dictionary, pick_dictionary = ArmListParser.interpolateEvents(lh_positions_adj, rh_positions_adj, deflections, picker_motor_positions_adj, initial_point)
 
-        print("Picker Dictionary: ")  # only up to 6
+        #print("Picker Dictionary: ")  # only up to 6
         i = 0
         for key, value in pick_dictionary.items():
-            print(f"{i}| {key} : {value}")
+            #print(f"{i}| {key} : {value}")
             i += 1
         # Find the maximum timestamp across all dictionaries
         max_timestamp = max(max(lh_dictionary.keys()), max(rh_dictionary.keys()), max(pick_dictionary.keys()))
-        print("Max Timestamp ParseAllMidi: ", max_timestamp)
+        #print("Max Timestamp ParseAllMidi: ", max_timestamp)
 
         # Create a list of all timestamps, including interpolated ones
         all_timestamps = sorted(set(
@@ -1038,9 +1038,9 @@ class ArmListParser:
                     pick_interpolated.get(timestamp, [])
             )
         i = 0
-        print("Full Matrix: ")
+        #print("Full Matrix: ")
         for key, value in combined_dict.items():
-            print(f"{i}| {key} : {value}")
+            #print(f"{i}| {key} : {value}")
             i += 1
         if graph:
             fig = go.Figure()
@@ -1134,7 +1134,7 @@ class ArmListParser:
                     test_number = remaining_input[4:]
                     if test_number.isdigit():
                         chord_type = f"TEST{test_number}"
-                        print(f"test {test_number} accepted")
+                        #print(f"test {test_number} accepted")
 
         # Read chord from csv
         note = str.upper(chords[0])
@@ -1227,9 +1227,9 @@ class ArmListParser:
                 deflections.append(0)
             rh_motor_positions.append([[strum_mm_qf, picker_mm_qf], time_stamp])
 
-        # print("\nRH MM:")
+        # #print("\nRH MM:")
         # ArmListParser.print_Events(rh_motor_positions)
-        # print("DEFLECTIONS LIST: ", deflections)
+        # #print("DEFLECTIONS LIST: ", deflections)
         return rh_motor_positions, deflections
 
     @staticmethod
@@ -1263,7 +1263,7 @@ class ArmListParser:
                 duration = .025
 
             for pickerID, (low, high) in enumerate(string_ranges):
-                # print("Active Pickers: ", active_pickers)
+                # #print("Active Pickers: ", active_pickers)
                 if low <= note <= high:  # Check if the note falls within the string's range
                     if last_notes[pickerID] == note:
                         # If the note is the same as the last one on this picker, only check if it's free
@@ -1280,7 +1280,7 @@ class ArmListParser:
                         pick_events.append(["pick", [pickerID, note, duration, speed, timestamp]])
                         active_pickers[pickerID] = end
                         last_notes[pickerID] = note
-                        # print(f"Assigning Picker {pickerID} for note {note}")
+                        # #print(f"Assigning Picker {pickerID} for note {note}")
                         break
 
             if not assigned:
@@ -1384,7 +1384,7 @@ class ArmListParser:
                 qf_encoder_picker = (motorInformation[motor_id][pick_states[motor_id]] * motorInformation[motor_id][2]) / 9.4
 
                 all_points = ArmListParser.interp_with_blend(start_pos, qf_encoder_picker, 11, tb_cent)
-                # print("pluck on ", motor_id, " ", timestamp, " ", duration)
+                # #print("pluck on ", motor_id, " ", timestamp, " ", duration)
                 events_list.append([all_points, motor_id, timestamp])
             else:
                 # Tremolo # CHANGE TO SIN WAVE
@@ -1393,9 +1393,9 @@ class ArmListParser:
                 # max_encoder = (max_mm * motorInformation[motor_id][2]) / 9.4
                 # min_encoder = (min_mm * motorInformation[motor_id][2]) / 9.4
                 #
-                # print("Max, min", max_encoder, min_encoder)
+                # #print("Max, min", max_encoder, min_encoder)
                 # vert_shift = (max_encoder + min_encoder) / 2  # 544
-                # print("Vertical Shift: ", vert_shift)
+                # #print("Vertical Shift: ", vert_shift)
                 #
                 # max_amp = abs((max_encoder - min_encoder))/2  # Default: 218 for picker 1
                 # min_amp = max_amp * 0.80
@@ -1403,7 +1403,7 @@ class ArmListParser:
                 # # Amplitude Scaling
                 # #amp = ArmListParser.scaleAmplitude(max_amp, min_amp, speed) #TODO: Double Check amplitude calculation
                 # amp = min_amp
-                # print("Amplitude", amp)
+                # #print("Amplitude", amp)
                 #
                 # all_points = ArmListParser.maketremolo(vert_shift, amp, duration, speed, pick_states[motor_id])
 
@@ -1417,7 +1417,7 @@ class ArmListParser:
                     # 11 is a good value for all
                     # Changing it too much conflicts with fill points for speed
                     num_points = 11
-                    print("num_points: ", num_points)
+                    #print("num_points: ", num_points)
                     points1 = ArmListParser.interp_with_sine_blend(start_pos, qf_encoder_picker, num_points)  # (move)
                     points2 = ArmListParser.interp_with_sine_blend(qf_encoder_picker, qf_encoder_picker, fill_points)  # (fill)
                     start_pos = (motorInformation[motor_id][pick_states[motor_id]] * motorInformation[motor_id][2]) / 9.4
@@ -1470,17 +1470,17 @@ class ArmListParser:
             timestamp = pick_event[2]
             duration = 0.005 * len(pick_event[0])
             event_time = round((timestamp + duration) * 200) / 200
-            # print("Current Max Timestamp: ", max_timestamp, max_timestamp_event)
-            # print("Current Event Time: ", event_time)
+            # #print("Current Max Timestamp: ", max_timestamp, max_timestamp_event)
+            # #print("Current Event Time: ", event_time)
             if event_time > max_timestamp:
                 max_timestamp = event_time
                 max_timestamp_event = i
 
         #max_timestamp = events_list[-1][2] + (.005 * len(events_list[-1][0]))
-        # print("Max Timestep + event: ", max_timestamp, max_timestamp_event)
+        # #print("Max Timestep + event: ", max_timestamp, max_timestamp_event)
         curr_timestamp = 0
         while curr_timestamp <= max_timestamp:
-            #print("Initial Point: ", initial_point)
+            ##print("Initial Point: ", initial_point)
             result[curr_timestamp] = initial_point.copy() # be careful, changing to a list will change all elements!
             curr_timestamp = round(curr_timestamp + .005, 3)
         for event in events_list:
@@ -1493,7 +1493,7 @@ class ArmListParser:
             while curr <= max_timestamp:
                 result[curr][id] = prev_pos
                 curr = round(curr + .005, 3)
-        print("LH PICK EVENTS: ", lh_pick_events)
+        #print("LH PICK EVENTS: ", lh_pick_events)
         return result, lh_pick_events
 
 
@@ -1518,36 +1518,36 @@ class ArmListParser:
 
     @staticmethod
     def maketremolo(vert_shift, amp, duration, speed, pick_state): # Todo: Test case of starting at 326, should work
-        # print("Duration: ", duration)
+        # #print("Duration: ", duration)
         # Calculate the period based on the user's inputted speed value 1-10
         period = ArmListParser.scale_speed(speed)
-        # print("period: ", period)
-        # print("frequency: ", 1/period)
+        # #print("period: ", period)
+        # #print("frequency: ", 1/period)
         # Determine max number of tremolos we can achieve in the duration for the given speed
         tstep = 0.005
         num_tremolos = (duration // period)  # amount of tremolos we can do and end at the top or bottom
-        # print("Max number of tremolos: ", num_tremolos)
+        # #print("Max number of tremolos: ", num_tremolos)
         # Interpolate the cosine wave for every point in num_tremolos
         trem_times = np.arange(0, (num_tremolos*period)+tstep, tstep)
-        #print("Times: ", trem_times)
+        ##print("Times: ", trem_times)
         tremoloArray = [ ArmListParser.tremolocos(t,period, amp, vert_shift, pick_state) for t in trem_times]
         #fullarray[:len(tremoloArray)] = tremoloArray
-        #print("Tremolo Points: ", tremoloArray)
+        ##print("Tremolo Points: ", tremoloArray)
 
         # Add in a fill at the very end if needed
         end_fill = duration - trem_times[-1]
         fill_array = []
         if end_fill >0 :
             fill_array = np.full(int(period//0.005), ArmListParser.tremolocos(trem_times[-1], period, amp, vert_shift, pick_state))
-            # print("Fill array: ", fill_array)
+            # #print("Fill array: ", fill_array)
         tremoloArray.extend(fill_array)
-        # print("Full Tremolo Array: ", tremoloArray)
+        # #print("Full Tremolo Array: ", tremoloArray)
 
         return tremoloArray
 
     @staticmethod
     def scaleAmplitude(max_amplitude, min_amplitude, speed):
-        print("Max Amplitude, Min Amplitude: ", max_amplitude, min_amplitude)
+        #print("Max Amplitude, Min Amplitude: ", max_amplitude, min_amplitude)
         low_speed = 1
         high_speed = 10
         scaledAmp = max_amplitude + ((speed - low_speed) / (high_speed - low_speed)) * (min_amplitude - max_amplitude)
