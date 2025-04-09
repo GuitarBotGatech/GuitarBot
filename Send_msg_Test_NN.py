@@ -386,14 +386,10 @@ UDP_PORT = 12000
 # strum_message =  [["UP", 0.0]]
 # pluck_message = [[40, 6, 10, 1], [50, 6, 10, 1], [59, 6, 10, 1]]
 
-# Testing Start / Stop Button
-chords_message = [["On", 0]]
+chords_message = [["On", 11]]
 strum_message =  [["UP", 0.0]]
-pluck_message = [[40, 2, 10, 1]] # Pressing start on one of the strings in the UI will interpolate one tremolo and keep appending it until a stop message is received
+pluck_message = [[59, 0.1, 1, 1], [59, 0.1, 1, 2], [59, 0.1, 1, 3], [59, 0.1, 1, 4], [59, 0.1, 1, 5], [59, 0.1, 1, 6], [59, 0.1, 1, 7], [59, 0.1, 1, 8], [59, 0.1, 1, 9], [59, 0.1, 1, 10]]
 
-# chords_message_2 = [["On", 3]]
-# strum_message_2 =  [["UP", 0.0]]
-# pluck_message_2 = [[40, 2, 10, 0]] # Pressing start on one of the strings in the UI will interpolate one tremolo and keep appending it until a stop message is received
 
 # Derrick Demo for 2/27/2025 -- Randomly generated three picker tremolos with amplitude scaling
 def create_tremolo_message():
@@ -434,10 +430,10 @@ def main():
     # Create an OSC client
     client = SimpleUDPClient(UDP_IP, UDP_PORT)
     # # Send Message 1
-    # send_osc_message(client, "/Chords", chords_message)
-    # send_osc_message(client, "/Strum", strum_message)
-    # send_osc_message(client, "/Pluck", pluck_message)
-    # time.sleep(5)
+    send_osc_message(client, "/Chords", chords_message)
+    send_osc_message(client, "/Strum", strum_message)
+    send_osc_message(client, "/Pluck", pluck_message)
+    time.sleep(5)
     #
     # # Send Message 2
     # send_osc_message(client, "/Chords", chords_message_2)
@@ -449,15 +445,6 @@ def main():
     # send_osc_message(client, "/Chords", chords_message_3)
     # send_osc_message(client, "/Strum", strum_message_3)
     # send_osc_message(client, "/Pluck", pluck_message_3)
-
-    # Send Start Button Message for Low E String (Default will just be On for chords and Up for strum)
-    counter = 0
-    while counter < 5:
-        send_osc_message(client, "/Chords", chords_message)
-        send_osc_message(client, "/Strum", strum_message)
-        send_osc_message(client, "/Pluck", pluck_message)
-        counter +=1
-        time.sleep(0.005)
 
 
 
