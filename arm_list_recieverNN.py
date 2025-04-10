@@ -48,7 +48,7 @@ def udp_listener():
             message_type, message_body = decode_osc_message(data_queue.get_nowait())
             if message_type:
                 message_queue.put((message_type, message_body))
-                print(f"Received {message_type}: {message_body}")
+                print(f"Received {message_type}: {message_body}\n")
                 print("Message Queue Size: ", message_queue.qsize())
 
 def process_messages():

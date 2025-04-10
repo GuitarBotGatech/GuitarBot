@@ -24,9 +24,9 @@ UDP_PORT = 12000
 
 # pluck_message = [[56, 1, 2, 5]]
 # Final Countdown
-# chords_message = [["F#m", 1.0], ["D", 2.0], ["Bm", 4.0], ["E", 6.0], ["Fdim7", 7.0],["F#m", 8.0], ["D", 10.0], ["Bm", 12.0], ["On", 14.0]]
-# strum_message =  [["UP", 0.0]]
-# pluck_message =  [[50, 1, 5, 0]]
+chords_message = [["F#m", 1.0], ["D", 2.0], ["Bm", 4.0], ["E", 6.0], ["Fdim7", 7.0],["F#m", 8.0], ["D", 10.0], ["Bm", 12.0], ["On", 14.0]]
+strum_message =  [["UP", 0.0]]
+pluck_message =  [[50, 1, 5, 0]]
 # Testing multiple phrases
 # chords_message = [["On", 6]]
 # strum_message =  [["UP", 0]]
