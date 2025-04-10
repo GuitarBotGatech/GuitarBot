@@ -186,28 +186,28 @@ class Ui_MainWindow(object):
     def start_string(self, string):
         if string == "e":
         #40-49 e
-            e_string = [[int(self.note_e_edit.text()), int(self.duration_indefinite), int(self.speed_e_edit.text()), 0.0]]
+            e_string = [[int(self.note_e_edit.text()), float(self.duration_indefinite), int(self.speed_e_edit.text()), 0.0]]
             self.update_message("Starting E String...")
             self.update_message(str(e_string))
             self.send_to_udp(e_string)
         if string == "d":
         #50-58 d
-            d_string = [[int(self.note_d_edit.text()), int(self.duration_indefinite), int(self.speed_d_edit.text()), 0.0]]
+            d_string = [[int(self.note_d_edit.text()), float(self.duration_indefinite), int(self.speed_d_edit.text()), 0.0]]
             self.update_message("Starting D String...")
             self.update_message(str(d_string))
             self.send_to_udp(d_string)
         if string == "b":
         #59-68 b
-            b_string = [[int(self.note_b_edit.text()), int(self.duration_indefinite), int(self.speed_b_edit.text()), 0.0]]
+            b_string = [[int(self.note_b_edit.text()), float(self.duration_indefinite), int(self.speed_b_edit.text()), 0.0]]
             self.update_message("Starting B String...")
             self.update_message(str(b_string))
             self.send_to_udp(b_string)
         if string == "all":
             self.update_message("Starting All Strings...")
             all_strings = []
-            all_strings.append([int(self.note_e_edit.text()), int(self.duration_indefinite), int(self.speed_e_edit.text()), 0.0])
-            all_strings.append([int(self.note_d_edit.text()), int(self.duration_indefinite), int(self.speed_d_edit.text()), 0.0])
-            all_strings.append([int(self.note_b_edit.text()), int(self.duration_indefinite), int(self.speed_b_edit.text()), 0.0])
+            all_strings.append([int(self.note_e_edit.text()), float(self.duration_indefinite), int(self.speed_e_edit.text()), 0.0])
+            all_strings.append([int(self.note_d_edit.text()), float(self.duration_indefinite), int(self.speed_d_edit.text()), 0.0])
+            all_strings.append([int(self.note_b_edit.text()), float(self.duration_indefinite), int(self.speed_b_edit.text()), 0.0])
             for note in all_strings:
                 self.update_message(str(note))
             self.send_to_udp(all_strings)
@@ -246,7 +246,7 @@ class Ui_MainWindow(object):
         print(f"Sending message to /Chord: {self.default_chord}")
         print(f"Sending message to /Strum: {self.default_strum}")
         print(f"Sending message to /Pluck: {pprint.pformat(arr)}")
-        client.send_message("/Chord", self.default_chord)
+        client.send_message("/Chords", self.default_chord)
         client.send_message("/Strum", self.default_strum)
         client.send_message("/Pluck", arr)
 
