@@ -96,7 +96,7 @@ class Ui_MainWindow(object):
         self.start_button_d = QtWidgets.QPushButton(self.centralwidget)
         self.start_button_d.setGeometry(QtCore.QRect(350, 200, 93, 28))
         self.start_button_d.setObjectName("start_button_d")
-        self.start_button_d.clicked.connect(lambda: self.start_string("b"))
+        self.start_button_d.clicked.connect(lambda: self.start_string("d"))
         self.pause_button_b = QtWidgets.QPushButton(self.centralwidget)
         self.pause_button_b.setGeometry(QtCore.QRect(450, 240, 93, 28))
         self.pause_button_b.setObjectName("pause_button_b")
@@ -244,7 +244,7 @@ class Ui_MainWindow(object):
                 
     
     def send_to_udp(self, arr):
-        self.default_chord[0][1] = arr[len(arr)-1][3] + 1
+        self.default_chord[0][1] = arr[len(arr)-1][3] + arr[len(arr)-1][1]
         print(f"Sending message to /Chords: {self.default_chord}")
         print(f"Sending message to /Strum: {self.default_strum}")
         print(f"Sending message to /Pluck: {pprint.pformat(arr)}")
