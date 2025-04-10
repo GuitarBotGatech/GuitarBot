@@ -22,9 +22,9 @@ class Ui_MainWindow(object):
         start_val = 1
         self.default_chord = [["On", 0.0]]
         self.default_strum = [["UP", 0.0]]
-        self.e_melody = [[41, 1.0, 5, start_val], [42, 1.0, 5, 1.0], [44, 1.0, 5, 2.0], [46, 1.0, 5, 3.0]]
-        self.d_melody = [[51, 1.0, 5, start_val], [52, 1.0, 5, 1.0], [54, 1.0, 5, 2.0], [56, 1.0, 5, 3.0]]
-        self.b_melody = [[59, 1.0, 5, start_val], [60, 1.0, 5, 1.0], [62, 1.0, 5, 2.0], [64, 1.0, 5, 3.0]]
+        self.e_melody = [[41, 1.0, 5, start_val], [42, 1.0, 5, 1.0 + start_val], [44, 1.0, 5, 2.0 + start_val], [46, 1.0, 5, 3.0 + start_val]]
+        self.d_melody = [[51, 1.0, 5, start_val], [52, 1.0, 5, 1.0 + start_val], [54, 1.0, 5, 2.0 + start_val], [56, 1.0, 5, 3.0 + start_val]]
+        self.b_melody = [[59, 1.0, 5, start_val], [60, 1.0, 5, 1.0 + start_val], [62, 1.0, 5, 2.0 + start_val], [64, 1.0, 5, 3.0 + start_val]]
         self.duration_indefinite = 10
         self.centralwidget = QtWidgets.QWidget(MainWindow)
         self.centralwidget.setObjectName("centralwidget")
