@@ -9,9 +9,9 @@ from pythonosc.osc_message import OscMessage
 from pythonosc.parsing import osc_types
 
 # For External
-# UDP_IP = "192.168.1.1"
+UDP_IP = "192.168.1.1"
 # For Local
-UDP_IP = "127.0.0.1"
+# UDP_IP = "127.0.0.1"
 UDP_PORT = 12000
 # initial_point = [0,0,0,0,0,0,-10,-10,-10,-10,-10,-10, -115, 9, 7,7]
 # 6 sliders, 6 pressers, 1 strummer-slider, 1 strummer-plucker, Two pluckers for now, convert to encoder_ticks
