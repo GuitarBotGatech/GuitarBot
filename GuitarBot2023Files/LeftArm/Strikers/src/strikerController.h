@@ -1117,7 +1117,7 @@ public:
             if(i >= 15){ //Picker
                 pos2pulse = (start_state_PICK * 1024) / 9.4;
                 if(i == 16){
-                    start_state_PICK = 3.5;
+                    start_state_PICK = 3.25;
                     pos2pulse = (start_state_PICK * 2048) / 9.4;
                     }
                 if(i == 17){
