@@ -1462,6 +1462,9 @@ class ArmListParser:
         for curr_chord in chords:
             note = curr_chord[0][0]
             timestamp = curr_chord[1]
+            print("curr_chord: ", curr_chord)
+            print("Timestamp: ", timestamp)
+            print("Timestamp Type: ", type(timestamp))
             timestamp = round(timestamp * 200) / 200
 
             # Parse the chord
