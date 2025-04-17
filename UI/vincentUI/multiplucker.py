@@ -11,20 +11,24 @@
 from PyQt5 import QtCore, QtGui, QtWidgets
 from pythonosc.udp_client import SimpleUDPClient
 import pprint
+import pretty_midi
 ip = "127.0.0.1"
-port = 12000
+# port = 12000
+port = 5005
+# ^^^ testing receiving
 
 client = SimpleUDPClient(ip, port)
 class Ui_MainWindow(object):
     def setupUi(self, MainWindow):
         MainWindow.setObjectName("MainWindow")
         MainWindow.resize(709, 488)
-        start_val = 1
+        self.start_val = 1
         self.default_chord = [["On", 0.0]]
         self.default_strum = [["UP", 0.0]]
-        self.e_melody = [[41, 1.0, 5, start_val], [42, 1.0, 5, 1.0 + start_val], [44, 1.0, 5, 2.0 + start_val], [46, 1.0, 5, 3.0 + start_val]]
-        self.d_melody = [[51, 1.0, 5, start_val], [52, 1.0, 5, 1.0 + start_val], [54, 1.0, 5, 2.0 + start_val], [56, 1.0, 5, 3.0 + start_val]]
-        self.b_melody = [[59, 1.0, 5, start_val], [60, 1.0, 5, 1.0 + start_val], [62, 1.0, 5, 2.0 + start_val], [64, 1.0, 5, 3.0 + start_val]]
+        self.e_melody = [[41, 1.0, 5, self.start_val], [42, 1.0, 5, 1.0 + self.start_val], [44, 1.0, 5, 2.0 + self.start_val], [46, 1.0, 5, 3.0 + self.start_val]]
+        self.d_melody = [[51, 1.0, 5, self.start_val], [52, 1.0, 5, 1.0 + self.start_val], [54, 1.0, 5, 2.0 + self.start_val], [56, 1.0, 5, 3.0 + self.start_val]]
+        self.b_melody = [[59, 1.0, 5, self.start_val], [60, 1.0, 5, 1.0 + self.start_val], [62, 1.0, 5, 2.0 + self.start_val], [64, 1.0, 5, 3.0 + self.start_val]]
+        self.loaded_melody = []
         self.duration_indefinite = 10
         self.centralwidget = QtWidgets.QWidget(MainWindow)
         self.centralwidget.setObjectName("centralwidget")
@@ -58,6 +62,14 @@ class Ui_MainWindow(object):
         self.label_7 = QtWidgets.QLabel(self.centralwidget)
         self.label_7.setGeometry(QtCore.QRect(150, 120, 71, 16))
         self.label_7.setObjectName("label_7")
+        self.load_button = QtWidgets.QPushButton(self.centralwidget)
+        self.load_button.setGeometry(QtCore.QRect(135, 80, 93, 28))
+        self.load_button.setObjectName("load_button")
+        self.load_button.clicked.connect(self.load_midi)
+        self.play_loaded = QtWidgets.QPushButton(self.centralwidget)
+        self.play_loaded.setGeometry(QtCore.QRect(250, 80, 93, 28))
+        self.play_loaded.setObjectName("play_loaded")
+        self.play_loaded.clicked.connect(lambda: self.get_array("loaded"))
         self.note_e_edit = QtWidgets.QLineEdit(self.centralwidget)
         self.note_e_edit.setGeometry(QtCore.QRect(130, 160, 101, 22))
         self.note_e_edit.setObjectName("note_e_edit")
@@ -143,7 +155,12 @@ class Ui_MainWindow(object):
         self.statusbar = QtWidgets.QStatusBar(MainWindow)
         self.statusbar.setObjectName("statusbar")
         MainWindow.setStatusBar(self.statusbar)
-
+        QtWidgets.QWidget.setTabOrder(self.note_e_edit, self.speed_e_edit)
+        QtWidgets.QWidget.setTabOrder(self.speed_e_edit, self.note_d_edit)
+        QtWidgets.QWidget.setTabOrder(self.note_d_edit, self.speed_d_edit)
+        QtWidgets.QWidget.setTabOrder(self.speed_d_edit, self.note_b_edit)
+        QtWidgets.QWidget.setTabOrder(self.note_b_edit, self.speed_b_edit)
+        QtWidgets.QWidget.setTabOrder(self.speed_b_edit, self.note_e_edit)
         self.retranslateUi(MainWindow)
         QtCore.QMetaObject.connectSlotsByName(MainWindow)
 
@@ -157,6 +174,8 @@ class Ui_MainWindow(object):
         self.label_5.setText(_translate("MainWindow", "Strings:"))
         self.label_6.setText(_translate("MainWindow", "Speed"))
         self.label_7.setText(_translate("MainWindow", "Note (MIDI)"))
+        self.load_button.setText(_translate("MainWindow", "Load File"))
+        self.play_loaded.setText(_translate("MainWindow", "Play Loaded MIDI"))
         self.start_button.setText(_translate("MainWindow", "Start All"))
         self.pause_button.setText(_translate("MainWindow", "Pause All"))
         self.calibrate_button.setText(_translate("MainWindow", "Calibrate"))
@@ -184,32 +203,76 @@ class Ui_MainWindow(object):
     def update_message(self, message):
         self.message_text.append(message)
     
+    def load_midi(self):
+        file_dialog = QtWidgets.QFileDialog()
+        midi_file, _ = file_dialog.getOpenFileName(None, "Open MIDI File", "", "MIDI Files (*.mid *.midi)")
+        
+        if midi_file:
+            self.load_midi_data(midi_file)
+    
+    def load_midi_data(self, midi_file):
+        try:
+            midi_data = pretty_midi.PrettyMIDI(midi_file)
+            
+            # Clear any existing notes in the array
+            self.loaded_melody.clear()
+
+            # A list to store the last note's end time for calculating speed
+
+            # Extract note information from each instrument
+            for instrument in midi_data.instruments:
+                for note in instrument.notes:
+                    # Calculate the note's duration
+                    temp = []
+                    duration = float(note.end - note.start)
+                    
+                    # Calculate the speed (difference in start time between consecutive notes)
+                    temp.append(int(note.pitch))
+                    temp.append(duration)
+                    temp.append(5)
+                    temp.append(float(note.start + self.start_val))
+                    # Store the note information as a dictionary
+                    self.loaded_melody.append(temp)
+                    
+                    # Update last end time
+
+                    # Update the total duration based on the last note's end time
+
+            # Set the progress bar's maximum value to the total duration of the MIDI file
+            # self.progressBar.setMaximum(int(total_duration))
+
+            # Print out the array for debugging
+            self.update_message("Loaded MIDI with "+str(len(self.loaded_melody))+" notes.")
+            self.update_message("Loaded MIDI:\n" + str(pprint.pformat(self.loaded_melody)))
+        except Exception as e:
+            print(f"Error loading MIDI file: {e}")
+
     def start_string(self, string):
         start_val = 1
         if string == "e":
         #40-49 e
-            e_string = [[int(self.note_e_edit.text()), float(self.duration_indefinite), int(self.speed_e_edit.text()), start_val]]
+            e_string = [[int(self.note_e_edit.text()), float(self.duration_indefinite), int(self.speed_e_edit.text()), self.start_val]]
             self.update_message("Starting E String...")
             self.update_message(str(e_string))
             self.send_to_udp(e_string)
         if string == "d":
         #50-58 d
-            d_string = [[int(self.note_d_edit.text()), float(self.duration_indefinite), int(self.speed_d_edit.text()), start_val]]
+            d_string = [[int(self.note_d_edit.text()), float(self.duration_indefinite), int(self.speed_d_edit.text()), self.start_val]]
             self.update_message("Starting D String...")
             self.update_message(str(d_string))
             self.send_to_udp(d_string)
         if string == "b":
         #59-68 b
-            b_string = [[int(self.note_b_edit.text()), float(self.duration_indefinite), int(self.speed_b_edit.text()), start_val]]
+            b_string = [[int(self.note_b_edit.text()), float(self.duration_indefinite), int(self.speed_b_edit.text()), self.start_val]]
             self.update_message("Starting B String...")
             self.update_message(str(b_string))
             self.send_to_udp(b_string)
         if string == "all":
             self.update_message("Starting All Strings...")
             all_strings = []
-            all_strings.append([int(self.note_e_edit.text()), float(self.duration_indefinite), int(self.speed_e_edit.text()), start_val])
-            all_strings.append([int(self.note_d_edit.text()), float(self.duration_indefinite), int(self.speed_d_edit.text()), start_val])
-            all_strings.append([int(self.note_b_edit.text()), float(self.duration_indefinite), int(self.speed_b_edit.text()), start_val])
+            all_strings.append([int(self.note_e_edit.text()), float(self.duration_indefinite), int(self.speed_e_edit.text()), self.start_val])
+            all_strings.append([int(self.note_d_edit.text()), float(self.duration_indefinite), int(self.speed_d_edit.text()), self.start_val])
+            all_strings.append([int(self.note_b_edit.text()), float(self.duration_indefinite), int(self.speed_b_edit.text()), self.start_val])
             for note in all_strings:
                 self.update_message(str(note))
             self.send_to_udp(all_strings)
@@ -241,13 +304,20 @@ class Ui_MainWindow(object):
                 all_string_melody.append(self.b_melody[i])
             self.update_message(str(pprint.pformat(all_string_melody)))
             self.send_to_udp(all_string_melody)
-                
+        if string == "loaded":
+            if len(self.loaded_melody) == 0:
+                self.update_message("Empty loaded array. Please load a MIDI file...")
+                return
+            self.update_message("Starting MIDI file melody...")
+            self.update_message(pprint.pformat(self.loaded_melody))
+            self.send_to_udp(self.loaded_melody)
+
     
     def send_to_udp(self, arr):
         self.default_chord[0][1] = arr[len(arr)-1][3] + arr[len(arr)-1][1]
         print(f"Sending message to /Chords: {self.default_chord}")
         print(f"Sending message to /Strum: {self.default_strum}")
-        print(f"Sending message to /Pluck: {pprint.pformat(arr)}")
+        print(f"Sending message to /Pluck:\n {pprint.pformat(arr)}")
         client.send_message("/Chords", self.default_chord)
         client.send_message("/Strum", self.default_strum)
         client.send_message("/Pluck", arr)
