@@ -1774,7 +1774,7 @@ class ArmListParser:
             if fret == 0:
                 lh_enc_val = -1
             else:
-                lh_enc_val = ((slider_mm_values[fret - 1] * 2048) / 9.4) * string_ranges[motor_id][2]
+                lh_enc_val = ((slider_mm_values[fret - 1] * 2048) / 9.4 - 2000) * string_ranges[motor_id][2]
             curr_lhp_event = [motor_id, lh_enc_val, timestamp - .3]
             lh_pick_events.append(curr_lhp_event)
 
