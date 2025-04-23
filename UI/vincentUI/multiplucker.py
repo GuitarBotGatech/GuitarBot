@@ -32,7 +32,7 @@ class Ui_MainWindow(object):
         self.d_melody = [[51, 1.0, 5, self.start_val], [52, 1.0, 5, 1.0 + self.start_val], [54, 1.0, 5, 2.0 + self.start_val], [56, 1.0, 5, 3.0 + self.start_val]]
         self.b_melody = [[59, 1.0, 5, self.start_val], [60, 1.0, 5, 1.0 + self.start_val], [62, 1.0, 5, 2.0 + self.start_val], [64, 1.0, 5, 3.0 + self.start_val]]
         self.loaded_melody = []
-        self.duration_indefinite = 10
+        self.duration_indefinite = 5
         self.centralwidget = QtWidgets.QWidget(MainWindow)
         self.centralwidget.setObjectName("centralwidget")
         self.label = QtWidgets.QLabel(self.centralwidget)
@@ -70,17 +70,13 @@ class Ui_MainWindow(object):
         self.load_button.setObjectName("load_button")
         self.load_button.clicked.connect(self.load_midi)
         self.play_loaded = QtWidgets.QPushButton(self.centralwidget)
-        self.play_loaded.setGeometry(QtCore.QRect(240, 80, 113, 28))
+        self.play_loaded.setGeometry(QtCore.QRect(360, 80, 143, 28))
         self.play_loaded.setObjectName("play_loaded")
         self.play_loaded.clicked.connect(lambda: self.get_array("loaded"))
         self.generate_melody = QtWidgets.QPushButton(self.centralwidget)
-        self.generate_melody.setGeometry(QtCore.QRect(360, 80, 108, 28))
+        self.generate_melody.setGeometry(QtCore.QRect(240, 80, 113, 28))
         self.generate_melody.setObjectName("gen_melody")
         self.generate_melody.clicked.connect(self.gen_random_melody)
-        self.play_generated = QtWidgets.QPushButton(self.centralwidget)
-        self.play_generated.setGeometry(QtCore.QRect(470, 80, 108, 28))
-        self.play_generated.setObjectName("play_gen")
-        self.play_generated.clicked.connect(self)
         self.note_e_edit = QtWidgets.QLineEdit(self.centralwidget)
         self.note_e_edit.setGeometry(QtCore.QRect(130, 160, 101, 22))
         self.note_e_edit.setObjectName("note_e_edit")
@@ -191,7 +187,7 @@ class Ui_MainWindow(object):
         self.label_6.setText(_translate("MainWindow", "Speed"))
         self.label_7.setText(_translate("MainWindow", "Note (MIDI)"))
         self.load_button.setText(_translate("MainWindow", "Load File"))
-        self.play_loaded.setText(_translate("MainWindow", "Play Loaded MIDI"))
+        self.play_loaded.setText(_translate("MainWindow", "Play Loaded/Generated"))
         self.generate_melody.setText(_translate("MainWindow", "Generate Melody"))
         self.start_button.setText(_translate("MainWindow", "Start All"))
         self.pause_button.setText(_translate("MainWindow", "Pause All"))
@@ -265,6 +261,8 @@ class Ui_MainWindow(object):
             # Print out the array for debugging
             self.update_message("Loaded MIDI with "+str(len(self.loaded_melody))+" notes.")
             # self.update_message("Loaded MIDI:\n" + str(pprint.pformat(self.loaded_melody)))
+            self.range_filter(self.loaded_melody)
+            self.string_speed_helper(self.loaded_melody)
             self.update_array_box(self.loaded_melody)
         except Exception as e:
             print(f"Error loading MIDI file: {e}")
@@ -282,8 +280,8 @@ class Ui_MainWindow(object):
             curr_start += .5
         self.update_message("Generated Melody...")
         self.range_filter(self.loaded_melody)
+        self.string_speed_helper(self.loaded_melody)
         self.update_array_box(self.loaded_melody)
-        pass
 
     def range_filter(self, array):
         for note in array:
@@ -294,15 +292,23 @@ class Ui_MainWindow(object):
                     note[0] = note[0] - 12
         self.loaded_melody = array
 
-    def play_generated_melody(self):
-        pass
-
-    def string_speed_helper(self, array, mode):
-        # if mode == "asc":
-        #     for note in array:
-        pass
-
-        
+    def string_speed_helper(self, array):
+        for note in array:
+            if note[0] < 53:
+                note[2] = 2
+            if note[0] < 57 and note[0] >= 53:
+                note[2] = 3
+            if note[0] < 59 and note[0] >= 57:
+                note[2] = 4
+            if note[0] < 61 and note[0] >= 59:
+                note[2] = 5
+            if note[0] < 63 and note[0] >= 61:
+                note[2] = 6
+            if note[0] < 65 and note[0] >= 63:
+                note[2] = 7
+            if note[0] >= 65:
+                note[2] = 8
+        self.loaded_melody = array
 
     def start_string(self, string):
         start_val = 1
