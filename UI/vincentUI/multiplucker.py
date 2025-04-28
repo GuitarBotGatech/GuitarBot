@@ -268,25 +268,55 @@ class Ui_MainWindow(object):
             print(f"Error loading MIDI file: {e}")
 
     def gen_random_melody(self):
+        # self.loaded_melody = []
+        # scale_array = music21.scale.MajorScale("e")
+        # scale_cut = []
+        # for p in scale_array.getPitches("E2", "G4"):
+        #     scale_cut.append(str(p))
+        # curr_start = 0
+        # for i in range(16):
+        #     note_name = random.choice(scale_cut)
+        #     self.loaded_melody.append([int(librosa.note_to_midi(note_name)), .5, 3, float(self.start_val + curr_start)])
+        #     curr_start += .5
+        # self.update_message("Generated Melody...")
+        # self.range_filter(self.loaded_melody)
+        # self.string_speed_helper(self.loaded_melody)
+        # self.update_array_box(self.loaded_melody)
         self.loaded_melody = []
         scale_array = music21.scale.MajorScale("e")
-        scale_cut = []
-        for p in scale_array.getPitches("D3", "G4"):
-            scale_cut.append(str(p))
         curr_start = 0
-        for i in range(16):
-            note_name = random.choice(scale_cut)
-            self.loaded_melody.append([int(librosa.note_to_midi(note_name)), .5, 3, float(self.start_val + curr_start)])
-            curr_start += .5
+        curr_bar = 0
+        last = ""
+        scale_e = []
+        scale_high = []
         self.update_message("Generated Melody...")
+        for p in scale_array.getPitches("E2", "C#3"):
+            scale_e.append(str(p))
+        for p in scale_array.getPitches("D3", "C#4"):
+            scale_high.append(str(p))
+        for i in range(20):
+            if i % 5 == 0:
+                note_name_e = random.choice(scale_e)
+                self.loaded_melody.append([int(librosa.note_to_midi(note_name_e)), .5, 3, float(self.start_val + curr_bar)])
+                last = note_name_e
+                curr_bar += 2
+            elif i % 5 == 1:
+                note_high = int(librosa.note_to_midi(last)) + 12
+                self.loaded_melody.append([note_high, .5, 3, float(self.start_val + curr_start)])
+                last = ""
+                curr_start += .5
+            else:
+                note_name_high = random.choice(scale_high)
+                self.loaded_melody.append([int(librosa.note_to_midi(note_name_high)), .5, 3, float(self.start_val + curr_start)])
+                curr_start += .5
         self.range_filter(self.loaded_melody)
         self.string_speed_helper(self.loaded_melody)
         self.update_array_box(self.loaded_melody)
 
     def range_filter(self, array):
         for note in array:
-            while(note[0] < 50 or note[0] > 67):
-                if note[0] < 50:
+            while(note[0] < 40 or note[0] > 67):
+                if note[0] < 40:
                     note[0] = note[0] + 12
                 if note[0] > 67:
                     note[0] = note[0] - 12
@@ -294,17 +324,17 @@ class Ui_MainWindow(object):
 
     def string_speed_helper(self, array):
         for note in array:
-            if note[0] < 53:
+            if note[0] < 45:
                 note[2] = 2
-            if note[0] < 57 and note[0] >= 53:
+            if note[0] < 49 and note[0] >= 45:
                 note[2] = 3
-            if note[0] < 59 and note[0] >= 57:
+            if note[0] < 53 and note[0] >= 49:
                 note[2] = 4
-            if note[0] < 61 and note[0] >= 59:
+            if note[0] < 57 and note[0] >= 53:
                 note[2] = 5
-            if note[0] < 63 and note[0] >= 61:
+            if note[0] < 61 and note[0] >= 57:
                 note[2] = 6
-            if note[0] < 65 and note[0] >= 63:
+            if note[0] < 65 and note[0] >= 61:
                 note[2] = 7
             if note[0] >= 65:
                 note[2] = 8
@@ -314,23 +344,47 @@ class Ui_MainWindow(object):
         start_val = 1
         if string == "e":
         #40-49 e
+            if int(self.note_e_edit.text()) < 40 or int(self.note_e_edit.text()) > 49:
+                self.update_message("Invalid input for E note: 40-49")
+                return
+            if int(self.speed_e_edit.text()) < 1 or int(self.speed_e_edit.text()) > 10:
+                self.update_message("invalid input for E speed: 1-10")
+                return
             e_string = [[int(self.note_e_edit.text()), float(self.duration_indefinite), int(self.speed_e_edit.text()), self.start_val]]
             self.update_message("Starting E String...")
             self.update_array_box(e_string)
             # self.send_to_udp(e_string)
         if string == "d":
         #50-58 d
+            if int(self.note_d_edit.text()) < 50 or int(self.note_d_edit.text()) > 58:
+                self.update_message("Invalid input for D note: 50-58")
+                return
+            if int(self.speed_d_edit.text()) < 1 or int(self.speed_d_edit.text()) > 10:
+                self.update_message("invalid input for D speed: 1-10")
+                return
             d_string = [[int(self.note_d_edit.text()), float(self.duration_indefinite), int(self.speed_d_edit.text()), self.start_val]]
             self.update_message("Starting D String...")
             self.update_array_box(d_string)
             self.send_to_udp(d_string)
         if string == "b":
         #59-68 b
+            if int(self.note_b_edit.text()) < 59 or int(self.note_b_edit.text()) > 68:
+                self.update_message("Invalid input for B note: 59-")
+                return
+            if int(self.speed_b_edit.text()) < 1 or int(self.speed_b_edit.text()) > 10:
+                self.update_message("invalid input for B speed: 1-10")
+                return
             b_string = [[int(self.note_b_edit.text()), float(self.duration_indefinite), int(self.speed_b_edit.text()), self.start_val]]
             self.update_message("Starting B String...")
             self.update_array_box(b_string)
             self.send_to_udp(b_string)
         if string == "all":
+            if int(self.note_e_edit.text()) < 40 or int(self.note_e_edit.text()) > 49 or int(self.note_d_edit.text()) < 50 or int(self.note_d_edit.text()) > 58 or int(self.note_b_edit.text()) < 59 or int(self.note_b_edit.text()) > 68:
+                self.update_message("Invalid note number... Check note number for each string")
+                return
+            if int(self.speed_d_edit.text()) < 1 or int(self.speed_d_edit.text()) > 10 or int(self.speed_b_edit.text()) < 1 or int(self.speed_b_edit.text()) > 10 or nt(self.speed_e_edit.text()) < 1 or int(self.speed_e_edit.text()) > 10:
+                self.update_message("Invalid speed... Check speed input for each string")
+                return
             self.update_message("Starting All Strings...")
             all_strings = []
             # all_strings.append([int(self.note_e_edit.text()), float(self.duration_indefinite), int(self.speed_e_edit.text()), self.start_val])
