@@ -12,12 +12,12 @@ from PyQt5 import QtCore, QtGui, QtWidgets
 from pythonosc.udp_client import SimpleUDPClient
 import pprint
 import pretty_midi
-import music21
-import librosa
+# import music21
+# import librosa
 import random
 ip = "127.0.0.1"
-# port = 12000
-port = 5005
+port = 12000
+# port = 5005
 # ^^^ testing receiving
 
 client = SimpleUDPClient(ip, port)
