@@ -739,7 +739,7 @@ int Epos4::setOpMode(OpMode opMode, uint8_t uiInterpolationTime, int8_t iInterpo
             LOG_ERROR("setHomingMethod");
             return -1;
         }
-        n = SetHomeOffset(52000); //52000
+        n = SetHomeOffset(50000); //52000
 
         if(m_uiNodeID >= 15){
             n = SetHomeOffset(0);
