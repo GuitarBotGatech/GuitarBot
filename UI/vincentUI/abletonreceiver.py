@@ -1,18 +1,12 @@
-from pythonosc.dispatcher import Dispatcher
-from pythonosc.osc_server import BlockingOSCUDPServer
+from pythonosc import dispatcher
+from pythonosc import osc_server
 
-# This will handle incoming OSC messages
-def osc_message_handler(address, *args):
-    print(f"Received {address}: {args}")
+def midi_handler(address, *args):
+    print(f"Received MIDI: {args}")
 
-# Create the dispatcher
-dispatcher = Dispatcher()
-dispatcher.map("/live/clip/notes", osc_message_handler)  # Listen to everything, or use specific paths like '/live/clip/notes'
+disp = dispatcher.Dispatcher()
+disp.map("/live/clip/get/*", midi_handler)
 
-# Create the server
-ip = "127.0.0.1"  # localhost
-port = 11000      # Match the AbletonOSC sending port
-server = BlockingOSCUDPServer((ip, port), dispatcher)
-
-print(f"Listening for OSC on {ip}:{port}...")
+server = osc_server.ThreadingOSCUDPServer(("127.0.0.1", 11001), disp)
+print("Listening for OSC messages on port 11001...")
 server.serve_forever()

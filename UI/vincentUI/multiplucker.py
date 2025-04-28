@@ -28,9 +28,9 @@ class Ui_MainWindow(object):
         self.start_val = 1
         self.default_chord = [["On", 0.0]]
         self.default_strum = [["UP", 0.0]]
-        self.e_melody = [[41, 1.0, 5, self.start_val], [42, 1.0, 5, 1.0 + self.start_val], [44, 1.0, 5, 2.0 + self.start_val], [46, 1.0, 5, 3.0 + self.start_val]]
-        self.d_melody = [[51, 1.0, 5, self.start_val], [52, 1.0, 5, 1.0 + self.start_val], [54, 1.0, 5, 2.0 + self.start_val], [56, 1.0, 5, 3.0 + self.start_val]]
-        self.b_melody = [[59, 1.0, 5, self.start_val], [60, 1.0, 5, 1.0 + self.start_val], [62, 1.0, 5, 2.0 + self.start_val], [64, 1.0, 5, 3.0 + self.start_val]]
+        self.e_melody = [[41, 1.0, 5, self.start_val], [42, 1.0, 7, 1.0 + self.start_val], [44, 1.0, 3, 2.0 + self.start_val], [46, 1.0, 5, 3.0 + self.start_val]]
+        self.d_melody = [[51, 1.0, 5, self.start_val], [52, 1.0, 5, 1.0 + self.start_val], [54, 1.0, 5, 2.0 + self.start_val], [56, 1.0, 7, 3.0 + self.start_val]]
+        self.b_melody = [[59, 1.0, 5, self.start_val], [60, 1.0, 3, 1.0 + self.start_val], [62, 1.0, 7, 2.0 + self.start_val], [64, 1.0, 5, 3.0 + self.start_val]]
         self.loaded_melody = []
         self.duration_indefinite = 5
         self.centralwidget = QtWidgets.QWidget(MainWindow)
@@ -283,6 +283,7 @@ class Ui_MainWindow(object):
         # self.string_speed_helper(self.loaded_melody)
         # self.update_array_box(self.loaded_melody)
         self.loaded_melody = []
+        random_scale_pick = []
         scale_array = music21.scale.MajorScale("e")
         curr_start = 0
         curr_bar = 0
