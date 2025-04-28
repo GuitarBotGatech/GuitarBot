@@ -287,6 +287,7 @@ class Ui_MainWindow(object):
         curr_start = 0
         curr_bar = 0
         last = ""
+        last_high = ""
         scale_e = []
         scale_high = []
         self.update_message("Generated Melody...")
@@ -297,18 +298,32 @@ class Ui_MainWindow(object):
         for i in range(20):
             if i % 5 == 0:
                 note_name_e = random.choice(scale_e)
-                self.loaded_melody.append([int(librosa.note_to_midi(note_name_e)), .5, 3, float(self.start_val + curr_bar)])
+                if last != "":
+                    if abs(int(librosa.note_to_midi(note_name_e)) - int(librosa.note_to_midi(last))) > 5:
+                        while (abs(int(librosa.note_to_midi(note_name_e)) - int(librosa.note_to_midi(last))) > 5):
+                            note_name_e = random.choice(scale_e)
+                self.loaded_melody.append([int(librosa.note_to_midi(note_name_e)), 2.4, 3, round(float(self.start_val + curr_bar),1)])
                 last = note_name_e
-                curr_bar += 2
+                curr_bar += 2.4
             elif i % 5 == 1:
-                note_high = int(librosa.note_to_midi(last)) + 12
-                self.loaded_melody.append([note_high, .5, 3, float(self.start_val + curr_start)])
+                note_high = last
+                if last != "" and last_high != "":
+                    if abs(int(librosa.note_to_midi(note_high)) + 12 - int(librosa.note_to_midi(last_high))) > 5:
+                        while (abs(int(librosa.note_to_midi(note_high)) - int(librosa.note_to_midi(last_high))) > 5):
+                            note_high = random.choice(scale_high)
+                self.loaded_melody.append([int(librosa.note_to_midi(note_high)) + 12, .6, 3, round(float(self.start_val + curr_start), 1)])
                 last = ""
-                curr_start += .5
+                last_high = note_high
+                curr_start += .6
             else:
                 note_name_high = random.choice(scale_high)
-                self.loaded_melody.append([int(librosa.note_to_midi(note_name_high)), .5, 3, float(self.start_val + curr_start)])
-                curr_start += .5
+                if last_high != "":
+                    if abs(int(librosa.note_to_midi(note_high)) + 12 - int(librosa.note_to_midi(last_high))) > 5 and last_high != "":
+                        while (abs(int(librosa.note_to_midi(note_high)) - int(librosa.note_to_midi(last_high))) > 5):
+                            note_name_high = random.choice(scale_high)
+                self.loaded_melody.append([int(librosa.note_to_midi(note_name_high)), .6, 3, round(float(self.start_val + curr_start), 1)])
+                last_high = note_high
+                curr_start += .6
         self.range_filter(self.loaded_melody)
         self.string_speed_helper(self.loaded_melody)
         self.update_array_box(self.loaded_melody)
@@ -382,7 +397,7 @@ class Ui_MainWindow(object):
             if int(self.note_e_edit.text()) < 40 or int(self.note_e_edit.text()) > 49 or int(self.note_d_edit.text()) < 50 or int(self.note_d_edit.text()) > 58 or int(self.note_b_edit.text()) < 59 or int(self.note_b_edit.text()) > 68:
                 self.update_message("Invalid note number... Check note number for each string")
                 return
-            if int(self.speed_d_edit.text()) < 1 or int(self.speed_d_edit.text()) > 10 or int(self.speed_b_edit.text()) < 1 or int(self.speed_b_edit.text()) > 10 or nt(self.speed_e_edit.text()) < 1 or int(self.speed_e_edit.text()) > 10:
+            if int(self.speed_d_edit.text()) < 1 or int(self.speed_d_edit.text()) > 10 or int(self.speed_b_edit.text()) < 1 or int(self.speed_b_edit.text()) > 10 or int(self.speed_e_edit.text()) < 1 or int(self.speed_e_edit.text()) > 10:
                 self.update_message("Invalid speed... Check speed input for each string")
                 return
             self.update_message("Starting All Strings...")
