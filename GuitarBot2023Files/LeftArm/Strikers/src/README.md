@@ -119,7 +119,6 @@ The `def.h` header is a central configuration file that defines key constants, m
 | `CLEAR_FAULT_TIMER_INTERVAL` | 100 (ms) - Interval for clearing faults. Unexplored, probably useful |
 | `MAX_STRIKER_ANGLE_DEG` | 180 - Maximum angle for striker movement (degrees). Unused |
 
-
 ---
 
 **Usage Notes**
@@ -129,47 +128,47 @@ The constants for actuator counts (`NUM_STRIKERS`, `NUM_PRESSERS`, etc.) are use
 - **Direction Table**:
 The `kStrikerDirection` array allows the system to account for mechanical inversion in certain actuators f they're flipped in an opposite direction for example
 - **Fret Positioning**:
-The `FRET_LENGTHS` array provides precomputed fret positions for precise slider targeting, enabling accurate musical pitch control.
-- **Trajectory Planning**:
-Parameters such as `MAX_TRAJ_POINTS`, `NUM_POINTS_IN_TRAJ_FOR_HIT`, and `NUM_POINTS_IN_TRAJ_FOR_UP` are critical for defining the resolution and phases of actuator movements.
-- **Safety and Fault Handling**:
-The `DISCONTINUITY_THRESHOLD` and `CLEAR_FAULT_TIMER_INTERVAL` constants are used to detect and recover from motion errors or hardware faults.
+The `FRET_LENGTHS` array provides precomputed fret positions. You might need to adjust these if your positions aren't correct.
 
 ---
 
-**Example Inclusion**
+<img src="https://r2cdn.perplexity.ai/pplx-full-logo-primary-dark%402x.png" class="logo" width="120"/>
 
-```cpp
-#include "def.h"
+## striker.h
 
-// Example: Using NUM_STRIKERS to initialize an array
-Striker strikers[NUM_STRIKERS];
-```
-
+The `striker.h` header defines the `Striker` class, which encapsulates the control logic for a single actuator (striker, presser, plucker, or strummer mechanism) in the StrikerController system. Each `Striker` object manages the initialization, homing, trajectory generation, and real-time control of its associated motor, interfacing directly with the EPOS4 motor driver.
 
 ---
 
-**Summary**
+**Key Features**
 
-`def.h` provides foundational hardware and motion parameters, ensuring consistency and maintainability across the StrikerController codebase. Adjustments to this file allow for quick adaptation to different hardware configurations or performance requirements[^1].
+- **Initialization \& Homing**
+    - `init(int iNodeId, MotorSpec spec)`: Initializes the motor with a given node ID and motor specification, configuring direction and encoder resolution based on hardware layout.
+    - `startHome(int iNodeID)`, `home(int iNodeID)`: Executes homing routines using appropriate homing methods for different actuator types, ensuring the motor references its zero position.
+    - `homingStatus()`: Returns true if the device is currently homing.
+- **Position \& Motion Control**
+    - `getPosition()`, `getPosition_ticks()`: Retrieves the current position in degrees or encoder ticks.
+    - `rotate(int pos)`: Commands the actuator to move to a specific position.
+    - `setTorque()`: relevant for moving pressers.
+    - `testMove(int32_t pos)`: Performs a test move to the specified position.
+    - `press(int command)`: Applies a specified torque for pressing actions (e.g., fret pressing).
 
-<div style="text-align: center">⁂</div>
+- **Fault Handling \& Recovery**
+    - `checkAndRecover()`: Detects and recovers from device faults by disabling PDO, clearing faults, and re-enabling the device.
+    - `reset()`, `shutdown()`: Resets the actuator state and hardware, disabling motion and clearing initialization flags.
+- **CANopen Communication**
+    - `setRxMsg(can_message_t&amp; msg)`, `PDO_processMsg(can_message_t&amp; msg)`, `handleEMCYMsg(can_message_t&amp; msg)`: Interfaces with CAN bus for real-time data and error handling.
+    - `enablePDO(bool bEnable)`, `enable(bool bEnable)`: Enables or disables Process Data Object (PDO) communication and actuator power.
 
-[^1]: def.h
+---
+## Notes
+- The pressers have a press and unpress mode to be micromanaged. The idea is that the presser switch state when the motor recieves a negative or positive torque values. Positive torque values should be the press mode and negative values should be the unpress mode. The position of the motor oscillates when switching modes, so a range of values should be set as a boundary so that the motor has a buffer of values to consider as the specified state. 
 
-[^2]: ErrorDef.h
+---
 
-[^3]: striker.h
 
-[^4]: strikerController.h
 
-[^5]: epos4_def.h
 
-[^6]: epos4.h
-
-[^7]: epos4.cpp
-
-[^8]: strikerController.h
 
 
 
