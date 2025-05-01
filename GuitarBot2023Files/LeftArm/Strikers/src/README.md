@@ -132,8 +132,6 @@ The `FRET_LENGTHS` array provides precomputed fret positions. You might need to 
 
 ---
 
-<img src="https://r2cdn.perplexity.ai/pplx-full-logo-primary-dark%402x.png" class="logo" width="120"/>
-
 ## striker.h
 
 The `striker.h` header defines the `Striker` class, which encapsulates the control logic for a single actuator (striker, presser, plucker, or strummer mechanism) in the StrikerController system. Each `Striker` object manages the initialization, homing, trajectory generation, and real-time control of its associated motor, interfacing directly with the EPOS4 motor driver.
