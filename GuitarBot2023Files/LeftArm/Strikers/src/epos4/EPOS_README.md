@@ -199,21 +199,36 @@ int Epos4::setHomingCurrentThreshold(_WORD currentThreshold){
 
 ### `readObj(_WORD index, _BYTE subIndex, _DWORD* answer)`
 
-If you understand writeObj, readObj should feel intuitive. If you give some address (index) and a sub-index (subindex) and a pointer, you should be able to recieve the value at that address and subindex saved to the pointer. 
+If you understand writeObj, readObj should feel intuitive. readObj is another SDO function that fetches data from the motor controllers so you can save it to a pointer. If you give some address (index) and a sub-index (subIndex) and a pointer (answer), you should be able to recieve the value at that address and subindex saved to the pointer. 
 
 
 #### `PDO_config()`
 
+PDO is the realtime control mechanism that we use to move GuitarBot. As stated in the definitions, it comes in the form of RPDO to set new positions/ torque values to the motor controllers and TPDO to read position values from the motor controllers. 
+
 ```cpp
 int Epos4::PDO_config()
 ```
+Configures TPDO then RPDO during initialization for every motor controller. Let's start with RPDO first; we need to follow these steps:
+1. Set COB-ID
+2. Set Transmission type
+3. Set RPDOmapping:
+     a. Write the value “0” (zero) to subindex 0x00 (disable PDO).
+     b. Modify the desired objects in subindex 0x01…0x0n.
+     c. Write the desired number of mapped objects to subindex 0x00.
 
-**PDO Mapping**:
-
+The COB-ID (communication object identifier) is just a unique address for RPDO to know where data is being accessible. In order to make sure they are unique for every node, we add the node-ID to the COB-ID which is set in the `epos.def` file. The transmission type determines when data is being written; a value of 1 (synchronous) means the data is written at specific intervals. A value of 255 (asynchronous) means data can be written regardless of time at the cost of some efficency. We then set the RPDO mapping so that we know which address to modify with our new data. For any given mapping, we write the first 4 bits which is the address of the data and the last four bits are based on the amount of data it takes.
 ```cpp
-writeObj(0x1802, 0x01, COB_ID_TPDO3 + nodeID); // TPDO3 COB-ID
-writeObj(0x1802, 0x02, 255); // Asynchronous transmission
-writeObj(0x1802, 0x03, 10);  // 10ms inhibition time
+err = writeObj(0x1602, 0x02, 0x607A0020);
+// Maps position to RPDO3. try searching 607A in the firmware spec. Since Position takes a 32int as the datatype, we use 0020 as the last 4 bits.
+``` 
+There is a limited amount of data we can map, but we have 4 RPDO's we can work with. In our case, we use RPDO-3 for Position and RPDO-4 for Torque. Not every address can be mapped; only addresses that are writeable as defined by the firmware spec.
+
+## Usage:
+
+The last component we need is a function to set the value. This function creates a new message with the RPDO COB-ID, packs the parameter data (position in this case) and then writing it to the Canbus. There are two other RPDO set functions to use as a template. 
+```cpp
+int Epos4::PDO_setPosition(int32_t position) // Uses PDO to set position
 ```
 
 
