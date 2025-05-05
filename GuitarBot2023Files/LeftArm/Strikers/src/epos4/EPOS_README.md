@@ -147,7 +147,7 @@ n = writeObj(POS_CTRL_PARAM_ADDR, PC_P_GAIN, 1020304);
 ```
 
 
-### Critical Support Functions
+### Critical Functions
 
 #### `setOpMode()`
 
@@ -202,14 +202,15 @@ int Epos4::setHomingCurrentThreshold(_WORD currentThreshold){
 If you understand writeObj, readObj should feel intuitive. readObj is another SDO function that fetches data from the motor controllers so you can save it to a pointer. If you give some address (index) and a sub-index (subIndex) and a pointer (answer), you should be able to recieve the value at that address and subindex saved to the pointer. 
 
 
-#### `PDO_config()`
+#### `PDO_config() and RPDO initialization`
 
 PDO is the realtime control mechanism that we use to move GuitarBot. As stated in the definitions, it comes in the form of RPDO to set new positions/ torque values to the motor controllers and TPDO to read position values from the motor controllers. 
 
 ```cpp
 int Epos4::PDO_config()
 ```
-Configures TPDO then RPDO during initialization for every motor controller. Let's start with RPDO first; we need to follow these steps:
+This funciton configures TPDO then RPDO during initialization for every motor controller. Let's start with RPDO first; we need to follow these steps:
+
 1. Set COB-ID
 2. Set Transmission type
 3. Set RPDOmapping:
@@ -224,13 +225,48 @@ err = writeObj(0x1602, 0x02, 0x607A0020);
 ``` 
 There is a limited amount of data we can map, but we have 4 RPDO's we can work with. In our case, we use RPDO-3 for Position and RPDO-4 for Torque. Not every address can be mapped; only addresses that are writeable as defined by the firmware spec.
 
-## Usage:
+### RPDO Usage:
 
-The last component we need is a function to set the value. This function creates a new message with the RPDO COB-ID, packs the parameter data (position in this case) and then writing it to the Canbus. There are two other RPDO set functions to use as a template. 
+The last component we need is a function to set the value. This function creates a new message with the RPDO COB-ID, packs the parameter data (position in this case) and then writes it to the Canbus. There are two other RPDO set functions to use as a template. 
 ```cpp
 int Epos4::PDO_setPosition(int32_t position) // Uses PDO to set position
 ```
+This function, similar to SDO functions, would be called in striker with `epos.PDO_setPosition` and by extension in `StrikerController.h` with `m_striker[id].rotate(position)`. If you combine this knowledge with the fact that `RPDOTimerIRQHandler()` in `StrikerController.h` executes every 5 ms and calls `rotate()` for every motor, you now know how we achieve a 5ms time frame of control for GuitarBot.
 
+### TPDO initialization
+
+If we need to read data from the motor controllers in real time we can use TPDO. TPDO follows very similar steps to RPDO in mapping, but there are a couple key differences for usage. Initialization is almost the exact same:
+
+
+1. Set COB-ID
+2. Set Transmission type
+3. Set Inhibition Time
+4. Set TPDOmapping:
+     a. Write the value “0” (zero) to subindex 0x00 (disable PDO).
+     b. Modify the desired objects in subindex 0x01…0x0n.
+     c. Write the desired number of mapped objects to subindex 0x00.
+
+The transmission time is currently set to asynchronous, which means data is only passed when it is updated. For example, if I'm looking at the current position of the motor the data will transmit an update when the motor moves. The inhibition time is only relevant when the transmission type is asynchronous, as it currently is. It defines a minimum time interval that data can update. For example, if a motor is in motion and the transmission time is 200, then an update will be transmitted every 200ms or 5 times a second. We set this so we don't overload the CAN bus; think about how many messages we'd be getting if there wasn't a transmission time with 20 motors. Other than that, the other information should feel intuitive if you understand RPDO. We also have 4 TPDO's to work with. 
+
+### TPDO Usage
+
+Now that it is mapped, we use the following function to process the messages:
+```cpp
+int Epos4::PDO_processMsg(can_message_t& msg) {
+```
+`StrikerController` is set up to listen for these messages, as this is where the Can Bus is initialized it's called here:
+
+```cpp
+static void canRxHandle(can_message_t* arg) {
+```
+
+TPDO is a little harder to use, as you have to know which data you're looking for and catch it within `canRxHandle` instead of just calling a single function like in RPDO. Here's some additional context for how it's currently used should you want to extend the application of TPDO:
+
+One known issue is that strictly using position control for the pressers causes them to trigger a CAN passive state error frequently. Thus, we require a different control mode for the pressers: Torque Control. There is no mechanical stop that results in the strings being open/unpressed, which means setting torque in either direction will cause a muted or pressed string sound. This means we somehow need to manually stop the motor in the position where the string would sound open. However, we can't implicitly keep track of the position because we're not setting it through position control. We also can't use SDO to read the position, just a couple calls would cause the RPDO handler to timeout due to latency. Therefore, we use TPDO to update the values automatically while the motors are in motion. This way, we can save the updated position to a variable for each motor and fetch it at any time as an O(1) operation from `StrikerController`. 
+
+Now that we know where the motor is at any during Torque mode, we need to stop the motor once it reaches the unpressed position. We can't just set the torque to 0, the momentum of the motor will cause the fingertip to touch and mute the string. Instead, we switch the mode from torque to position and then we set the target position to 0 (unpressed state) to keep the motor there once the motor crosses a certain threshold. We use RPDO to set both of these values.
+
+It's important to check the values over time before using them. You can print them in `canRxHandle()` with `serial.println()`. Values like position tend to oscillate which can throw a wrench in your implementation. Again, TPDO and RPDO function independently of eachother but the above is an example of just one interaction that gives higher-level control. Hopefully, it inspires some other interaction that results in a new or interesting sound that humans either cannot do or haven't heard before. 
 
 ---
 
