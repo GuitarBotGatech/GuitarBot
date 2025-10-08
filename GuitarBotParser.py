@@ -117,8 +117,8 @@ class GuitarBotParser:
                 fret_play.append(2)
 
         return fret_numbers, fret_play, dtraj, utraj
-
-    def interp_with_blend(self, q0, qf, N, tb_cent):
+    @staticmethod
+    def interp_with_blend(q0, qf, N, tb_cent):
         if N <= 1:
             return np.array([qf], dtype=int) if N == 1 else np.array([], dtype=int)
 
