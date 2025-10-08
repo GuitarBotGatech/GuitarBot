@@ -85,7 +85,7 @@ class GuitarBotParser:
                         x=timestamps,
                         y=combined_array[:, motor],
                         mode='lines',
-                        name=f'LH {motor_type} {string_id}'
+                        name=f'LH {motor_type} {string_id + 1}'
                     )
                 )
 

@@ -151,76 +151,6 @@ class RightHandParser:
         
         return trajectory
     
-    def parse_pluck_message(self, midi_note, velocity=100, use_velocity_mapping=True):
-        """
-        Parse pluck message for single note with velocity control.
-        
-        Args:
-            midi_note: MIDI note number
-            velocity: MIDI velocity (0-127)
-            use_velocity_mapping: If True, use velocity for position; if False, use state toggle
-            
-        Returns:
-            List of 15-element position arrays for complete robot trajectory
-        """
-        print(f"Processing pluck: MIDI {midi_note}, Velocity {velocity}, "
-              f"Velocity mapping: {use_velocity_mapping}")
-        
-        # Map MIDI note to picker
-        picker_id = self.midi_note_to_picker_id(midi_note)
-        if picker_id is None:
-            print(f"Error: MIDI note {midi_note} not supported by available pickers")
-            return []
-        
-        # Determine target position
-        if use_velocity_mapping:
-            target_pos = self.velocity_to_position(picker_id, velocity)
-            if target_pos is None:
-                print(f"Error: Could not calculate position for picker {picker_id}")
-                return []
-        else:
-            # Use state-based toggle (like DynamicsParser)
-            target_pos, new_state = self.get_next_state_position(picker_id)
-            if target_pos is None:
-                print(f"Error: Picker {picker_id} not configured")
-                return []
-        
-        # Generate trajectory
-        trajectory = self.generate_pluck_trajectory(picker_id, target_pos)
-        if trajectory is None:
-            return []
-        
-        # Update current position
-        self.current_positions[picker_id] = target_pos
-        
-        # Create 15-element trajectory arrays
-        trajectories_list = []
-        for point in trajectory:
-            # Start with initial_point as template
-            full_position = tu.initial_point.copy()
-            
-            # Update picker position (pickers start at index 12)
-            picker_motor_index = 12 + picker_id
-            full_position[picker_motor_index] = int(point)
-            
-            trajectories_list.append(full_position)
-        
-        # Calculate velocity info for logging
-        if use_velocity_mapping:
-            velocity_ratio = velocity / 127.0
-            up_mm = self.motor_info[picker_id]['up_mm']
-            down_mm = self.motor_info[picker_id]['down_mm']
-            target_mm = up_mm + velocity_ratio * (down_mm - up_mm)
-            
-            print(f"Generated pluck trajectory: MIDI {midi_note} -> Picker {picker_id}, "
-                  f"Velocity {velocity} -> {target_mm:.2f}mm ({target_pos:.1f} ticks)")
-        else:
-            state_name = 'down' if self.picker_states[picker_id] == 0 else 'up'
-            print(f"Generated pluck trajectory: MIDI {midi_note} -> Picker {picker_id}, "
-                  f"State toggle -> {state_name} ({target_pos:.1f} ticks)")
-        
-        return trajectories_list
-    
     def parse_dynamics_message(self, midi_notes, use_velocity_mapping=False):
         """
         Parse /Dyn message containing list of MIDI note numbers (state-based plucking).
@@ -347,7 +277,7 @@ class RightHandParser:
                     x=timestamps, 
                     y=y_values, 
                     mode='lines+markers', 
-                    name=f'Picker {picker_id} (Motor {motor_index})',
+                    name=f'Picker {picker_id} (Motor {motor_index+ 1})',
                     line=dict(width=3),
                     marker=dict(size=4)
                 )
@@ -384,14 +314,14 @@ if __name__ == "__main__":
     
     print("\n=== Test 1: Velocity-based plucking ===")
     # Test velocity-based plucking
-    traj1 = parser.parse_pluck_message(midi_note=42, velocity=127, use_velocity_mapping=True)
-    traj2 = parser.parse_pluck_message(midi_note=55, velocity=64, use_velocity_mapping=True)
-    traj3 = parser.parse_pluck_message(midi_note=65, velocity=32, use_velocity_mapping=True)
+    traj1 = parser.parse_dynamics_message(midi_note=42, velocity=127, use_velocity_mapping=True)
+    traj2 = parser.parse_dynamics_message(midi_note=55, velocity=64, use_velocity_mapping=True)
+    traj3 = parser.parse_dynamics_message(midi_note=65, velocity=32, use_velocity_mapping=True)
     
     print("\n=== Test 2: State-based plucking ===")
     # Test state-based plucking (like original DynamicsParser)
-    traj4 = parser.parse_pluck_message(midi_note=42, use_velocity_mapping=False)
-    traj5 = parser.parse_pluck_message(midi_note=42, use_velocity_mapping=False)  # Should toggle
+    traj4 = parser.parse_dynamics_message(midi_note=42, use_velocity_mapping=False)
+    traj5 = parser.parse_dynamics_message(midi_note=42, use_velocity_mapping=False)  # Should toggle
     
     print("\n=== Test 3: Dynamics message ===")
     # Test /Dyn message (multiple notes)

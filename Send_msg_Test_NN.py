@@ -19,14 +19,37 @@ def main():
     # Create an OSC client
     gen = TestMessageGenerator()
     client = SimpleUDPClient(UDP_IP, UDP_PORT)
-    chords_message = [['On', 1]]
-    pluck_message = gen.scale()
-    send_osc_message(client, "/Chords", chords_message)
+    # pluck_message = gen.scale(duration=0.69,slide_toggle=True, true_dur=0.1)
+    # chords_message = [['On', gen.final_dur]]
+    send_osc_message(client, "/Dyn", 40)
+    time.sleep(8)
+    send_osc_message(client, "/Dyn", 40)
+    time.sleep(8)
+    send_osc_message(client, "/Dyn", 40)
+    time.sleep(8)
+    send_osc_message(client, "/Dyn", 40)
+    time.sleep(8)
+    send_osc_message(client, "/Dyn", 50)
+    time.sleep(8)
+    send_osc_message(client, "/Dyn", 50)
+    time.sleep(8)
+    send_osc_message(client, "/Dyn", 50)
+    time.sleep(8)
+    send_osc_message(client, "/Dyn", 50)
+    time.sleep(8)
+    send_osc_message(client, "/Dyn", 60)
+    time.sleep(8)
+    send_osc_message(client, "/Dyn", 60)
+    time.sleep(8)
+    send_osc_message(client, "/Dyn", 60)
+    time.sleep(8)
+    send_osc_message(client, "/Dyn", 60)
+
+    # send_osc_message(client, "/Chords", chords_message)
     # send_osc_message(client, "/Strum", strum_message)
 
-    send_osc_message(client, "/Pluck", pluck_message)
-    time.sleep(1)
-
+    # send_osc_message(client, "/Pluck", pluck_message)
+    time.sleep(8)
 
 if __name__ == "__main__":
     main()

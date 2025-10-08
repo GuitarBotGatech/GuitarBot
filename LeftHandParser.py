@@ -297,7 +297,7 @@ class LeftHandParser:
         
         # Add a trace for each of the 12 LH motors
         for motor in range(12):
-            motor_name = f'Slider {motor}' if motor < 6 else f'Presser {motor-6}'
+            motor_name = f'Slider {motor + 1}' if motor < 6 else f'Presser {motor-6 + 1}'
             fig.add_trace(
                 go.Scatter(
                     x=timestamps, 
