@@ -342,7 +342,7 @@ def generate_polyphonic_texture(iterations, bpm=120):
 
             # 2. BASS ROLE: A slow, sustained tremolo on the lowest note.
             bass_note = random_triad[0]
-            bass_speed = random.randint(2, 4)  # Slow tremolo speed
+            bass_speed = random.randint(1, 4)  # Slow tremolo speed
             # The bass note sustains for the entire measure.
             bass_message = [bass_note, measure_duration_in_seconds, bass_speed, 0, current_timestamp]
             messages.append(bass_message)
@@ -365,10 +365,11 @@ def generate_polyphonic_texture(iterations, bpm=120):
             for start_beat, duration_in_beats in rhythmic_pattern:
                 note_start_time = current_timestamp + (start_beat * seconds_per_beat)
                 # Ensure short notes don't accidentally become tremolos. Max duration is 0.49s.
-                note_duration = min(0.49, duration_in_beats * seconds_per_beat)
+                note_duration = min(0.5, duration_in_beats * seconds_per_beat)
+                # print(duration_in_beats * seconds_per_beat)
 
                 # These are non-tremolo notes
-                melodic_message = [melodic_note, note_duration, 1, 0, note_start_time]
+                melodic_message = [melodic_note, note_duration, 6, 0, note_start_time]
                 messages.append(melodic_message)
 
             # Advance the master clock by one measure for the next chord

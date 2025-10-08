@@ -261,17 +261,17 @@ def create_tremolo_message():
 #                    [45, 1, 5, 0, 5], [43, 1, 5, 0, 7], [43, 1, 5, 0, 8], [43, .6, 10, 0, 10],
 #                     ]
 
-chords_message = [["On", 35]] # Should be folded into an function that opens the pressers.
+chords_message = [["On", 45]] # Should be folded into an function that opens the pressers.
 # pluck_message = RandomNoteGenerator.generateSong()
 # pluck_message = RandomNoteGenerator.generate_scale_progression(12)
 # pluck_message = RandomNoteGenerator.sequential_Plucks(1)
-pluck_message = RandomNoteGenerator.generate_polyphonic_texture(2)
+pluck_message = RandomNoteGenerator.generate_polyphonic_texture(3) # 15 seconds per texture
 
 # print(pluck_message)
 # pluck_message = [
-# #                [40, .1, 5, 0, 1],
-# #                [55, 1, 5, 0, 1],
-# #                [59, 2, 10, 0, 1],
+#  #               [47, 1, 5, 0, 1],
+#  #               [51, 1, 5, 0, 1],
+#  #               [64, 0.45, 1, 0, 0.0], [64, 0.45, 1, 0, 0.5], [64, 0.45, 1, 0, 1.0], [64, 0.45, 1, 0, 1.5],
 #                 ]
 
 # pluck_message = [

@@ -36,7 +36,7 @@ PICKER_PLUCK_MOTION_POINTS = 11
 LH_PRESSER_UNPRESSED_POS = -650
 
 # Position value for a fully pressed left-hand presser motor.
-LH_PRESSER_PRESSED_POS = 700
+LH_PRESSER_PRESSED_POS = 500
 
 # Torque value for a press, used for sliding to ensure string contact.
 # Given in terms of LH_PRESSER_SLIDE_PRESS_POS/1000 % of torque rating. For example, LH_PRESSER_SLIDE_PRESS_POS = 650 then the motor is outputting 65% of the motors' rated torque value.
@@ -77,11 +77,11 @@ TIMESTAMP_ROUNDING_FACTOR = 200.0
 # The physical distance (in mm) from the nut to the center of each fret.
 # Controls where the slider lands for fret 1, fret 2, fret 3, etc. respectively.
 # Index 0 corresponds to Fret 1.
-SLIDER_MM_PER_FRET = [17, 52, 87, 114, 141, 165, 188, 212, 234]
+SLIDER_MM_PER_FRET = [22, 52, 87, 114, 141, 165, 188, 212, 234]
 
 # Position values for the three states of the presser motors:
 # 1: Open/Unpressed, 2: Pressed, 3: Muted (partially pressed).
-PRESSER_ENCODER_POSITIONS = [-650, 700, 100]
+PRESSER_ENCODER_POSITIONS = [-650, 500, 100]
 
 # Conversion factor from millimeters to encoder ticks for the slider motors.
 # Generally only needs to change if the motor is not Maxxon
