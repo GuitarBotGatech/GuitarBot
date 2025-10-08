@@ -126,7 +126,7 @@ class TestMessageGenerator:
         self.final_dur = pluck_messages[-1][-1] + DUR_PAD
         return pluck_messages
 
-    def scale(self, scale='chromatic', mnn=40, octaves=1, duration=1.0, reflect=True):
+    def scale(self, scale='chromatic', mnn=40, octaves=1, duration=1.0, reflect=True, slide_toggle=0, true_dur=0.1):
         """Generate a scale pattern (major, minor, or chromatic) with optional reflection."""
         if scale == 'maj':
             base_degrees = np.array([0, 2, 4, 5, 7, 9, 11, 12])  # include octave
@@ -173,7 +173,7 @@ class TestMessageGenerator:
         np_messages = []
         for i in range(len(notes)):
             timestamp = duration * i
-            message = [notes[i], 0.1, 0, 0, timestamp]
+            message = [notes[i], true_dur, 0, slide_toggle, timestamp]
             np_messages.append(message)
             
         pluck_messages = self.prepare_messages(np_messages)

@@ -149,24 +149,6 @@ def robot_controller():
                 while not song_trajs_queue.empty():
                     all_trajs.append(song_trajs_queue.get_nowait())
 
-                # If they're more than one song list in the queue
-                if song_trajs_queue.qsize() > 1:
-                    for i in range(song_trajs_queue.qsize()):  # Combine all the song lists into one
-                        song_trajectories_list.append(song_trajs_queue.get_nowait())
-
-                    if len(song_trajectories_list) > 1:
-                        # Convert to numpy arrays first, then vstack
-                        arrays = [np.array(traj) for traj in song_trajectories_list]
-                        song_trajectories_list = np.vstack(arrays).tolist()
-                    else:
-                        song_trajectories_list = song_trajectories_list[0]
-                else:
-                    song_trajectories_list = song_trajs_queue.get_nowait()
-
-                print("Song Trajs Length: ", len(song_trajectories_list))
-                print("Starting Song")
-                RobotController.main(song_trajectories_list)
-
                 if all_trajs:
                     song_trajectories_list = np.vstack(all_trajs)
                     print("Total Song Trajs Shape: ", song_trajectories_list.shape)
@@ -176,7 +158,6 @@ def robot_controller():
         except queue.Empty:
             pass
         time.sleep(0.001)
-
 
 if __name__ == "__main__":
     udp_thread = threading.Thread(target=udp_listener, daemon=True)

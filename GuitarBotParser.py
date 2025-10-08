@@ -85,8 +85,7 @@ class GuitarBotParser:
                         x=timestamps,
                         y=combined_array[:, motor],
                         mode='lines',
-                        name=f'LH {motor_type} {string_id}',
-                        legendgroup='left_hand'
+                        name=f'LH {motor_type} {string_id}'
                     )
                 )
 
@@ -100,8 +99,7 @@ class GuitarBotParser:
                         y=combined_array[:, motor],
                         mode='lines',
                         name=f'RH Picker {picker_id}',
-                        line=dict(width=2),
-                        legendgroup='right_hand'
+                        line=dict(width=2)
                     )
                 )
 
