@@ -76,9 +76,34 @@ class GuitarBotParser:
             fig = go.Figure()
 
             # Add a trace for each motor
-            for motor in range(combined_array.shape[1]):
+            for motor in range(12):
+                motor_type = "Slider" if motor < 6 else "Presser"
+                string_id = motor if motor < 6 else motor - 6
+
                 fig.add_trace(
-                    go.Scatter(x=timestamps, y=combined_array[:, motor], mode='lines', name=f'Motor {motor + 1}'))
+                    go.Scatter(
+                        x=timestamps,
+                        y=combined_array[:, motor],
+                        mode='lines',
+                        name=f'LH {motor_type} {string_id}',
+                        legendgroup='left_hand'
+                    )
+                )
+
+            # Plot right hand motors (12-14)
+            for motor in range(12, min(15, combined_array.shape[1])):
+                picker_id = motor - 12
+
+                fig.add_trace(
+                    go.Scatter(
+                        x=timestamps,
+                        y=combined_array[:, motor],
+                        mode='lines',
+                        name=f'RH Picker {picker_id}',
+                        line=dict(width=2),
+                        legendgroup='right_hand'
+                    )
+                )
 
             # Update layout
             fig.update_layout(
