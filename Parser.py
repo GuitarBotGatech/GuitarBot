@@ -14,6 +14,7 @@ Key Features:
 """
 
 import numpy as np
+import pandas as pd
 import copy
 from LeftHandParser import LeftHandParser
 from RightHandParser import RightHandParser
@@ -32,7 +33,7 @@ class Parser:
         self.prep_time_before_pluck = tu.LH_PREP_TIME_BEFORE_PICK  # LH moves before RH plucks
         
     def parse_note_message(self, midi_note, presser_force=None, pluck_velocity=100, 
-                          use_velocity_mapping=True):
+                          use_velocity_mapping=True, timestamp=0.0):
         """
         Parse complete note message - coordinates fretting and plucking.
         
@@ -41,36 +42,40 @@ class Parser:
             presser_force: Fretting force (0.0-1.0, optional)
             pluck_velocity: Plucking velocity (0-127)
             use_velocity_mapping: If True, use velocity for pluck depth; if False, use state toggle
+            timestamp: When this note should start (in seconds)
             
         Returns:
-            Combined trajectory with coordinated left and right hand motion
+            2D numpy array [num_timesteps x 15] with combined LH and RH trajectories
         """
         print(f"\\n=== Processing Note: MIDI {midi_note} ===")
-        print(f"Presser force: {presser_force}, Pluck velocity: {pluck_velocity}")
+        print(f"Presser force: {presser_force}, Pluck velocity: {pluck_velocity}, Timestamp: {timestamp}")
         
-        # Generate left hand trajectory (fretting)
+        # Generate left hand trajectory (fretting) - returns [num_timesteps x 12] numpy array
         print("Generating fretting trajectory...")
-        lh_trajectory = self.left_hand.parse_fret_message(midi_note, presser_force)
+        lh_trajectory = self.left_hand.parse_fret_message(midi_note, presser_force, timestamp)
         
-        if not lh_trajectory:
+        if lh_trajectory.size == 0:
             print("Error: Could not generate fretting trajectory")
-            return []
+            return np.array([])
         
-        # Generate right hand trajectory (plucking)
-        print("Generating plucking trajectory...")
-        rh_trajectory = self.right_hand.parse_pluck_message(
+        # Calculate when RH should pluck (after LH prep time)
+        rh_timestamp = timestamp + self.prep_time_before_pluck
+        
+        # Generate right hand trajectory (plucking) - returns list of 15-element arrays
+        print(f"Generating plucking trajectory at timestamp {rh_timestamp}...")
+        rh_trajectory_list = self.right_hand.parse_pluck_message(
             midi_note, pluck_velocity, use_velocity_mapping
         )
         
-        if not rh_trajectory:
+        if not rh_trajectory_list:
             print("Error: Could not generate plucking trajectory")
-            return []
+            return np.array([])
         
-        # Coordinate timing - LH moves first, then RH plucks
-        coordinated_trajectory = self.coordinate_trajectories(lh_trajectory, rh_trajectory)
+        # Coordinate timing - combine LH and RH trajectories
+        coordinated_trajectory = self.coordinate_trajectories(lh_trajectory, rh_trajectory_list, rh_timestamp)
         
-        print(f"Generated coordinated trajectory: {len(coordinated_trajectory)} points, "
-              f"Duration: {len(coordinated_trajectory) * tu.TIME_STEP:.3f}s")
+        print(f"Generated coordinated trajectory: {coordinated_trajectory.shape}")
+        print(f"Duration: {coordinated_trajectory.shape[0] * tu.TIME_STEP:.3f}s")
         
         # Plot if graphing enabled
         if tu.graph:
@@ -78,25 +83,40 @@ class Parser:
         
         return coordinated_trajectory
     
-    def parse_fret_only_message(self, midi_note, presser_force=None):
+    def parse_fret_only_message(self, midi_note, presser_force=None, timestamp=0.0):
         """
         Parse /Fret message for fretting only (no plucking).
         
         Args:
             midi_note: MIDI note number
             presser_force: Fretting force (0.0-1.0)
+            timestamp: When this fret should start (in seconds)
             
         Returns:
-            Fretting trajectory (15-motor format)
+            2D numpy array [num_timesteps x 15] with fretting trajectory (RH motors stay at initial positions)
         """
         print(f"\\n=== Processing Fret-Only: MIDI {midi_note} ===")
         
-        trajectory = self.left_hand.parse_fret_message(midi_note, presser_force)
+        # Get LH trajectory - returns [num_timesteps x 12] numpy array
+        lh_trajectory = self.left_hand.parse_fret_message(midi_note, presser_force, timestamp)
         
-        if tu.graph and trajectory:
-            self.plot_combined_trajectory(trajectory, f"Fret-Only MIDI {midi_note}")
+        if lh_trajectory.size == 0:
+            return np.array([])
         
-        return trajectory
+        # Expand to 15 motors by adding RH motors at initial positions
+        num_rows = lh_trajectory.shape[0]
+        full_trajectory = np.zeros((num_rows, 15))
+        full_trajectory[:, :12] = lh_trajectory  # Copy LH motors
+        
+        # Set RH motors (12-14) to initial positions
+        for i in range(3):
+            if i in self.right_hand.motor_info:
+                full_trajectory[:, 12 + i] = self.right_hand.motor_info[i]['up_ticks']
+        
+        if tu.graph:
+            self.plot_combined_trajectory(full_trajectory, f"Fret-Only MIDI {midi_note}")
+        
+        return full_trajectory
     
     def parse_dynamics_message(self, midi_notes, use_velocity_mapping=False):
         """
@@ -107,81 +127,89 @@ class Parser:
             use_velocity_mapping: If True, use velocity control; if False, use state toggle
             
         Returns:
-            Plucking trajectory (15-motor format)
+            2D numpy array [num_timesteps x 15] with plucking trajectory (LH motors stay at current positions)
         """
         print(f"\\n=== Processing Dynamics: {midi_notes} ===")
         
-        trajectory = self.right_hand.parse_dynamics_message(midi_notes, use_velocity_mapping)
+        # Get RH trajectory - returns list of 15-element arrays
+        rh_trajectory_list = self.right_hand.parse_dynamics_message(midi_notes, use_velocity_mapping)
         
-        if tu.graph and trajectory:
+        if not rh_trajectory_list:
+            return np.array([])
+        
+        # Convert list to numpy array for consistency
+        trajectory = np.array(rh_trajectory_list)
+        
+        if tu.graph:
             self.plot_combined_trajectory(trajectory, f"Dynamics {midi_notes}")
         
         return trajectory
     
-    def coordinate_trajectories(self, lh_trajectory, rh_trajectory):
+    def coordinate_trajectories(self, lh_trajectory, rh_trajectory_list, rh_timestamp):
         """
         Coordinate left and right hand trajectories with proper timing.
+        Mimics the approach used in GuitarBotParser.parseAllMIDI()
         
         Args:
-            lh_trajectory: Left hand trajectory
-            rh_trajectory: Right hand trajectory
+            lh_trajectory: Left hand trajectory - 2D numpy array [num_timesteps x 12]
+            rh_trajectory_list: Right hand trajectory - list of 15-element arrays
+            rh_timestamp: When RH motion should start (in seconds)
             
         Returns:
-            Combined trajectory with coordinated timing
+            2D numpy array [num_timesteps x 15] with coordinated LH and RH motion
         """
-        if not lh_trajectory or not rh_trajectory:
-            return lh_trajectory or rh_trajectory or []
+        if lh_trajectory.size == 0 or not rh_trajectory_list:
+            print("Warning: Empty trajectory in coordination")
+            return np.array([])
         
-        # Calculate prep time in trajectory points
-        prep_points = max(1, int(self.prep_time_before_pluck / tu.TIME_STEP))
+        print(f"Coordinating trajectories:")
+        print(f"  LH: {lh_trajectory.shape}")
+        print(f"  RH: {len(rh_trajectory_list)} points")
+        print(f"  RH timestamp: {rh_timestamp}s")
         
-        print(f"Coordinating trajectories: LH {len(lh_trajectory)} points, "
-              f"RH {len(rh_trajectory)} points, Prep time: {prep_points} points")
+        # Convert RH list to numpy array and extract RH motor columns (12-14)
+        rh_array = np.array(rh_trajectory_list)
+        rh_motors_only = rh_array[:, 12:15]  # Extract motors 12, 13, 14
         
-        # Method 1: Sequential execution (LH first, then RH with overlap)
-        if len(lh_trajectory) >= prep_points:
-            # LH trajectory is long enough - start RH during LH motion
-            combined_trajectory = []
-            
-            # Phase 1: LH motion only (prep phase)
-            for i in range(prep_points):
-                combined_trajectory.append(lh_trajectory[i].copy())
-            
-            # Phase 2: LH + RH coordinated motion
-            lh_remaining = lh_trajectory[prep_points:]
-            max_remaining = max(len(lh_remaining), len(rh_trajectory))
-            
-            for i in range(max_remaining):
-                # Start with base position
-                if i < len(lh_remaining):
-                    combined_point = lh_remaining[i].copy()
-                else:
-                    combined_point = lh_trajectory[-1].copy()  # Hold LH final position
-                
-                # Add RH motion
-                if i < len(rh_trajectory):
-                    # Copy RH motor positions (indices 12-14)
-                    for motor_idx in [12, 13, 14]:
-                        combined_point[motor_idx] = rh_trajectory[i][motor_idx]
-                
-                combined_trajectory.append(combined_point)
-            
-        else:
-            # LH trajectory is short - use simple concatenation
-            combined_trajectory = lh_trajectory.copy()
-            
-            # Extend with RH motion
-            for rh_point in rh_trajectory:
-                # Use last LH position as base
-                combined_point = combined_trajectory[-1].copy()
-                
-                # Add RH motion
-                for motor_idx in [12, 13, 14]:
-                    combined_point[motor_idx] = rh_point[motor_idx]
-                
-                combined_trajectory.append(combined_point)
+        # Calculate array dimensions
+        num_lh_rows = lh_trajectory.shape[0]
+        num_rh_rows = rh_motors_only.shape[0]
+        rh_start_index = int(rh_timestamp / tu.TIME_STEP)
         
-        return combined_trajectory
+        # Calculate total required rows (mimicking GuitarBotParser line 88-97)
+        max_rows = max(num_lh_rows, rh_start_index + num_rh_rows)
+        
+        # Initialize combined trajectory array [max_rows x 15]
+        combined_array = np.zeros((max_rows, 15))
+        
+        # Copy LH trajectory to first 12 columns
+        combined_array[:num_lh_rows, :12] = lh_trajectory
+        
+        # Forward-fill LH positions if RH extends beyond LH
+        if num_lh_rows < max_rows:
+            last_lh_row = lh_trajectory[-1, :]
+            for i in range(num_lh_rows, max_rows):
+                combined_array[i, :12] = last_lh_row
+        
+        # Initialize RH motors (12-14) to current positions
+        for picker_id in self.right_hand.motor_info:
+            motor_idx = 12 + picker_id
+            initial_pos = self.right_hand.current_positions[picker_id]
+            combined_array[:, motor_idx] = initial_pos
+        
+        # Insert RH trajectory at the specified timestamp
+        rh_end_index = min(rh_start_index + num_rh_rows, max_rows)
+        rh_copy_length = rh_end_index - rh_start_index
+        combined_array[rh_start_index:rh_end_index, 12:15] = rh_motors_only[:rh_copy_length, :]
+        
+        # Forward-fill RH positions after RH motion completes
+        if rh_end_index < max_rows:
+            last_rh_row = rh_motors_only[-1, :]
+            combined_array[rh_end_index:, 12:15] = last_rh_row
+        
+        print(f"  Combined: {combined_array.shape}")
+        
+        return combined_array
     
     def parse_chord_sequence(self, chord_events, pluck_events=None):
         """
@@ -192,45 +220,67 @@ class Parser:
             pluck_events: List of (midi_note, timestamp, velocity) tuples (optional)
             
         Returns:
-            Combined trajectory for entire sequence
+            2D numpy array [num_timesteps x 15] for entire sequence
         """
         print(f"\\n=== Processing Chord Sequence: {len(chord_events)} chords ===")
         
-        all_trajectories = []
-        current_time = 0
+        # Calculate total duration needed
+        max_timestamp = 0
+        if chord_events:
+            max_timestamp = max(ts for _, ts, _ in chord_events)
+        if pluck_events:
+            max_timestamp = max(max_timestamp, max(ts for _, ts, _ in pluck_events))
         
-        # Process each chord
+        # Add buffer for last event
+        total_duration = max_timestamp + 2.0  # 2 second buffer
+        num_rows = int(total_duration / tu.TIME_STEP)
+        
+        # Initialize full trajectory array
+        combined_trajectory = np.zeros((num_rows, 15))
+        
+        # Set initial positions
+        combined_trajectory[0, :12] = self.left_hand.current_positions
+        for picker_id in self.right_hand.motor_info:
+            combined_trajectory[0, 12 + picker_id] = self.right_hand.current_positions[picker_id]
+        
+        # Process each chord event
         for i, (midi_notes, timestamp, presser_force) in enumerate(chord_events):
-            print(f"\\nChord {i+1}: Notes {midi_notes} at t={timestamp}")
+            print(f"\\nChord {i+1}: Notes {midi_notes} at t={timestamp}s")
             
-            # Generate fretting for multiple notes (chord)
-            chord_trajectory = []
+            # For each note in the chord, generate fretting trajectory
             for midi_note in midi_notes:
-                note_traj = self.left_hand.parse_fret_message(midi_note, presser_force)
-                if note_traj:
-                    chord_trajectory.extend(note_traj)
-            
-            if chord_trajectory:
-                all_trajectories.append((chord_trajectory, timestamp))
+                note_traj = self.left_hand.parse_fret_message(midi_note, presser_force, timestamp)
+                if note_traj.size > 0:
+                    # Merge this note's trajectory into combined array
+                    start_idx = int(timestamp / tu.TIME_STEP)
+                    end_idx = min(start_idx + note_traj.shape[0], num_rows)
+                    copy_length = end_idx - start_idx
+                    combined_trajectory[start_idx:end_idx, :12] = note_traj[:copy_length, :]
         
-        # Add plucking events if provided
+        # Process pluck events if provided
         if pluck_events:
             for midi_note, timestamp, velocity in pluck_events:
+                print(f"Pluck: Note {midi_note} at t={timestamp}s")
                 pluck_traj = self.right_hand.parse_pluck_message(midi_note, velocity)
                 if pluck_traj:
-                    all_trajectories.append((pluck_traj, timestamp))
+                    # Convert to array and merge RH motors
+                    pluck_array = np.array(pluck_traj)
+                    start_idx = int(timestamp / tu.TIME_STEP)
+                    end_idx = min(start_idx + len(pluck_traj), num_rows)
+                    copy_length = end_idx - start_idx
+                    combined_trajectory[start_idx:end_idx, 12:15] = pluck_array[:copy_length, 12:15]
         
-        # Sort by timestamp and combine
-        all_trajectories.sort(key=lambda x: x[1])
+        # Forward-fill any remaining NaN or zero values
+        df = pd.DataFrame(combined_trajectory)
+        df.replace(0, np.nan, inplace=True)
+        df.ffill(inplace=True)
+        df.fillna(0, inplace=True)
+        combined_trajectory = df.to_numpy()
         
-        # Simple concatenation for now (could be enhanced with timing interpolation)
-        combined_trajectory = []
-        for trajectory, timestamp in all_trajectories:
-            combined_trajectory.extend(trajectory)
+        print(f"\\nGenerated chord sequence: {combined_trajectory.shape}")
+        print(f"Total duration: {combined_trajectory.shape[0] * tu.TIME_STEP:.3f}s")
         
-        print(f"Generated chord sequence: {len(combined_trajectory)} total points")
-        
-        if tu.graph and combined_trajectory:
+        if tu.graph:
             self.plot_combined_trajectory(combined_trajectory, "Chord Sequence")
         
         return combined_trajectory
@@ -255,65 +305,62 @@ class Parser:
             }
         }
     
-    def plot_combined_trajectory(self, trajectory, title="Combined Trajectory"):
-        """Plot complete 15-motor trajectory with left/right hand separation."""
-        if not trajectory:
+    def plot_combined_trajectory(self, trajectory_array, title="Combined Trajectory"):
+        """
+        Plot complete 15-motor trajectory with left/right hand separation.
+        Expects trajectory_array to be a 2D numpy array [num_timesteps x 15]
+        Mimics plotting style from GuitarBotParser.parseAllMIDI()
+        """
+        if trajectory_array.size == 0:
             print("No trajectory to plot")
             return
         
+        # Ensure we have a 2D array
+        if len(trajectory_array.shape) == 1:
+            trajectory_array = trajectory_array.reshape(-1, 15)
+        
+        num_rows = trajectory_array.shape[0]
+        timestamps = np.arange(0, num_rows * tu.TIME_STEP, tu.TIME_STEP)
+        
         fig = go.Figure()
         
-        # Create time axis
-        timestamps = [i * tu.TIME_STEP for i in range(len(trajectory))]
-        
         # Plot left hand motors (0-11)
-        for motor_idx in range(12):
-            y_values = [point[motor_idx] for point in trajectory]
-            motor_type = "Slider" if motor_idx < 6 else "Presser"
-            string_id = motor_idx if motor_idx < 6 else motor_idx - 6
+        for motor in range(12):
+            motor_type = "Slider" if motor < 6 else "Presser"
+            string_id = motor if motor < 6 else motor - 6
             
             fig.add_trace(
                 go.Scatter(
                     x=timestamps,
-                    y=y_values,
-                    mode='lines+markers',
+                    y=trajectory_array[:, motor],
+                    mode='lines',
                     name=f'LH {motor_type} {string_id}',
-                    line=dict(width=2),
-                    marker=dict(size=3),
                     legendgroup='left_hand'
                 )
             )
         
         # Plot right hand motors (12-14)
-        for motor_idx in range(12, 15):
-            if motor_idx < len(trajectory[0]):  # Check if motor exists
-                y_values = [point[motor_idx] for point in trajectory]
-                picker_id = motor_idx - 12
-                
-                fig.add_trace(
-                    go.Scatter(
-                        x=timestamps,
-                        y=y_values,
-                        mode='lines+markers',
-                        name=f'RH Picker {picker_id}',
-                        line=dict(width=3),
-                        marker=dict(size=4),
-                        legendgroup='right_hand'
-                    )
+        for motor in range(12, min(15, trajectory_array.shape[1])):
+            picker_id = motor - 12
+            
+            fig.add_trace(
+                go.Scatter(
+                    x=timestamps,
+                    y=trajectory_array[:, motor],
+                    mode='lines',
+                    name=f'RH Picker {picker_id}',
+                    line=dict(width=2),
+                    legendgroup='right_hand'
                 )
+            )
         
+        # Update layout (mimicking GuitarBotParser)
         fig.update_layout(
             title=title,
-            xaxis_title='Time (seconds)',
-            yaxis_title='Motor Position (encoder ticks)',
-            legend_title='Motors',
-            showlegend=True,
-            hovermode='x unified',
-            template='plotly_white'
+            xaxis_title='Time (s)',
+            yaxis_title='Motor Position',
+            legend_title='Motors'
         )
-        
-        fig.update_xaxes(showgrid=True, gridwidth=1, gridcolor='lightgray')
-        fig.update_yaxes(showgrid=True, gridwidth=1, gridcolor='lightgray')
         
         fig.show()
 
@@ -330,16 +377,20 @@ if __name__ == "__main__":
         midi_note=45,  # Low E 5th fret
         presser_force=0.8,
         pluck_velocity=100,
-        use_velocity_mapping=True
+        use_velocity_mapping=True,
+        timestamp=0.0
     )
+    print(f"Note trajectory shape: {note_traj.shape}")
     
     print("\\n=== Test 2: Fret-Only Message ===") 
     # Test fretting without plucking
-    fret_traj = parser.parse_fret_only_message(midi_note=52, presser_force=0.6)
+    fret_traj = parser.parse_fret_only_message(midi_note=52, presser_force=0.6, timestamp=1.0)
+    print(f"Fret-only trajectory shape: {fret_traj.shape}")
     
     print("\\n=== Test 3: Dynamics-Only Message ===")
     # Test plucking without fretting
     dyn_traj = parser.parse_dynamics_message([42, 55, 65])
+    print(f"Dynamics trajectory shape: {dyn_traj.shape}")
     
     print("\\n=== Test 4: Chord Sequence ===")
     # Test chord progression
@@ -353,6 +404,7 @@ if __name__ == "__main__":
     ]
     
     chord_traj = parser.parse_chord_sequence(chord_events, pluck_events)
+    print(f"Chord sequence trajectory shape: {chord_traj.shape}")
     
     print("\\n=== Combined Status ===")
     status = parser.get_combined_status()
