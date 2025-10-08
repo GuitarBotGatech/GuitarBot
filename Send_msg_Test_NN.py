@@ -3,7 +3,7 @@ import time
 from pythonosc.udp_client import SimpleUDPClient
 UDP_IP = "127.0.0.1"
 UDP_PORT = 12000
-from test_messages import *
+from TestMessageGenerator import *
 # FORMAT
 # chords_message = [[Chord, timestamp]]
 # strum_message = [["DOWN"/"UP"], timestamp]
@@ -18,9 +18,11 @@ def send_osc_message(client, address, data):
 def main():
     # Create an OSC client
     client = SimpleUDPClient(UDP_IP, UDP_PORT)
+    chords_message = [['On', 1]]
+    pluck_message = [[41, 0.1, 5, 0, 0.5]]
     send_osc_message(client, "/Chords", chords_message)
     # send_osc_message(client, "/Strum", strum_message)
-    # pluck_message = create_tremolo_message()
+
     send_osc_message(client, "/Pluck", pluck_message)
     time.sleep(1)
 

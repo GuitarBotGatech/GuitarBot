@@ -8,7 +8,7 @@ import RobotController
 from pythonosc.osc_message import OscMessage
 from pythonosc.parsing import osc_types
 from GuitarBotParser import GuitarBotParser
-from DynamicsParser import DynamicsParser
+from RightHandParser import RightHandParser
 import numpy as np
 import tune as tu
 
@@ -29,7 +29,7 @@ song_trajs_queue = queue.SimpleQueue()
 data_queue = queue.SimpleQueue()
 
 # Initialize dynamics parser
-dynamics_parser = DynamicsParser()
+rh_parser = RightHandParser()
 
 def decode_osc_message(data):
     print("Message In")
@@ -122,7 +122,7 @@ def dynamics_processor():
                 print(f"Processing dynamics message: {dyn_data}")
                 
                 # Parse the dynamics message (list of MNN values)
-                trajectories_list = dynamics_parser.parse_dyn_message(dyn_data)
+                trajectories_list = rh_parser.parse_pluck_message(dyn_data)
                 
                 print(f"Dynamics Trajs Length: {len(trajectories_list)}")
                 print("Executing dynamics test")
