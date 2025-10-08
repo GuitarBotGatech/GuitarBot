@@ -17,9 +17,10 @@ def send_osc_message(client, address, data):
 
 def main():
     # Create an OSC client
+    gen = TestMessageGenerator()
     client = SimpleUDPClient(UDP_IP, UDP_PORT)
     chords_message = [['On', 1]]
-    pluck_message = [[41, 0.1, 5, 0, 0.5]]
+    pluck_message = gen.scale()
     send_osc_message(client, "/Chords", chords_message)
     # send_osc_message(client, "/Strum", strum_message)
 

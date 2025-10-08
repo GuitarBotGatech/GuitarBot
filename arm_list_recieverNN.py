@@ -28,9 +28,6 @@ data_queue = queue.SimpleQueue()
 
 # Initialize dynamics parser
 rh_parser = RightHandParser()
-song_trajs_queue = queue.SimpleQueue()
-data_queue = queue.SimpleQueue()
-
 
 def decode_osc_message(data):
     print("Message In")
