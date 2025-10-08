@@ -16,6 +16,7 @@ Note: Right-hand plucking functionality moved to RightHandParser.py
 """
 
 import numpy as np
+import pandas as pd
 import copy
 from GuitarBotParser import GuitarBotParser  # Import for reusing interp_with_blend
 import tune as tu
@@ -34,6 +35,7 @@ class LeftHandParser:
     def string_fret_to_slider_position(self, string_id, fret_num):
         """
         Convert string/fret combination to slider motor position.
+        Uses the EXACT same formula as GuitarBotParser.parseleftMIDI()
         
         Args:
             string_id: String index (0-5)
@@ -43,7 +45,7 @@ class LeftHandParser:
             Slider position in encoder ticks
         """
         if fret_num == 0:  # Open string
-            return tu.SLIDER_ENCODER_OFFSET  # Base position
+            return 0  # GuitarBotParser uses 0 for open strings
         
         if fret_num > len(tu.SLIDER_MM_PER_FRET):
             print(f"Warning: Fret {fret_num} exceeds calibrated range")
@@ -52,15 +54,13 @@ class LeftHandParser:
         # Get physical position from tune.py calibration
         fret_mm = tu.SLIDER_MM_PER_FRET[fret_num - 1]  # Array is 0-indexed, but fret 1 = index 0
         
-        # Convert mm to encoder ticks (same formula as GuitarBotParser)
-        # Account for motor direction multiplier
+        # EXACT formula from GuitarBotParser line 449:
+        # encoder_values = [((v * 2048) / tu.MM_TO_ENCODER_CONVERSION_FACTOR + tu.SLIDER_ENCODER_OFFSET) for v in tu.SLIDER_MM_PER_FRET]
+        # then multiplied by direction
         direction = tu.SLIDER_MOTOR_DIRECTION[string_id]
-        encoder_ticks = (fret_mm * direction * 1024) / tu.MM_TO_ENCODER_CONVERSION_FACTOR  # Assuming 1024 resolution
+        final_position = ((fret_mm * 2048) / tu.MM_TO_ENCODER_CONVERSION_FACTOR + tu.SLIDER_ENCODER_OFFSET) * direction
         
-        # Add offset
-        final_position = encoder_ticks + tu.SLIDER_ENCODER_OFFSET
-        
-        return round(final_position, 3)
+        return int(final_position)
     
     def get_presser_position(self, string_id, fret_num, presser_force=None):
         """
@@ -88,23 +88,25 @@ class LeftHandParser:
             return tu.LH_PRESSER_PRESSED_POS
     
     def generate_fret_trajectory(self, string_id, fret_num, presser_force=None, 
-                                num_points=tu.PRESSER_INTERPOLATION_POINTS):
+                                num_points=tu.PRESSER_INTERPOLATION_POINTS,
+                                timestamp=0.0):
         """
         Generate trajectory for fretting a single string at a specific fret.
-        Uses 3-phase motion: unpress → slide → press (mimics GuitarBotParser pattern)
+        Uses 3-phase motion: unpress → slide → press (EXACTLY mimics GuitarBotParser.lh_interpolate 'note' event)
         
         Args:
             string_id: String index (0-5)
             fret_num: Fret number (0=open, 1-24=frets)
             presser_force: Optional force level (0.0-1.0)
             num_points: Points per trajectory phase
+            timestamp: When this fret should start (in seconds)
             
         Returns:
-            List of 15-element arrays representing full robot trajectory
+            2D numpy array [num_timesteps x 12] with LH motor trajectories
         """
-        print(f"Generating fret trajectory: String {string_id}, Fret {fret_num}, Force: {presser_force}")
+        print(f"Generating fret trajectory: String {string_id}, Fret {fret_num}, Force: {presser_force}, Timestamp: {timestamp}")
         
-        # Calculate target positions
+        # Calculate target positions using EXACT same logic as GuitarBotParser
         slider_motor_id = string_id
         presser_motor_id = string_id + 6
         
@@ -115,104 +117,109 @@ class LeftHandParser:
         current_slider_pos = self.current_positions[slider_motor_id]
         current_presser_pos = self.current_positions[presser_motor_id]
         
-        # Generate 3-phase trajectory
-        all_trajectory_points = []
+        # Calculate total trajectory duration to size array properly
+        # Based on GuitarBotParser line 297: num_generated_points = tu.PRESSER_INTERPOLATION_POINTS + tu.LH_SINGLE_NOTE_MOTION_POINTS + tu.PRESSER_INTERPOLATION_POINTS
+        total_points = num_points + tu.LH_SINGLE_NOTE_MOTION_POINTS + num_points
+        duration = total_points * tu.TIME_STEP
+        buffer = 100 * tu.TIME_STEP
+        num_rows = int((timestamp + duration + buffer) / tu.TIME_STEP)
         
-        # Phase 1: UNPRESS - Release presser while holding slider
-        phase1_slider = GuitarBotParser.interp_with_blend(
-            current_slider_pos, current_slider_pos, num_points, tu.TRAJECTORY_BLEND_PERCENT
-        )
-        phase1_presser = GuitarBotParser.interp_with_blend(
-            current_presser_pos, tu.LH_PRESSER_UNPRESSED_POS, num_points, tu.TRAJECTORY_BLEND_PERCENT
-        )
+        # Initialize trajectory array with NaN (will forward-fill later, mimicking GuitarBotParser)
+        trajectory_array = np.full((num_rows, 12), np.nan)
+        trajectory_array[0, :] = self.current_positions
         
-        # Handle case where interp_with_blend returns None
-        if phase1_slider is None:
-            phase1_slider = np.full(num_points, current_slider_pos)
-        if phase1_presser is None:
-            phase1_presser = np.linspace(current_presser_pos, tu.LH_PRESSER_UNPRESSED_POS, num_points)
+        # Calculate start index from timestamp
+        start_index = int(timestamp / tu.TIME_STEP)
         
-        # Phase 2: SLIDE - Move slider to target while keeping presser unpressed
-        phase2_slider = GuitarBotParser.interp_with_blend(
-            current_slider_pos, target_slider_pos, tu.LH_SINGLE_NOTE_MOTION_POINTS, tu.TRAJECTORY_BLEND_PERCENT
-        )
-        phase2_presser = GuitarBotParser.interp_with_blend(
-            tu.LH_PRESSER_UNPRESSED_POS, tu.LH_PRESSER_UNPRESSED_POS, tu.LH_SINGLE_NOTE_MOTION_POINTS, tu.TRAJECTORY_BLEND_PERCENT
-        )
+        # EXACT replication of GuitarBotParser.lh_interpolate 'note' event logic (lines 301-366)
+        slider_points, presser_points = [], []
+        q0_slider_motor = current_slider_pos
+        q0_presser_motor = current_presser_pos
+        qf_slider = int(target_slider_pos)
+        qf_presser = tu.LH_PRESSER_PRESSED_POS if target_presser_pos > tu.LH_PRESSER_UNPRESSED_POS else tu.LH_PRESSER_UNPRESSED_POS
         
-        if phase2_slider is None:
-            phase2_slider = np.linspace(current_slider_pos, target_slider_pos, tu.LH_SINGLE_NOTE_MOTION_POINTS)
-        if phase2_presser is None:
-            phase2_presser = np.full(tu.LH_SINGLE_NOTE_MOTION_POINTS, tu.LH_PRESSER_UNPRESSED_POS)
+        # For open strings (fret 0), use special logic from GuitarBotParser
+        if fret_num == 0:
+            qf_slider = q0_slider_motor
+            qf_presser = tu.LH_PRESSER_UNPRESSED_POS
         
-        # Phase 3: PRESS - Apply presser force while holding slider position
-        phase3_slider = GuitarBotParser.interp_with_blend(
-            target_slider_pos, target_slider_pos, num_points, tu.TRAJECTORY_BLEND_PERCENT
-        )
-        phase3_presser = GuitarBotParser.interp_with_blend(
-            tu.LH_PRESSER_UNPRESSED_POS, target_presser_pos, num_points, tu.TRAJECTORY_BLEND_PERCENT
-        )
+        # Use slide_toggle=False logic (standard non-slide fretting)
+        # Phase 1: UNPRESS
+        s1 = GuitarBotParser.interp_with_blend(q0_slider_motor, q0_slider_motor, num_points, tu.TRAJECTORY_BLEND_PERCENT)
+        p1 = GuitarBotParser.interp_with_blend(q0_presser_motor, tu.LH_PRESSER_UNPRESSED_POS, num_points, tu.TRAJECTORY_BLEND_PERCENT)
+        slider_points.extend(s1)
+        presser_points.extend(p1)
         
-        if phase3_slider is None:
-            phase3_slider = np.full(num_points, target_slider_pos)
-        if phase3_presser is None:
-            phase3_presser = np.linspace(tu.LH_PRESSER_UNPRESSED_POS, target_presser_pos, num_points)
+        # Phase 2: SLIDE
+        s2 = GuitarBotParser.interp_with_blend(q0_slider_motor, qf_slider, tu.LH_SINGLE_NOTE_MOTION_POINTS, tu.TRAJECTORY_BLEND_PERCENT)
+        p2 = GuitarBotParser.interp_with_blend(tu.LH_PRESSER_UNPRESSED_POS, tu.LH_PRESSER_UNPRESSED_POS, tu.LH_SINGLE_NOTE_MOTION_POINTS, tu.TRAJECTORY_BLEND_PERCENT)
+        slider_points.extend(s2)
+        presser_points.extend(p2)
         
-        # Combine all phases
-        combined_slider = np.concatenate([phase1_slider, phase2_slider, phase3_slider])
-        combined_presser = np.concatenate([phase1_presser, phase2_presser, phase3_presser])
+        # Phase 3: PRESS
+        s3 = GuitarBotParser.interp_with_blend(qf_slider, qf_slider, num_points, tu.TRAJECTORY_BLEND_PERCENT)
+        p3 = GuitarBotParser.interp_with_blend(tu.LH_PRESSER_UNPRESSED_POS, qf_presser, num_points, tu.TRAJECTORY_BLEND_PERCENT)
+        slider_points.extend(s3)
+        presser_points.extend(p3)
         
-        # Create 15-element trajectory arrays
-        max_length = len(combined_slider)
+        # Write to trajectory array (mimicking GuitarBotParser lines 354-366)
+        num_generated_points = len(slider_points)
+        if start_index + num_generated_points <= num_rows:
+            trajectory_array[start_index: start_index + num_generated_points, slider_motor_id] = slider_points
+            trajectory_array[start_index: start_index + num_generated_points, presser_motor_id] = presser_points
+            # Update current positions
+            self.current_positions[slider_motor_id] = slider_points[-1]
+            self.current_positions[presser_motor_id] = presser_points[-1]
+        else:
+            safe_points = num_rows - start_index
+            if safe_points > 0:
+                trajectory_array[start_index:, slider_motor_id] = slider_points[:safe_points]
+                trajectory_array[start_index:, presser_motor_id] = presser_points[:safe_points]
+                self.current_positions[slider_motor_id] = slider_points[safe_points - 1]
+                self.current_positions[presser_motor_id] = presser_points[safe_points - 1]
         
-        for i in range(max_length):
-            # Start with initial_point as template
-            full_position = tu.initial_point.copy()
-            
-            # Update the specific slider and presser motors
-            full_position[slider_motor_id] = int(combined_slider[i])
-            full_position[presser_motor_id] = int(combined_presser[i])
-            
-            all_trajectory_points.append(full_position)
+        # Forward-fill NaN values (mimicking GuitarBotParser line 370)
+        df = pd.DataFrame(trajectory_array)
+        df.ffill(inplace=True)
+        trajectory_array = df.to_numpy()
         
-        # Update current positions for this string
-        self.current_positions[slider_motor_id] = target_slider_pos
-        self.current_positions[presser_motor_id] = target_presser_pos
+        # Update state tracking
         self.string_states[string_id] = {'fret': fret_num, 'pressed': fret_num > 0}
         
-        print(f"Generated {len(all_trajectory_points)} trajectory points")
-        print(f"Final positions - Slider: {target_slider_pos}, Presser: {target_presser_pos}")
+        print(f"Generated trajectory array shape: {trajectory_array.shape}")
+        print(f"Final positions - Slider: {self.current_positions[slider_motor_id]}, Presser: {self.current_positions[presser_motor_id]}")
         
-        return all_trajectory_points
+        return trajectory_array
     
-    def parse_fret_message(self, midi_note_number, presser_force=None):
+    def parse_fret_message(self, midi_note_number, presser_force=None, timestamp=0.0):
         """
         Parse a /Fret OSC message and generate fretting trajectory.
         
         Args:
             midi_note_number: MIDI note number (40-68 based on STRING_MIDI_RANGES)
             presser_force: Optional force level (0.0-1.0)
+            timestamp: When this fret should start (in seconds)
             
         Returns:
-            List of 15-element position arrays for fretting trajectory
+            2D numpy array [num_timesteps x 12] with LH motor trajectories
         """
-        print(f"Processing /Fret message: MIDI Note {midi_note_number}, Force {presser_force}")
+        print(f"Processing /Fret message: MIDI Note {midi_note_number}, Force {presser_force}, Timestamp {timestamp}")
         
         # Validate MIDI note number and map to string/fret
         string_fret_info = self.midi_note_to_string_fret(midi_note_number)
         if not string_fret_info:
             print(f"Error: MIDI note {midi_note_number} not playable on available strings.")
-            return []
+            return np.array([])
         
         string_id, fret_num = string_fret_info
         
         # Validate inputs
         if presser_force is not None and not (0.0 <= presser_force <= 1.0):
             print(f"Error: Invalid presser_force {presser_force}. Must be 0.0-1.0.")
-            return []
+            return np.array([])
         
         # Generate fretting trajectory
-        trajectory = self.generate_fret_trajectory(string_id, fret_num, presser_force)
+        trajectory = self.generate_fret_trajectory(string_id, fret_num, presser_force, timestamp=timestamp)
         
         # Plot if graphing is enabled
         if tu.graph:
@@ -271,62 +278,42 @@ class LeftHandParser:
         
         return status
     
-    def plot_trajectories(self, trajectories_list, title="Left Hand Trajectories"):
-        """Plot LH motor trajectories with enhanced visualization."""
-        if not trajectories_list or len(trajectories_list) < 12:
+    def plot_trajectories(self, trajectory_array, title="Left Hand Trajectories"):
+        """
+        Plot LH motor trajectories with enhanced visualization.
+        Expects trajectory_array to be a 2D numpy array [num_timesteps x 12]
+        Mimics the plotting style from GuitarBotParser.parseAllMIDI()
+        """
+        if trajectory_array.size == 0 or trajectory_array.shape[1] < 12:
             print("Insufficient trajectory data for plotting")
             return
         
-        # Create time axis
-        num_points = len(trajectories_list[0])
-        timestamps = [i * tu.TIME_STEP for i in range(num_points)]
+        # Create time axis (mimicking GuitarBotParser line 93)
+        num_rows = trajectory_array.shape[0]
+        timestamps = np.arange(0, num_rows * tu.TIME_STEP, tu.TIME_STEP)
         
-        # Create subplots for sliders and pressers
-        fig = make_subplots(
-            rows=2, cols=1,
-            subplot_titles=('Slider Motors (0-5)', 'Presser Motors (6-11)'),
-            vertical_spacing=0.1
-        )
+        # Create figure (mimicking GuitarBotParser lines 94-107)
+        fig = go.Figure()
         
-        # Plot slider motors (0-5)
-        for motor_idx in range(6):
+        # Add a trace for each of the 12 LH motors
+        for motor in range(12):
+            motor_name = f'Slider {motor}' if motor < 6 else f'Presser {motor-6}'
             fig.add_trace(
                 go.Scatter(
-                    x=timestamps,
-                    y=trajectories_list[motor_idx],
-                    mode='lines+markers',
-                    name=f'Slider {motor_idx}',
-                    line=dict(width=2),
-                    marker=dict(size=3)
-                ),
-                row=1, col=1
+                    x=timestamps, 
+                    y=trajectory_array[:, motor], 
+                    mode='lines', 
+                    name=motor_name
+                )
             )
         
-        # Plot presser motors (6-11)
-        for motor_idx in range(6, 12):
-            fig.add_trace(
-                go.Scatter(
-                    x=timestamps,
-                    y=trajectories_list[motor_idx],
-                    mode='lines+markers',
-                    name=f'Presser {motor_idx-6}',
-                    line=dict(width=2),
-                    marker=dict(size=3)
-                ),
-                row=2, col=1
-            )
-        
+        # Update layout (mimicking GuitarBotParser lines 103-108)
         fig.update_layout(
             title=title,
-            xaxis_title='Time (seconds)',
-            yaxis_title='Motor Position (encoder ticks)',
-            showlegend=True,
-            height=800
+            xaxis_title='Time (s)',
+            yaxis_title='Motor Position',
+            legend_title='Motors'
         )
-        
-        fig.update_xaxes(showgrid=True, gridwidth=1, gridcolor='lightgray')
-        fig.update_yaxes(showgrid=True, gridwidth=1, gridcolor='lightgray')
-        
         fig.show()
     
 # Example usage and testing  
@@ -337,23 +324,23 @@ if __name__ == "__main__":
     print("=== Left Hand Parser Test ===")
     
     # Test /Fret message processing with MIDI note numbers (fretting only)
-    print("Testing /Fret message processing...")
+    print("\nTesting /Fret message processing...")
     
-    # Test MIDI note 40 (Low E open string)
-    trajectory_open = parser.parse_fret_message(midi_note_number=40)
-    print(f"MIDI 40 (Low E open): {len(trajectory_open)} trajectory points")
+    # Test MIDI note 40 (Low E open string) at timestamp 0.0
+    trajectory_open = parser.parse_fret_message(midi_note_number=40, timestamp=0.0)
+    print(f"MIDI 40 (Low E open): {trajectory_open.shape}")
     
-    # Test MIDI note 45 (5th fret on Low E) with specific force
-    trajectory_fret5 = parser.parse_fret_message(midi_note_number=45, presser_force=0.8)
-    print(f"MIDI 45 (Low E 5th fret): {len(trajectory_fret5)} trajectory points")
+    # Test MIDI note 45 (5th fret on Low E) with specific force at timestamp 0.5
+    trajectory_fret5 = parser.parse_fret_message(midi_note_number=45, presser_force=0.8, timestamp=0.5)
+    print(f"MIDI 45 (Low E 5th fret): {trajectory_fret5.shape}")
     
-    # Test MIDI note 52 (D string open)
-    trajectory_d_string = parser.parse_fret_message(midi_note_number=52, presser_force=0.6)
-    print(f"MIDI 52 (D string): {len(trajectory_d_string)} trajectory points")
+    # Test MIDI note 52 (D string) at timestamp 1.0
+    trajectory_d_string = parser.parse_fret_message(midi_note_number=52, presser_force=0.6, timestamp=1.0)
+    print(f"MIDI 52 (D string): {trajectory_d_string.shape}")
     
-    # Test MIDI note 62 (B string)
-    trajectory_b_string = parser.parse_fret_message(midi_note_number=62)
-    print(f"MIDI 62 (B string): {len(trajectory_b_string)} trajectory points")
+    # Test MIDI note 62 (B string) at timestamp 1.5
+    trajectory_b_string = parser.parse_fret_message(midi_note_number=62, timestamp=1.5)
+    print(f"MIDI 62 (B string): {trajectory_b_string.shape}")
     
     # Check status
     print("\nCurrent status:")
