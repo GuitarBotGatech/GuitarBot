@@ -17,10 +17,8 @@ import tune as tu
 # For Local
 UDP_IP = "127.0.0.1"
 UDP_PORT = 12000
-# initial_point = [0,0,0,0,0,0,-10,-10,-10,-10,-10,-10, -115, 9, 7,7]
-# 6 sliders, 6 pressers, Three pluckers for now, convert to encoder_ticks
+
 message_queue = queue.SimpleQueue()
-# chords = strum = pluck = None
 chords_queue = queue.SimpleQueue()
 pluck_queue = queue.SimpleQueue()
 dyn_queue = queue.SimpleQueue()  # New queue for dynamics messages
@@ -30,6 +28,9 @@ data_queue = queue.SimpleQueue()
 
 # Initialize dynamics parser
 rh_parser = RightHandParser()
+song_trajs_queue = queue.SimpleQueue()
+data_queue = queue.SimpleQueue()
+
 
 def decode_osc_message(data):
     print("Message In")
@@ -41,13 +42,14 @@ def decode_osc_message(data):
         print("Failed to parse OSC message")
     return None, None
 
+
 def udp_listener():
     sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     sock.bind((UDP_IP, UDP_PORT))
     print(f"UDP Server listening on {UDP_IP}:{UDP_PORT}")
 
     while True:
-        data, addr = sock.recvfrom(1024)
+        data, addr = sock.recvfrom(8192) # Controls how big a single "Song" can be
         data_queue.put(data)
         if not data_queue.empty():
             message_type, message_body = decode_osc_message(data_queue.get_nowait())
@@ -56,10 +58,9 @@ def udp_listener():
                 print(f"Received {message_type}: {message_body}")
                 print("Message Queue Size: ", message_queue.qsize())
 
+
 def process_messages():
     """Process messages from the queue and handle them."""
-    chords = pluck = None
-
     while True:
         try:
             while not message_queue.empty():
@@ -79,38 +80,48 @@ def process_messages():
 
 
 def song_creator():
-    initial_point = tu.initial_point
+    # Instantiate the parser once with the robot's starting position.
+    # The parser will now manage its own state.
+    parser = GuitarBotParser(initial_point=tu.initial_point)
+    last_activity_time = time.time()
+    IDLE_TIMEOUT_SECONDS = 3.0
+
     while True:
-        try:
-            while chords_queue.qsize() > 0 and pluck_queue.qsize() > 0:
-                # Collect all chords, strums, and plucks together
+        if chords_queue.qsize() > 0 and pluck_queue.qsize() > 0:
+            try:
                 chords = chords_queue.get_nowait()
                 pluck = pluck_queue.get_nowait()
 
-                for i in range(chords_queue.qsize()):
+                while not chords_queue.empty():
                     chords.extend(chords_queue.get_nowait())
-
-                for i in range(pluck_queue.qsize()):
+                while not pluck_queue.empty():
                     pluck.extend(pluck_queue.get_nowait())
 
-                # print("ALL CHORDS: ", chords)
-                # print("ALL PLUCKS: ", pluck)
                 print("Starting Parse")
 
-                song_trajectories_dict = GuitarBotParser.parseAllMIDI(chords, pluck, initial_point)
-                song_trajectories_list = [value for value in song_trajectories_dict.values()]
-                song_trajs_queue.put(song_trajectories_list)
-                print("SONG TRAJS QUEUE LENGTH: ", song_trajs_queue.qsize())
-                initial_point = song_trajectories_list[-1]
-                initial_point_queue.put(initial_point)
-                chords = pluck = None
+                # Call the method on the parser instance.
+                # It uses its internal state for the initial_point.
+                song_trajectories_array = parser.parseAllMIDI(chords, pluck)
 
+                if song_trajectories_array.size > 0:
+                    song_trajs_queue.put(song_trajectories_array)
+                    print("SONG TRAJS QUEUE HAS ITEM OF SHAPE: ", song_trajectories_array.shape)
 
+                # No need to manually update initial_point here. The parser does it internally.
+                last_activity_time = time.time()
+                print("Activity detected, idle timer reset.")
 
-        except queue.Empty:
-            pass
+            except queue.Empty:
+                pass
+        else:
+            if chords_queue.qsize() == 0 and pluck_queue.qsize() == 0:
+                if time.time() - last_activity_time > IDLE_TIMEOUT_SECONDS:
+                    print(f" idle for over {IDLE_TIMEOUT_SECONDS} seconds. Sending 'On' to reset state.")
+                    idle_chord_message = [["On", 0]]
+                    # message_queue.put(("Chords", idle_chord_message))
+                    last_activity_time = time.time()
 
-        time.sleep(0.001)
+        time.sleep(0.01)
 
 
 def dynamics_processor():
@@ -136,10 +147,10 @@ def dynamics_processor():
 def robot_controller():
     while True:
         try:
-            song_trajectories_list = []
-            # While theres song lists in the queue
-            # print("Empty")
-            while not song_trajs_queue.empty():
+            if not song_trajs_queue.empty():
+                all_trajs = []
+                while not song_trajs_queue.empty():
+                    all_trajs.append(song_trajs_queue.get_nowait())
 
                 # If they're more than one song list in the queue
                 if song_trajs_queue.qsize() > 1:
@@ -159,17 +170,21 @@ def robot_controller():
                 print("Starting Song")
                 RobotController.main(song_trajectories_list)
 
+                if all_trajs:
+                    song_trajectories_list = np.vstack(all_trajs)
+                    print("Total Song Trajs Shape: ", song_trajectories_list.shape)
+                    print("Starting Song")
+                    RobotController.main(song_trajectories_list)
+
         except queue.Empty:
             pass
-
         time.sleep(0.001)
 
+
 if __name__ == "__main__":
-    # Start the UDP listener in a separate thread
     udp_thread = threading.Thread(target=udp_listener, daemon=True)
     udp_thread.start()
 
-    # Start the message processing thread
     process_thread = threading.Thread(target=process_messages, daemon=True)
     process_thread.start()
 
