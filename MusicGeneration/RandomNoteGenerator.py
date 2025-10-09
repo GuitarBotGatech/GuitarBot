@@ -201,7 +201,7 @@ RHYTHMIC_PATTERNS = {
         (0.05, 4),  # Stagger the start times for a strum effect
         (0.1, 4)
     ],
-    # 2. Classic "Alberti Bass" style arpeggio (bottom, top, middle, top)
+    # 2."Alberti Bass" style arpeggio (bottom, top, middle, top)
     "alberti_arpeggio": [
         (0, 0.9),
         (1, 0.9),
@@ -366,10 +366,11 @@ def generate_polyphonic_texture(iterations, bpm=120):
                 note_start_time = current_timestamp + (start_beat * seconds_per_beat)
                 # Ensure short notes don't accidentally become tremolos. Max duration is 0.49s.
                 note_duration = min(0.5, duration_in_beats * seconds_per_beat)
-                # print(duration_in_beats * seconds_per_beat)
+                print(duration_in_beats * seconds_per_beat)
 
                 # These are non-tremolo notes
-                melodic_message = [melodic_note, note_duration, 6, 0, note_start_time]
+                rand_speed = random.randint(6, 10)
+                melodic_message = [melodic_note, note_duration, rand_speed, 0, note_start_time]
                 messages.append(melodic_message)
 
             # Advance the master clock by one measure for the next chord
