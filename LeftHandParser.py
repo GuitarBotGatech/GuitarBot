@@ -217,10 +217,12 @@ class LeftHandParser:
         if presser_force is not None and not (0.0 <= presser_force <= 1.0):
             print(f"Error: Invalid presser_force {presser_force}. Must be 0.0-1.0.")
             return np.array([])
-        
+
+        # TODO: 15 x N trajectory array that preserves state.
+        # TODO: Get encoder state from arduino and save that.
         # Generate fretting trajectory
         trajectory = self.generate_fret_trajectory(string_id, fret_num, presser_force, timestamp=timestamp)
-        
+
         # Plot if graphing is enabled
         if tu.graph:
             print(f"Plotting trajectory for MIDI note {midi_note_number}")
