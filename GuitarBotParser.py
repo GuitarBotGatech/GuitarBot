@@ -182,9 +182,7 @@ class GuitarBotParser:
         buffer = 200 * tu.TIME_STEP
         num_rows = int((max_required_time + buffer) / tu.TIME_STEP)
         if num_rows == 0:
-            # Handle cases with no events by creating a minimal array
             num_rows = 1
-        # --- END: Robust max_timestamp calculation ---
 
         trajectory_array = np.full((num_rows, 12), np.nan)
 
@@ -265,9 +263,16 @@ class GuitarBotParser:
                 q0_slider_motor, q0_presser_motor = current_encoder_position[slider_motor_ID], current_encoder_position[
                     presser_motor_ID]
                 qf_slider = int(event['position'])
-                qf_presser = tu.LH_PRESSER_PRESSED_POS
+                qf1_presser = tu.LH_PRESSER_UNPRESSED_POS
+                qf2_presser = tu.LH_PRESSER_PRESSED_POS
+                # print((event['position']))
+                # print(current_encoder_position[slider_motor_ID])
+                # print("----------------")
                 if int(event['position']) == -1:
-                    qf_slider, qf_presser = q0_slider_motor, tu.LH_PRESSER_UNPRESSED_POS
+                    qf_slider, qf2_presser = q0_slider_motor, tu.LH_PRESSER_UNPRESSED_POS
+                if (int(event['position'])) == current_encoder_position[slider_motor_ID] and int(event['position']) != -1:
+                    qf_slider, qf1_presser = q0_slider_motor, tu.LH_PRESSER_PRESSED_POS
+
 
                 if prev_type == 'chord' or not (
                         event['type'] == prev_type and prev_position == event['position'] and prev_motor_id == event[
@@ -287,30 +292,30 @@ class GuitarBotParser:
                         presser_points.extend(p2)
 
                         s3 = self.interp_with_blend(qf_slider, qf_slider, num_points, tb_cent)
-                        p3 = self.interp_with_blend(tu.LH_PRESSER_SLIDE_PRESS_POS, qf_presser, num_points, tb_cent)
+                        p3 = self.interp_with_blend(tu.LH_PRESSER_SLIDE_PRESS_POS, qf2_presser, num_points, tb_cent)
                         slider_points.extend(s3)
                         presser_points.extend(p3)
                     else:
                         s1 = self.interp_with_blend(q0_slider_motor, q0_slider_motor, num_points, tb_cent)
-                        p1 = self.interp_with_blend(q0_presser_motor, tu.LH_PRESSER_UNPRESSED_POS, num_points, tb_cent)
+                        p1 = self.interp_with_blend(q0_presser_motor, qf1_presser, num_points, tb_cent)
                         slider_points.extend(s1)
                         presser_points.extend(p1)
 
                         s2 = self.interp_with_blend(q0_slider_motor, qf_slider, tu.LH_SINGLE_NOTE_MOTION_POINTS,
                                                     tb_cent)
-                        p2 = self.interp_with_blend(tu.LH_PRESSER_UNPRESSED_POS, tu.LH_PRESSER_UNPRESSED_POS,
+                        p2 = self.interp_with_blend(qf1_presser, qf1_presser,
                                                     tu.LH_SINGLE_NOTE_MOTION_POINTS, tb_cent)
                         slider_points.extend(s2)
                         presser_points.extend(p2)
 
                         s3 = self.interp_with_blend(qf_slider, qf_slider, num_points, tb_cent)
-                        p3 = self.interp_with_blend(tu.LH_PRESSER_UNPRESSED_POS, qf_presser, num_points, tb_cent)
+                        p3 = self.interp_with_blend(qf1_presser, qf2_presser, num_points, tb_cent)
                         slider_points.extend(s3)
                         presser_points.extend(p3)
                 else:
                     s3 = self.interp_with_blend(q0_slider_motor, qf_slider, tu.LH_SINGLE_NOTE_MOTION_POINTS,
                                                 tb_cent)
-                    p3 = self.interp_with_blend(q0_presser_motor, qf_presser, tu.LH_SINGLE_NOTE_MOTION_POINTS,
+                    p3 = self.interp_with_blend(q0_presser_motor, qf2_presser, tu.LH_SINGLE_NOTE_MOTION_POINTS,
                                                 tb_cent)
                     slider_points.extend(s3)
                     presser_points.extend(p3)
