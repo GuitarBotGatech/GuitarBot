@@ -123,8 +123,8 @@ public:
         ethernet_initialized_ = true;
         
         LOG_LOG("Encoder feedback collector initialized");
-        LOG_LOG("Local IP: %s", Ethernet.localIP().toString().c_str());
-        LOG_LOG("Sending feedback to: %s:%d", python_host_.toString().c_str(), python_port_);
+        LOG_LOG("Local IP: %s", Ethernet.localIP());
+        LOG_LOG("Sending feedback to: %d.%d.%d.%d:%d", python_host[0], python_host[1], python_host[2], python_host[3], python_port_);
         LOG_LOG("Transmission interval: %d us", transmission_interval_us_);
         
         return kNoError;
@@ -199,7 +199,7 @@ public:
         Striker& striker = striker_controller_->m_striker[motor_id];
         
         // Get encoder feedback (using public methods only)
-        int32_t encoder_pos = striker.getCurrentPosition_ticks();
+        int32_t encoder_pos = striker.getPosition_ticks();
         uint16_t status_word = striker.getStatusWord();
         
         // Create and transmit packet immediately
