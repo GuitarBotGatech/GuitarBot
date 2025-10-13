@@ -90,33 +90,63 @@ void setup() {
 void loop() {
     ethernetEvent();
     
+    static uint32_t last_debug_print = 0;
+    uint32_t now = millis();
+    
+    // Print debug info every 5 seconds to show the system is alive
+    if (now - last_debug_print > 5000) {
+        Serial.println("DEBUG: Main loop running...");
+        if (g_feedback_collector) {
+            Serial.println("DEBUG: g_feedback_collector is active");
+        } else {
+            Serial.println("DEBUG: g_feedback_collector is NULL!");
+        }
+        last_debug_print = now;
+    }
+    
     // TIMING-SAFE: Use non-blocking feedback transmission in main loop
     // This only transmits buffered data when timing interval has elapsed
     if (g_feedback_collector) {
         g_feedback_collector->transmitBufferedData();
+    } else {
+        // Only print this occasionally to avoid spam
+        static uint32_t last_null_warning = 0;
+        if (now - last_null_warning > 10000) {
+            Serial.println("DEBUG: Cannot call transmitBufferedData() - g_feedback_collector is NULL");
+            last_null_warning = now;
+        }
     }
     
     if (complete) {
 
         complete = false;
 
-        //LOG_LOG("slide 1: %i, slide 2: %i, slide 3: %i, slide 4: %i, slide 5: %i, slide 6: %i", frets[0], frets[1], frets[2], frets[3], frets[4], frets[5]);
-        //LOG_LOG("press 1: %i, press 2: %i, press 3: %i, press 4: %i, press 5: %i, press 6: %i", playcommands[0], playcommands[1], playcommands[2], playcommands[3], playcommands[4], playcommands[5]);
-        //LOG_LOG("pick 1: %i, pick 2: %i, pick 3: %i, pick 4: %i, pick 5: %i, pick 6: %i", pickings[0], pickings[1], pickings[2], pickings[3], pickings[4], pickings[5]);
-        //LOG_LOG("tremolo length: %i, tremolo speed: %i", tremLength, tremSpeed);
-        //LOG_LOG("strummer: %i, strum speed: %i, Deflect: %i", strumAngle, strumSpeed, deflect);
-        // To do:
-        // ExecuteEvent needs another variable to control which message is handled between LH, strum, and pick. Add in 'event' as a char/string variable.
-      
-        //pController->executeEvent(event, frets, playcommands, pickings, tremLength, tremSpeed, strumAngle, strumSpeed, deflect);
+        Serial.println("DEBUG: Processing trajectory command!");
+        Serial.printf("DEBUG: Trajectory data: ");
+        for (int i = 0; i < 15; i++) {
+            Serial.printf("%.2f ", trajPoint[i]);
+        }
+        Serial.println();
 
-  // Optional: mark start of a new trajectory feedback window
-  // if (g_feedback_collector) g_feedback_collector->startTrajectoryFeedback();
+        // Optional: mark start of a new trajectory feedback window
+        if (g_feedback_collector) {
+            Serial.println("DEBUG: Starting trajectory feedback collection");
+            g_feedback_collector->startTrajectoryFeedback();
+        }
 
-  pController->processTrajPoints(trajPoint);
+        pController->processTrajPoints(trajPoint);
 
-  // Optional: stop feedback window after processing a single trajectory point buffer
-  // if (g_feedback_collector) g_feedback_collector->stopTrajectoryFeedback();
+        // Force encoder feedback collection after trajectory execution
+        if (g_feedback_collector) {
+            Serial.println("DEBUG: Forcing encoder feedback collection after trajectory");
+            g_feedback_collector->collectFeedback();
+        }
+
+        // Optional: stop feedback window after processing a single trajectory point buffer
+        if (g_feedback_collector) {
+            Serial.println("DEBUG: Stopping trajectory feedback collection");
+            g_feedback_collector->stopTrajectoryFeedback();
+        }
         //pController -> executeSlideTest(100,100,100,100,100,100,100,100);
         //pController -> testFunction();
         // pController->executeSlide(frets, playcommands);

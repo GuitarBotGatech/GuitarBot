@@ -254,6 +254,8 @@ def run_receiver(host: str, port: int, csv_path: Optional[str], duration: Option
         sock.bind((host, port))
         sock.settimeout(0.5)
         print(f"Listening for encoder feedback on {host}:{port} (packet size {PACKET_SIZE} bytes)")
+        print(f"DEBUG: UDP socket bound successfully")
+        print(f"DEBUG: Socket will timeout every 0.5s to check for interruption")
     except OSError as e:
         print(f"Failed to bind socket to {host}:{port}: {e}")
         print("Try a different port or check if another process is using this port")
@@ -284,10 +286,15 @@ def run_receiver(host: str, port: int, csv_path: Optional[str], duration: Option
 
     start = time.time()
     count = 0
+    timeout_count = 0
+    
     try:
         print("Receiving encoder feedback... Press Ctrl+C to stop")
         if duration is not None:
             print(f"Will run for {duration} seconds")
+        
+        print(f"DEBUG: Expecting packets from robot at 10.2.1.177")
+        print(f"DEBUG: Socket timeout set to 0.5 seconds")
         
         while True:
             if duration is not None and (time.time() - start) >= duration:
@@ -295,20 +302,30 @@ def run_receiver(host: str, port: int, csv_path: Optional[str], duration: Option
                 break
             try:
                 data, addr = sock.recvfrom(64)
+                print(f"DEBUG: Received {len(data)} bytes from {addr[0]}:{addr[1]}")
+                timeout_count = 0  # Reset timeout counter on successful receive
             except socket.timeout:
+                timeout_count += 1
+                if timeout_count % 10 == 0:  # Print every 5 seconds (10 timeouts * 0.5s)
+                    elapsed = time.time() - start
+                    print(f"DEBUG: No packets received for {timeout_count * 0.5:.1f}s (total elapsed: {elapsed:.1f}s)")
                 continue
             except OSError as e:
                 print(f"Socket error during receive: {e}")
                 break
 
             if len(data) < PACKET_SIZE:
+                print(f"DEBUG: Packet too small: {len(data)} bytes < {PACKET_SIZE} bytes expected")
                 continue
 
             # Some MCUs may batch multiple packets; parse chunk-wise
             offset = 0
+            packets_in_message = 0
             while offset + PACKET_SIZE <= len(data):
                 motor_id, enc, status, checksum = PACKET_STRUCT.unpack_from(data, offset)
                 offset += PACKET_SIZE
+                packets_in_message += 1
+                
                 expected = calc_checksum(motor_id, enc, status)
                 ok = (checksum == expected)
                 ts = time.time()
@@ -324,19 +341,32 @@ def run_receiver(host: str, port: int, csv_path: Optional[str], duration: Option
                 # Real-time plotting
                 if plotter:
                     plotter.add_data_point(ts, motor_id, enc, status, ok)
+            
+            if packets_in_message > 1:
+                print(f"DEBUG: Parsed {packets_in_message} packets from single UDP message")
                     
     except KeyboardInterrupt:
         print("\nReceiver interrupted by user")
     except Exception as e:
         print(f"Unexpected error: {e}")
     finally:
+        elapsed = time.time() - start
+        print(f"DEBUG: Session ended after {elapsed:.1f}s")
+        print(f"DEBUG: Total packets received: {count}")
+        print(f"DEBUG: Total timeouts: {timeout_count}")
+        if count == 0:
+            print("DEBUG: No encoder packets received - check robot network connection and IP configuration")
+            print("DEBUG: Robot should be at 10.2.1.177, sending to this PC at 10.2.1.1:8889")
+        
         try:
             sock.close()
+            print(f"DEBUG: Socket closed")
         except:
             pass
         if csv_file:
             try:
                 csv_file.close()
+                print(f"DEBUG: CSV file closed")
             except:
                 pass
         

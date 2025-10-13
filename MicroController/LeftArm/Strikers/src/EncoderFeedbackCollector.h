@@ -114,17 +114,26 @@ public:
             return kFileOpenError;
         }
         
+        Serial.printf("DEBUG: Starting UDP socket on port %d\n", FEEDBACK_PORT);
+        
         // Start UDP on feedback port
         if (!udp_socket_.begin(FEEDBACK_PORT)) {
+            Serial.println("DEBUG: Failed to start UDP socket");
             LOG_ERROR("Failed to initialize UDP socket for feedback");
-            return kNetworkError;
+            return kFileOpenError;
         }
         
         ethernet_initialized_ = true;
         
+        Serial.println("DEBUG: EncoderFeedbackCollector initialized successfully");
         LOG_LOG("Encoder feedback collector initialized");
-        LOG_LOG("Local IP: %s");
-        LOG_LOG(Ethernet.localIP())
+        
+        // Get and log local IP
+        IPAddress localIP = Ethernet.localIP();
+        Serial.printf("DEBUG: Local IP: %d.%d.%d.%d\n", localIP[0], localIP[1], localIP[2], localIP[3]);
+        
+        Serial.printf("DEBUG: Will send feedback to: %d.%d.%d.%d:%d every %d us\n", 
+                      python_host[0], python_host[1], python_host[2], python_host[3], python_port_, transmission_interval_us_);
         LOG_LOG("Sending feedback to: %d.%d.%d.%d:%d", python_host[0], python_host[1], python_host[2], python_host[3], python_port_);
         LOG_LOG("Transmission interval: %d us", transmission_interval_us_);
         
@@ -154,14 +163,29 @@ public:
      */
     void transmitBufferedData() {
         if (!ethernet_initialized_) {
+            Serial.println("DEBUG: transmitBufferedData() - Ethernet not initialized");
             return;
         }
         
         // Only transmit if we have data and it's time
         uint32_t current_time_us = micros();
-        if (buffer_count_ > 0 && (current_time_us - last_transmission_us_) >= transmission_interval_us_) {
+        uint32_t time_since_last = current_time_us - last_transmission_us_;
+        
+        Serial.printf("DEBUG: transmitBufferedData() - buffer_count=%d, time_since_last=%d us, interval=%d us\n", 
+                      buffer_count_, time_since_last, transmission_interval_us_);
+        
+        if (buffer_count_ > 0 && time_since_last >= transmission_interval_us_) {
+            Serial.println("DEBUG: Conditions met, transmitting buffer...");
             transmitBuffer();
             last_transmission_us_ = current_time_us;
+        } else {
+            if (buffer_count_ == 0) {
+                Serial.println("DEBUG: No data in buffer to transmit");
+            }
+            if (time_since_last < transmission_interval_us_) {
+                Serial.printf("DEBUG: Too soon to transmit (need %d more us)\n", 
+                              transmission_interval_us_ - time_since_last);
+            }
         }
     }
     
@@ -170,7 +194,15 @@ public:
      * This should be called from the main control loop, NOT from IRQ handlers
      */
     void collectFeedback() {
-        if (!ethernet_initialized_ || !striker_controller_) {
+        Serial.println("DEBUG: collectFeedback() called");
+        
+        if (!ethernet_initialized_) {
+            Serial.println("DEBUG: collectFeedback() - Ethernet not initialized");
+            return;
+        }
+        
+        if (!striker_controller_) {
+            Serial.println("DEBUG: collectFeedback() - No striker controller");
             return;
         }
         
@@ -178,16 +210,27 @@ public:
         
         // Check if it's time to collect/transmit
         if (current_time_us - last_transmission_us_ < transmission_interval_us_) {
+            Serial.printf("DEBUG: collectFeedback() - Too soon (need %d more us)\n", 
+                          transmission_interval_us_ - (current_time_us - last_transmission_us_));
             return;
         }
         
+        Serial.printf("DEBUG: Collecting feedback from %d motors...\n", NUM_MOTORS);
+        
         // Collect feedback from all motors
         for (int motor_id = 1; motor_id <= NUM_MOTORS; motor_id++) {
+            if (!striker_controller_->isValidMotorId(motor_id)) {
+                Serial.printf("DEBUG: Motor %d is invalid, skipping\n", motor_id);
+                continue;
+            }
+            
             Striker& striker = striker_controller_->getStriker(motor_id);
             
             // Get current encoder position from Striker (using public methods only)
-            int32_t encoder_pos = striker.getPosition_ticks();
+            int32_t encoder_pos = striker.getCurrentPosition_ticks();
             uint16_t status_word = striker.getStatusWord();
+            
+            Serial.printf("DEBUG: Motor %d - pos=%d, status=0x%04X\n", motor_id, encoder_pos, status_word);
             
             // Create feedback packet
             EncoderFeedbackPacket packet;
@@ -199,6 +242,8 @@ public:
             // Add to buffer
             addToBuffer(packet);
         }
+        
+        Serial.printf("DEBUG: Buffer now has %d packets, transmitting...\n", buffer_count_);
         
         // Transmit buffered data
         transmitBuffer();
@@ -373,27 +418,38 @@ private:
      */
     bool transmitPacket(const EncoderFeedbackPacket& packet) {
         if (!ethernet_initialized_) {
+            Serial.println("DEBUG: transmitPacket() - Ethernet not initialized");
             transmission_errors_++;
             return false;
         }
         
+        Serial.printf("DEBUG: Transmitting packet - motor=%d, pos=%d, status=0x%04X, checksum=0x%02X\n", 
+                      packet.motor_id, packet.encoder_position, packet.status_word, packet.checksum);
+        Serial.printf("DEBUG: Target: %d.%d.%d.%d:%d\n", 
+                      python_host_[0], python_host_[1], python_host_[2], python_host_[3], python_port_);
+        
         // Begin UDP packet to Python host
         int result = udp_socket_.beginPacket(python_host_, python_port_);
         if (result == 0) {
+            Serial.println("DEBUG: transmitPacket() - Failed to begin UDP packet");
             transmission_errors_++;
             return false;
         }
         
         // Write packet data
         size_t bytes_written = udp_socket_.write((const uint8_t*)&packet, sizeof(packet));
+        Serial.printf("DEBUG: Wrote %d bytes (expected %d)\n", bytes_written, sizeof(packet));
         
         // End and send packet
         result = udp_socket_.endPacket();
+        Serial.printf("DEBUG: endPacket() result = %d\n", result);
         
         if (result == 1 && bytes_written == sizeof(packet)) {
             packets_sent_++;
+            Serial.println("DEBUG: Packet sent successfully!");
             return true;
         } else {
+            Serial.printf("DEBUG: Packet send failed - endPacket=%d, bytes=%d\n", result, bytes_written);
             transmission_errors_++;
             return false;
         }
