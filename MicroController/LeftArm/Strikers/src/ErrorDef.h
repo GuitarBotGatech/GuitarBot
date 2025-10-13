@@ -66,7 +66,10 @@ enum Error_t {
 
     // Unknown
     kUnknownCaseError,
-    kUnknownError
+    kUnknownError,
+
+    // Network
+    kNetworkError
 };
 
 #endif // ERRORDEF_H
