@@ -317,13 +317,13 @@ def generate_polyrhythms():
     Generates a polyrhythmic arpeggio for each chord in the C major scale.
     """
     # --- Configuration ---
-    BPM = 120
-    BASE_DURATION = 4  # Base notes 4 quarter notes (a 4/4 measure)
-    NOTE_DURATION = 0.1
+    BPM = 80
+    BASE_DURATION = 3  # Base notes 4 quarter notes (a 4/4 measure)
+    NOTE_DURATION = 0.5
 
     # Layers will adapt to the number of strings/pluckers.
     # Must match the number of notes in the triads (3).
-    layers = [3, 3, 4]
+    layers = [3, 2, 2]
     chords_in_key = [
         ("C Major", c_major_triads),
         ("D Minor", d_minor_triads),
@@ -361,7 +361,7 @@ def generate_polyrhythms():
 
             for ts in timestamps:
                 message_timestamp = current_timestamp + ts
-                temp_message = [note, NOTE_DURATION, 1, 0, message_timestamp]
+                temp_message = [note, NOTE_DURATION, 3, 0, message_timestamp]
                 messages.append(temp_message)
 
         current_timestamp += measure_duration
