@@ -74,6 +74,9 @@ public:
     bool isInverted(){
         return epos.isEncoderInverted();
     }
+    uint16_t getStatusWord(){
+        return epos.getStatusWord();
+    }
     void rotate(int pos){
         epos.PDO_setPosition(pos);
     }

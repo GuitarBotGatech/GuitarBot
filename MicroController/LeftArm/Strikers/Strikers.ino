@@ -69,22 +69,20 @@ void setup() {
 
     LOG_LOG("Listening for commands...");
 
-  // Initialize encoder feedback collector to stream encoder data to Python host
-  // Adjust the IP below to the machine running EncoderUDPReceiver.py
-  IPAddress python_ip(10, 2, 1, 100);
-  g_feedback_collector = new EncoderFeedbackCollector(pController);
-  if (g_feedback_collector) {
-    Error_t fbErr = g_feedback_collector->initialize(python_ip, FEEDBACK_PORT);
-    if (fbErr != kNoError) {
-      LOG_ERROR("Failed to initialize encoder feedback collector");
-      delete g_feedback_collector;
-      g_feedback_collector = nullptr;
-    } else {
-      LOG_LOG("Encoder feedback collector ready on %s:%d", python_ip.toString().c_str(), FEEDBACK_PORT);
-    }
-  }
-    
-}
+    // Initialize encoder feedback collector to stream encoder data to Python host
+    // Adjust the IP below to the machine running EncoderUDPReceiver.py
+    IPAddress python_ip(10, 2, 1, 100);
+    g_feedback_collector = new EncoderFeedbackCollector(pController);
+    if (g_feedback_collector) {
+        Error_t fbErr = g_feedback_collector->initialize(python_ip, FEEDBACK_PORT);
+        if (fbErr != kNoError) {
+            LOG_ERROR("Failed to initialize encoder feedback collector");
+            delete g_feedback_collector;
+            g_feedback_collector = nullptr;
+        } else {
+            LOG_LOG("Encoder feedback collector ready on %d.%d.%d.%d:%d", python_ip[0], python_ip[1], python_ip[2], python_ip[3], FEEDBACK_PORT);
+        }
+    }}
 
 void loop() {
     ethernetEvent();

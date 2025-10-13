@@ -167,14 +167,9 @@ public:
         for (int motor_id = 1; motor_id <= NUM_MOTORS; motor_id++) {
             Striker& striker = striker_controller_->m_striker[motor_id];
             
-            // Check if motor is active/configured
-            if (!striker.isEnabled()) {
-                continue;
-            }
-            
-            // Get current encoder position from EPOS4
-            int32_t encoder_pos = striker.epos.getCurrentPosition_ticks();
-            uint16_t status_word = striker.epos.getStatusWord();
+            // Get current encoder position from Striker (using public methods only)
+            int32_t encoder_pos = striker.getPosition_ticks();
+            uint16_t status_word = striker.getStatusWord();
             
             // Create feedback packet
             EncoderFeedbackPacket packet;
@@ -203,13 +198,9 @@ public:
         
         Striker& striker = striker_controller_->m_striker[motor_id];
         
-        if (!striker.isEnabled()) {
-            return;
-        }
-        
-        // Get encoder feedback
-        int32_t encoder_pos = striker.epos.getCurrentPosition_ticks();
-        uint16_t status_word = striker.epos.getStatusWord();
+        // Get encoder feedback (using public methods only)
+        int32_t encoder_pos = striker.getCurrentPosition_ticks();
+        uint16_t status_word = striker.getStatusWord();
         
         // Create and transmit packet immediately
         EncoderFeedbackPacket packet;

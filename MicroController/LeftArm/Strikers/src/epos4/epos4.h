@@ -175,6 +175,10 @@ public:
         return m_iEncoderPosition * 360.f / (m_iEncoderResolution);
     }
 
+    uint16_t getStatusWord() const {
+        return m_uiCurrentStatusWord;
+    }
+
     int32_t angle2Pos(float fAngle, bool bRadian);
 
     int getDeviceError() const {
