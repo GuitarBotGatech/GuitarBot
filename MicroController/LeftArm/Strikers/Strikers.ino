@@ -86,10 +86,13 @@ void setup() {
 
 void loop() {
     ethernetEvent();
-  // Periodically collect and transmit encoder feedback (runs at FEEDBACK_INTERVAL_US internally)
-  if (g_feedback_collector) {
-    g_feedback_collector->collectFeedback();
-  }
+    
+    // TIMING-SAFE: Use non-blocking feedback transmission in main loop
+    // This only transmits buffered data when timing interval has elapsed
+    if (g_feedback_collector) {
+        g_feedback_collector->transmitBufferedData();
+    }
+    
     if (complete) {
 
         complete = false;

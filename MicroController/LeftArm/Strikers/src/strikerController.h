@@ -716,6 +716,16 @@ private:
                         pInstance->m_striker[i].rotate(point[i - 1]);
                     }
                 }
+                
+                // TIMING-SAFE: Fast encoder feedback capture after motor commands
+                // This only captures data to buffer, no network I/O in IRQ context
+                extern EncoderFeedbackCollector* g_feedback_collector;
+                if (g_feedback_collector) {
+                    // Capture encoder data for all motors (fast, no blocking operations)
+                    for (int i = 1; i <= NUM_MOTORS; ++i) {
+                        g_feedback_collector->captureMotorData(i);
+                    }
+                }
         }
 
         // Set sendRequest flag if total trajectory time is less than the buffer time.

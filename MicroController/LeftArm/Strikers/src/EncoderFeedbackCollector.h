@@ -148,8 +148,25 @@ public:
     }
     
     /**
-     * Collect encoder feedback from all active motors
-     * This should be called from the main control loop
+     * Transmit any buffered encoder data (non-blocking)
+     * Safe to call from main loop, NOT from IRQ handlers
+     */
+    void transmitBufferedData() {
+        if (!ethernet_initialized_) {
+            return;
+        }
+        
+        // Only transmit if we have data and it's time
+        uint32_t current_time_us = micros();
+        if (buffer_count_ > 0 && (current_time_us - last_transmission_us_) >= transmission_interval_us_) {
+            transmitBuffer();
+            last_transmission_us_ = current_time_us;
+        }
+    }
+    
+    /**
+     * SLOW: Collect encoder feedback from all active motors
+     * This should be called from the main control loop, NOT from IRQ handlers
      */
     void collectFeedback() {
         if (!ethernet_initialized_ || !striker_controller_) {
@@ -259,8 +276,32 @@ public:
     }
     
     /**
-     * Integration point with existing PDO message processing
-     * Call this from strikerController PDO callback
+     * FAST: Non-blocking feedback capture for time-critical contexts
+     * Safe to call from RPDOTimerIRQHandler - only captures data, no transmission
+     */
+    void captureMotorData(uint8_t motor_id) {
+        if (!ethernet_initialized_ || !striker_controller_ || !striker_controller_->isValidMotorId(motor_id)) {
+            return;
+        }
+        
+        // Quick data capture - no network I/O
+        Striker& striker = striker_controller_->getStriker(motor_id);
+        int32_t encoder_pos = striker.getCurrentPosition_ticks();
+        uint16_t status_word = striker.getStatusWord();
+        
+        EncoderFeedbackPacket packet;
+        packet.motor_id = motor_id;
+        packet.encoder_position = encoder_pos;
+        packet.status_word = status_word;
+        packet.checksum = packet.calculateChecksum();
+        
+        // Add to buffer only - no transmission
+        addToBuffer(packet);
+    }
+    
+    /**
+     * SLOW: Integration point with existing PDO message processing
+     * Call this from strikerController PDO callback (when not in IRQ context)
      */
     void onPDOMessageReceived(uint8_t motor_id, const can_message_t& msg) {
         // This allows us to collect encoder feedback immediately when
@@ -375,40 +416,68 @@ extern EncoderFeedbackCollector* g_feedback_collector;
         g_feedback_collector = nullptr; \
     }
 
-// Add this to the main control loop in strikerController
-#define COLLECT_ENCODER_FEEDBACK() \
+/**
+ * TIMING-SAFE INTEGRATION MACROS
+ */
+
+// FAST: Safe for IRQ handlers - only captures data, no network I/O
+#define CAPTURE_MOTOR_FEEDBACK(motor_id) \
+    if (g_feedback_collector) { \
+        g_feedback_collector->captureMotorData(motor_id); \
+    }
+
+// FAST: Safe for IRQ - transmit buffered data (non-blocking check)
+#define TRANSMIT_FEEDBACK_BUFFER() \
+    if (g_feedback_collector) { \
+        g_feedback_collector->transmitBufferedData(); \
+    }
+
+// SLOW: Full collection - only call from main loop, NOT IRQ handlers
+#define COLLECT_ENCODER_FEEDBACK_SAFE() \
     if (g_feedback_collector) { \
         g_feedback_collector->collectFeedback(); \
     }
 
-// Add this to PDO message callback in strikerController.h (line ~570)
+// SLOW: PDO message processing - only call from non-IRQ PDO callbacks
 #define ON_PDO_MESSAGE_RECEIVED(nodeID, msg) \
     if (g_feedback_collector) { \
         g_feedback_collector->onPDOMessageReceived(nodeID, *arg); \
     }
 
+// DEPRECATED: This macro should NOT be used in time-critical code paths
+// #define COLLECT_ENCODER_FEEDBACK() - DO NOT USE IN IRQ HANDLERS!
+
 /**
- * Example integration in strikerController.h:
+ * CORRECT INTEGRATION EXAMPLES:
  * 
  * // In constructor or setup():
  * INIT_ENCODER_FEEDBACK_COLLECTOR();
  * 
- * // In main control loop:
- * void StrikerController::update() {
- *     // ... existing code ...
- *     COLLECT_ENCODER_FEEDBACK();
+ * // Option 1: FAST capture in RPDOTimerIRQHandler (time-critical safe):
+ * static void RPDOTimerIRQHandler() {
+ *     // ... trajectory processing (time-critical) ...
+ *     
+ *     // Execute motor commands (time-critical)
+ *     for (int i = 1; i < NUM_MOTORS + 1; ++i) {
+ *         pInstance->m_striker[i].rotate(point[i - 1]);
+ *     }
+ *     
+ *     // FAST: Only capture data for current motors, no network I/O
+ *     for (int i = 1; i <= NUM_MOTORS; ++i) {
+ *         CAPTURE_MOTOR_FEEDBACK(i);
+ *     }
+ *     
+ *     // FAST: Try to transmit buffered data (non-blocking)
+ *     TRANSMIT_FEEDBACK_BUFFER();
  * }
  * 
- * // In PDO callback (around line 570):
- * static void canOnReceive(const IsoTpMessage& arg) {
- *     if (arg->format == CAN_STD_FORMAT) {
- *         int nodeID = arg->id - COB_ID_TPDO3;
- *         if (nodeID >= 1 && nodeID <= NUM_MOTORS) {
- *             pInstance->m_striker[nodeID].PDO_processMsg(*arg);
- *             ON_PDO_MESSAGE_RECEIVED(nodeID, arg); // Add this line
- *         }
- *     }
+ * // Option 2: SLOW collection in main loop (not time-critical):
+ * void StrikerController::update() {
+ *     // ... non-time-critical code ...
+ *     COLLECT_ENCODER_FEEDBACK_SAFE();  // Full collection with network I/O
  * }
+ * 
+ * // NEVER use full collectFeedback() in IRQ handlers - it will disrupt timing!
  */
 
 #endif // ENCODER_FEEDBACK_COLLECTOR_H
