@@ -8,8 +8,12 @@
 #include "src/logger.h"
 #include <Ethernet.h>
 #include <EthernetUdp.h>
+// Encoder feedback transmitter
+#include "src/EncoderFeedbackCollector.h"
 
 StrikerController* pController = nullptr;
+// Define global feedback collector instance (declared extern in header)
+EncoderFeedbackCollector* g_feedback_collector = nullptr;
 byte mac[] = { 0xDE, 0xAD, 0xBE, 0xEF, 0xFE, 0xED}; //mac adress
 IPAddress ip(10, 2, 1, 177); //ip address
 
@@ -64,11 +68,30 @@ void setup() {
     pController->start();
 
     LOG_LOG("Listening for commands...");
+
+  // Initialize encoder feedback collector to stream encoder data to Python host
+  // Adjust the IP below to the machine running EncoderUDPReceiver.py
+  IPAddress python_ip(10, 2, 1, 100);
+  g_feedback_collector = new EncoderFeedbackCollector(pController);
+  if (g_feedback_collector) {
+    Error_t fbErr = g_feedback_collector->initialize(python_ip, FEEDBACK_PORT);
+    if (fbErr != kNoError) {
+      LOG_ERROR("Failed to initialize encoder feedback collector");
+      delete g_feedback_collector;
+      g_feedback_collector = nullptr;
+    } else {
+      LOG_LOG("Encoder feedback collector ready on %s:%d", python_ip.toString().c_str(), FEEDBACK_PORT);
+    }
+  }
     
 }
 
 void loop() {
     ethernetEvent();
+  // Periodically collect and transmit encoder feedback (runs at FEEDBACK_INTERVAL_US internally)
+  if (g_feedback_collector) {
+    g_feedback_collector->collectFeedback();
+  }
     if (complete) {
 
         complete = false;
@@ -83,7 +106,13 @@ void loop() {
       
         //pController->executeEvent(event, frets, playcommands, pickings, tremLength, tremSpeed, strumAngle, strumSpeed, deflect);
 
-        pController->processTrajPoints(trajPoint);
+  // Optional: mark start of a new trajectory feedback window
+  // if (g_feedback_collector) g_feedback_collector->startTrajectoryFeedback();
+
+  pController->processTrajPoints(trajPoint);
+
+  // Optional: stop feedback window after processing a single trajectory point buffer
+  // if (g_feedback_collector) g_feedback_collector->stopTrajectoryFeedback();
         //pController -> executeSlideTest(100,100,100,100,100,100,100,100);
         //pController -> testFunction();
         // pController->executeSlide(frets, playcommands);
