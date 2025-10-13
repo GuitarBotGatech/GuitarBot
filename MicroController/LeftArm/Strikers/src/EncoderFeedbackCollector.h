@@ -286,7 +286,7 @@ public:
         
         // Quick data capture - no network I/O
         Striker& striker = striker_controller_->getStriker(motor_id);
-        int32_t encoder_pos = striker.getCurrentPosition_ticks();
+        int32_t encoder_pos = striker.getPosition_ticks();
         uint16_t status_word = striker.getStatusWord();
         
         EncoderFeedbackPacket packet;
@@ -399,9 +399,6 @@ private:
     }
 };
 
-// Global instance - integrate with existing striker controller
-extern EncoderFeedbackCollector* g_feedback_collector;
-
 /**
  * Integration macros for existing code
  */
@@ -444,40 +441,7 @@ extern EncoderFeedbackCollector* g_feedback_collector;
         g_feedback_collector->onPDOMessageReceived(nodeID, *arg); \
     }
 
-// DEPRECATED: This macro should NOT be used in time-critical code paths
-// #define COLLECT_ENCODER_FEEDBACK() - DO NOT USE IN IRQ HANDLERS!
 
-/**
- * CORRECT INTEGRATION EXAMPLES:
- * 
- * // In constructor or setup():
- * INIT_ENCODER_FEEDBACK_COLLECTOR();
- * 
- * // Option 1: FAST capture in RPDOTimerIRQHandler (time-critical safe):
- * static void RPDOTimerIRQHandler() {
- *     // ... trajectory processing (time-critical) ...
- *     
- *     // Execute motor commands (time-critical)
- *     for (int i = 1; i < NUM_MOTORS + 1; ++i) {
- *         pInstance->m_striker[i].rotate(point[i - 1]);
- *     }
- *     
- *     // FAST: Only capture data for current motors, no network I/O
- *     for (int i = 1; i <= NUM_MOTORS; ++i) {
- *         CAPTURE_MOTOR_FEEDBACK(i);
- *     }
- *     
- *     // FAST: Try to transmit buffered data (non-blocking)
- *     TRANSMIT_FEEDBACK_BUFFER();
- * }
- * 
- * // Option 2: SLOW collection in main loop (not time-critical):
- * void StrikerController::update() {
- *     // ... non-time-critical code ...
- *     COLLECT_ENCODER_FEEDBACK_SAFE();  // Full collection with network I/O
- * }
- * 
- * // NEVER use full collectFeedback() in IRQ handlers - it will disrupt timing!
- */
+extern EncoderFeedbackCollector* g_feedback_collector;
 
 #endif // ENCODER_FEEDBACK_COLLECTOR_H
