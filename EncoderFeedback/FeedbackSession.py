@@ -15,7 +15,8 @@ from EncoderUDPReceiver import run_receiver
 
 def run_session(address: str, payload, duration: float | None, csv_out: str,
                 host: str = "127.0.0.1", port: int = 12000,
-                feedback_host: str = "0.0.0.0", feedback_port: int = 8889):
+                feedback_host: str = "0.0.0.0", feedback_port: int = 8889,
+                enable_plot: bool = False):
     client = GuitarBotOSCClient(host, port)
 
     # Fire the OSC message
@@ -50,7 +51,7 @@ def run_session(address: str, payload, duration: float | None, csv_out: str,
         print("Press Ctrl+C to stop")
     
     try:
-        run_receiver(feedback_host, feedback_port, csv_out, duration)
+        run_receiver(feedback_host, feedback_port, csv_out, duration, enable_plot)
     except KeyboardInterrupt:
         print("\nSession stopped by user")
     except Exception as e:
@@ -69,6 +70,7 @@ def main():
     ap.add_argument("--osc-port", type=int, default=12000)
     ap.add_argument("--fb-host", default="0.0.0.0")
     ap.add_argument("--fb-port", type=int, default=8889)
+    ap.add_argument("--plot", action="store_true", help="Enable real-time plotting")
     args = ap.parse_args()
 
     payload = []
@@ -82,7 +84,7 @@ def main():
                 except ValueError:
                     payload.append(a)
 
-    run_session(args.address, payload, args.duration, args.csv, args.osc_host, args.osc_port, args.fb_host, args.fb_port)
+    run_session(args.address, payload, args.duration, args.csv, args.osc_host, args.osc_port, args.fb_host, args.fb_port, args.plot)
 
 
 if __name__ == "__main__":
