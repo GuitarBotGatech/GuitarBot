@@ -165,7 +165,7 @@ public:
         
         // Collect feedback from all motors
         for (int motor_id = 1; motor_id <= NUM_MOTORS; motor_id++) {
-            Striker& striker = striker_controller_->m_striker[motor_id];
+            Striker& striker = striker_controller_->getStriker(motor_id);
             
             // Get current encoder position from Striker (using public methods only)
             int32_t encoder_pos = striker.getPosition_ticks();
@@ -192,11 +192,11 @@ public:
      * Collect feedback for specific motor ID
      */
     void collectMotorFeedback(uint8_t motor_id) {
-        if (!ethernet_initialized_ || !striker_controller_ || motor_id > NUM_MOTORS) {
+        if (!ethernet_initialized_ || !striker_controller_ || !striker_controller_->isValidMotorId(motor_id)) {
             return;
         }
         
-        Striker& striker = striker_controller_->m_striker[motor_id];
+        Striker& striker = striker_controller_->getStriker(motor_id);
         
         // Get encoder feedback (using public methods only)
         int32_t encoder_pos = striker.getPosition_ticks();
@@ -266,7 +266,7 @@ public:
         // This allows us to collect encoder feedback immediately when
         // PDO messages are received, ensuring minimal latency
         
-        if (!ethernet_initialized_ || motor_id > NUM_MOTORS) {
+        if (!ethernet_initialized_ || !striker_controller_->isValidMotorId(motor_id)) {
             return;
         }
         
@@ -280,7 +280,7 @@ public:
         uint16_t status_word = ((msg.data[1] & 0xFF) << 8) + msg.data[0];
         
         // Apply direction multiplier if needed
-        Striker& striker = striker_controller_->m_striker[motor_id];
+        Striker& striker = striker_controller_->getStriker(motor_id);
         if (striker.isInverted()) {
             encoder_position *= -1;
         }

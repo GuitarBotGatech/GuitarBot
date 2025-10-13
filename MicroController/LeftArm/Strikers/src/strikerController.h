@@ -479,6 +479,39 @@ public:
 //        m_socket.poll();
 //    }
 
+    /**
+     * Public getter methods for EncoderFeedbackCollector access
+     */
+    Striker& getStriker(uint8_t motor_id) {
+        if (motor_id < 1 || motor_id > NUM_MOTORS) {
+            // Return dummy striker at index 0 for invalid IDs
+            return m_striker[0];
+        }
+        return m_striker[motor_id];
+    }
+    
+    const Striker& getStriker(uint8_t motor_id) const {
+        if (motor_id < 1 || motor_id > NUM_MOTORS) {
+            // Return dummy striker at index 0 for invalid IDs
+            return m_striker[0];
+        }
+        return m_striker[motor_id];
+    }
+    
+    /**
+     * Get striker count for iteration
+     */
+    uint8_t getStrikerCount() const {
+        return NUM_MOTORS;
+    }
+    
+    /**
+     * Check if motor ID is valid
+     */
+    bool isValidMotorId(uint8_t motor_id) const {
+        return (motor_id >= 1 && motor_id <= NUM_MOTORS);
+    }
+
 private:
     //NetworkHandler m_socket;
     Striker m_striker[NUM_MOTORS + 1]; // 0 is dummy
