@@ -15,6 +15,10 @@
 #include <iostream>
 #include "tune.h"
 
+// Forward declaration for encoder feedback
+class EncoderFeedbackCollector;
+extern EncoderFeedbackCollector* g_feedback_collector;
+
 class StrikerController {
 public:
     static StrikerController* createInstance() {
@@ -719,7 +723,6 @@ private:
                 
                 // TIMING-SAFE: Fast encoder feedback capture after motor commands
                 // This only captures data to buffer, no network I/O in IRQ context
-                extern EncoderFeedbackCollector* g_feedback_collector;
                 if (g_feedback_collector) {
                     // Capture encoder data for all motors (fast, no blocking operations)
                     for (int i = 1; i <= NUM_MOTORS; ++i) {
