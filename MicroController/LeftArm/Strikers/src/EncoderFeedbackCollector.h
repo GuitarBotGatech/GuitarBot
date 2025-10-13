@@ -6,8 +6,6 @@
  * 
  * Uses Ethernet UDP similar to networkHandler.h for consistency with existing system.
  * 
- * Author: AI Assistant  
- * Date: 2024
  */
 
 #ifndef ENCODER_FEEDBACK_COLLECTOR_H
@@ -292,7 +290,7 @@ public:
         
         // Apply direction multiplier if needed
         Striker& striker = striker_controller_->m_striker[motor_id];
-        if (striker.epos.isEncoderInverted()) {
+        if (striker.isInverted()) {
             encoder_position *= -1;
         }
         

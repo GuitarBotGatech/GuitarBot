@@ -71,7 +71,9 @@ public:
     float getPosition_ticks(){
         return epos.getEncoderPosition();
     }
-
+    bool isInverted(){
+        return epos.isEncoderInverted();
+    }
     void rotate(int pos){
         epos.PDO_setPosition(pos);
     }
