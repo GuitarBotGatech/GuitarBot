@@ -122,9 +122,10 @@ public:
         
         ethernet_initialized_ = true;
         
-        LOG_LOG("Encoder feedback collector initialized");
-        LOG_LOG("Local IP: %s", Ethernet.localIP());
-        LOG_LOG("Sending feedback to: %d.%d.%d.%d:%d", python_host[0], python_host[1], python_host[2], python_host[3], python_port_);
+        LOG_LOG("Encoder feedback collector initialized. Local IP:");
+        Serial.println(Ethernet.localIP());
+        LOG_LOG("Sending feedback to:");
+        Serial.println(python_host);
         LOG_LOG("Transmission interval: %d us", transmission_interval_us_);
         
         return kNoError;

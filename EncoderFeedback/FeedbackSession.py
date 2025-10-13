@@ -73,7 +73,7 @@ def main():
     ap.add_argument("--plot", action="store_true", help="Enable real-time plotting")
     args = ap.parse_args()
 
-    payload = []
+    payload = [40]
     if args.args:
         for a in args.args:
             try:
