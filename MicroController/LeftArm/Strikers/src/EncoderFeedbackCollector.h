@@ -80,7 +80,7 @@ private:
 public:
     EncoderFeedbackCollector(StrikerController* controller) 
         : striker_controller_(controller),
-          python_host_(10, 2, 1, 100), // Default Python host IP
+          python_host_(10, 2, 1, 1), // Default Python host IP
           python_port_(FEEDBACK_PORT),
           ethernet_initialized_(false),
           last_transmission_us_(0),
@@ -122,10 +122,10 @@ public:
         
         ethernet_initialized_ = true;
         
-        LOG_LOG("Encoder feedback collector initialized. Local IP:");
-        Serial.println(Ethernet.localIP());
-        LOG_LOG("Sending feedback to:");
-        Serial.println(python_host);
+        LOG_LOG("Encoder feedback collector initialized");
+        LOG_LOG("Local IP: %s");
+        LOG_LOG(Ethernet.localIP())
+        LOG_LOG("Sending feedback to: %d.%d.%d.%d:%d", python_host[0], python_host[1], python_host[2], python_host[3], python_port_);
         LOG_LOG("Transmission interval: %d us", transmission_interval_us_);
         
         return kNoError;
@@ -407,9 +407,9 @@ private:
 // Add this to strikerController.h initialization
 #define INIT_ENCODER_FEEDBACK_COLLECTOR() \
     g_feedback_collector = new EncoderFeedbackCollector(this); \
-    IPAddress python_ip(10, 2, 1, 100); \
+    IPAddress python_ip(10, 2, 1, 1); \
     if (g_feedback_collector->initialize(python_ip) != kNoError) { \
-        LOG_ERROR("Failed to initialize encoder feedback collector"); \
+        ("Failed to initialize encoder feedback collector"); \
         delete g_feedback_collector; \
         g_feedback_collector = nullptr; \
     }
