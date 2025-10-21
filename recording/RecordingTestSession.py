@@ -32,6 +32,7 @@ import json
 from pathlib import Path
 from datetime import datetime
 from pythonosc.udp_client import SimpleUDPClient
+# from TestMessageGenerator import TestMessageGenerator
 
 
 class RecordingTestSession:
@@ -39,7 +40,7 @@ class RecordingTestSession:
                  osc_ip="127.0.0.1", 
                  osc_port=12000,
                  sample_rate=44100,
-                 output_dir="Recording/output",
+                 output_dir="recordings",
                  session_name=None):
         """
         Initialize recording test session.
@@ -55,8 +56,6 @@ class RecordingTestSession:
         self.sample_rate = sample_rate
         self.output_dir = Path(output_dir)
         self.session_name = session_name or datetime.now().strftime("%Y%m%d_%H%M%S")
-        self.selected_input_device = None
-        self.selected_input_device_name = None
         
         # Create output directories
         self.session_dir = self.output_dir / self.session_name
@@ -72,19 +71,13 @@ class RecordingTestSession:
         
         # Recording settings
         self.pre_trigger_time = 0.5  # Record 0.5s before OSC message
-        self.post_trigger_time = 3.0  # Record 3s after OSC message
+        self.post_trigger_time = 2.0  # Record 3s after OSC message
         
         print(f"=== Recording Test Session Initialized ===")
         print(f"Session: {self.session_name}")
         print(f"Output: {self.session_dir}")
         print(f"Sample rate: {self.sample_rate} Hz")
         print(f"OSC target: {osc_ip}:{osc_port}")
-        
-        # Configure input audio device (prefer 'Scarlett')
-        try:
-            self._configure_audio_input_device(preferred_substring="Scarlett")
-        except Exception as e:
-            print(f"Warning: Failed to configure audio input device automatically: {e}")
     
     def send_osc_message(self, address, data):
         """Send OSC message and log it."""
@@ -367,8 +360,6 @@ class RecordingTestSession:
             'session_name': self.session_name,
             'total_tests': self.test_counter,
             'sample_rate': self.sample_rate,
-            'input_device_index': self.selected_input_device,
-            'input_device_name': self.selected_input_device_name,
             'pre_trigger_time': self.pre_trigger_time,
             'post_trigger_time': self.post_trigger_time,
             'test_results': self.test_results
@@ -389,87 +380,6 @@ class RecordingTestSession:
         self.export_session_summary()
         
         print(f"\nAll files saved to: {self.session_dir}")
-
-    # --- Device selection helpers ---
-    def _configure_audio_input_device(self, preferred_substring: str = "Scarlett"):
-        """Select an input device. Prefer names containing preferred_substring.
-        If none found, list input devices and prompt user for index.
-        Sets sd.default.device and stores selection for metadata.
-        """
-        devices = sd.query_devices()
-        preferred_substring_l = preferred_substring.lower()
-
-        # Try to pick a Scarlett input device automatically
-        for idx, dev in enumerate(devices):
-            try:
-                name = dev.get('name', '')
-                max_in = dev.get('max_input_channels', 0)
-            except Exception:
-                # Some backends may return tuples; be defensive
-                name = dev['name'] if isinstance(dev, dict) else str(dev)
-                max_in = dev['max_input_channels'] if isinstance(dev, dict) else 0
-
-            if max_in and max_in > 0 and preferred_substring_l in name.lower():
-                # Select as input device, keep current output device if any
-                current_default = sd.default.device
-                out_dev = None
-                if isinstance(current_default, (list, tuple)) and len(current_default) == 2:
-                    out_dev = current_default[1]
-                sd.default.device = (idx, out_dev)
-                sd.default.samplerate = self.sample_rate
-                self.selected_input_device = idx
-                self.selected_input_device_name = name
-                print(f"Selected input device (auto): [{idx}] {name} (inputs: {max_in})")
-                return
-
-        # No preferred device found, list inputs and prompt
-        print("No 'Scarlett' input found. Available input devices:")
-        input_indices = []
-        for idx, dev in enumerate(devices):
-            try:
-                name = dev.get('name', '')
-                max_in = dev.get('max_input_channels', 0)
-            except Exception:
-                name = dev['name'] if isinstance(dev, dict) else str(dev)
-                max_in = dev['max_input_channels'] if isinstance(dev, dict) else 0
-            if max_in and max_in > 0:
-                input_indices.append(idx)
-                print(f"  [{idx}] {name} (inputs: {max_in})")
-
-        if not input_indices:
-            print("No input-capable devices found. Using system default.")
-            return
-
-        while True:
-            sel = input("Enter input device index to use (or press Enter to keep default): ").strip()
-            if sel == "":
-                print("Keeping system default input device.")
-                return
-            try:
-                sel_idx = int(sel)
-                if sel_idx not in input_indices:
-                    print("Selected device has no input channels or is invalid. Choose one of the listed indices.")
-                    continue
-                dev = devices[sel_idx]
-                name = dev.get('name', str(dev))
-                max_in = dev.get('max_input_channels', 0)
-                current_default = sd.default.device
-                out_dev = None
-                if isinstance(current_default, (list, tuple)) and len(current_default) == 2:
-                    out_dev = current_default[1]
-                sd.default.device = (sel_idx, out_dev)
-                sd.default.samplerate = self.sample_rate
-                self.selected_input_device = sel_idx
-                self.selected_input_device_name = name
-                print(f"Selected input device: [{sel_idx}] {name} (inputs: {max_in})")
-                return
-            except ValueError:
-                print("Please enter a valid integer index from the list above.")
-            except IndexError:
-                print("Index out of range. Choose one of the listed indices.")
-            except Exception as e:
-                print(f"Error selecting device: {e}")
-                return
 
 
 # Example test protocols
@@ -545,7 +455,14 @@ if __name__ == "__main__":
 ║         Automated Audio Recording & Labeling                  ║
 ╚═══════════════════════════════════════════════════════════════╝
 """)
-    
+    devices = sd.query_devices()
+    print("Select a device:")
+    print(devices)
+    selected_device = int(input())
+    # sd.default.device = str(devices[selected_device])
+    sd.default.device = selected_device
+    print("Selected Device:")
+    print(sd.default.device)
     print("Available test protocols:")
     print("  1. Dynamics Sweep (test all strings)")
     print("  2. Fretting Force Optimization")
