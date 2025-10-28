@@ -38,7 +38,7 @@ class BothHandsParser:
         self.right_hand = RightHandParser()
         
         # Timing configuration for coordination
-        self.pluck_delay_after_press = tu.TIME_STEP * 10  # Delay pluck to allow fretter to settle
+        self.pluck_delay_after_press = tu.TIME_STEP * 5  # Delay pluck to allow fretter to settle
         self.settling_time = tu.TIME_STEP * 5  # Additional settling time before pluck starts
         
         print("=== BothHandsParser Initialized ===")
@@ -80,46 +80,112 @@ class BothHandsParser:
             print("Error: Failed to generate left hand trajectory")
             return np.array([])
         
-        # 2. Calculate when to trigger the pluck
-        if force_adjustment_only:
-            # For force adjustments, the trajectory is shorter (only presser movement)
-            press_duration = tu.PRESSER_INTERPOLATION_POINTS * tu.TIME_STEP
+        # 2. Find when the presser torque reaches 0 (rest state)
+        # We need to analyze the LH trajectory to find when presser is at 0
+        
+        # Determine which presser motor based on MIDI note
+        string_fret_info = self.left_hand.midi_note_to_string_fret(midi_note)
+        if not string_fret_info:
+            print(f"Error: Cannot determine string for MIDI note {midi_note}")
+            return np.array([])
+        
+        string_id, _ = string_fret_info
+        presser_motor_id = string_id + 6
+        
+        # Extract presser trajectory
+        presser_trajectory = lh_trajectory[:, presser_motor_id]
+        
+        # Find when torque reaches 0 (or close to 0, within tolerance)
+        # For force testing, the trajectory should end with torque=0
+        # We want to find the LAST time it reaches 0 before the buffer
+        
+        # Remove NaN values and find non-zero regions
+        valid_indices = ~np.isnan(presser_trajectory)
+        valid_traj = presser_trajectory[valid_indices]
+        
+        if len(valid_traj) == 0:
+            print("Warning: No valid presser trajectory data")
+            torque_zero_idx = 0
         else:
-            # Full fretting has 3 phases: unpress -> slide -> press
-            press_duration = (
-                tu.PRESSER_INTERPOLATION_POINTS +  # unpress
-                tu.LH_SINGLE_NOTE_MOTION_POINTS +   # slide
-                tu.PRESSER_INTERPOLATION_POINTS     # press
-            ) * tu.TIME_STEP
+            # Find indices where torque is close to 0 (within 5 units)
+            near_zero = np.abs(valid_traj) < 5.0
+            
+            if np.any(near_zero):
+                # Find the last contiguous block of near-zero values
+                # This should be the REST phase
+                zero_indices = np.where(near_zero)[0]
+                
+                # Find the start of the last zero block
+                # Look for gaps larger than 5 indices
+                gaps = np.diff(zero_indices)
+                large_gaps = np.where(gaps > 5)[0]
+                
+                if len(large_gaps) > 0:
+                    # Start of last block
+                    last_block_start = zero_indices[large_gaps[-1] + 1]
+                else:
+                    # All zeros are contiguous, use first zero
+                    last_block_start = zero_indices[0]
+                
+                torque_zero_idx = last_block_start
+            else:
+                # Torque never reaches 0, use end of trajectory
+                print("Warning: Torque never reaches 0 in trajectory")
+                torque_zero_idx = len(valid_traj) - 1
         
-        # Add settling time after press completes before plucking
-        pluck_timestamp = timestamp + press_duration + self.settling_time
+        torque_zero_time = timestamp + (torque_zero_idx * tu.TIME_STEP)
         
-        print(f"Pluck timing: Press duration={press_duration:.3f}s, Settling={self.settling_time:.3f}s, Pluck at t={pluck_timestamp:.3f}s")
+        print(f"Presser torque analysis:")
+        print(f"  Torque reaches 0 at index {torque_zero_idx}, t={torque_zero_time:.3f}s")
+        if torque_zero_idx > 0 and torque_zero_idx < len(presser_trajectory):
+            print(f"  Torque value at rest: {presser_trajectory[torque_zero_idx]:.1f}")
         
-        # 3. Determine which picker to use based on MIDI note
+        # 3. Add settling time AFTER torque reaches 0, BEFORE pluck starts
+        pluck_timestamp = torque_zero_time + self.settling_time
+        
+        # 4. Calculate pluck duration
+        pluck_motion_duration = tu.PICKER_PLUCK_MOTION_POINTS * tu.TIME_STEP
+        lh_duration = lh_trajectory.shape[0] * tu.TIME_STEP
+        
+        # 5. Ensure trajectory is long enough for: all phases + settling + pluck + buffer
+        min_required_duration = pluck_timestamp + pluck_motion_duration + (50 * tu.TIME_STEP)
+        
+        if lh_duration < min_required_duration:
+            # Extend LH trajectory to accommodate pluck
+            additional_timesteps = int((min_required_duration - lh_duration) / tu.TIME_STEP) + 1
+            last_row = lh_trajectory[-1:, :]
+            extension = np.tile(last_row, (additional_timesteps, 1))
+            lh_trajectory = np.vstack([lh_trajectory, extension])
+            lh_duration = lh_trajectory.shape[0] * tu.TIME_STEP
+            print(f"Extended LH trajectory to {lh_duration:.3f}s to accommodate pluck")
+        
+        print(f"Timing: Torque→0 at t={torque_zero_time:.3f}s, Settling={self.settling_time:.3f}s, Pluck at t={pluck_timestamp:.3f}s, Pluck duration={pluck_motion_duration:.3f}s")
+        
+        # 6. Determine which picker to use based on MIDI note
+        picker_id = self.right_hand.midi_note_to_picker_id(midi_note)
+        # 6. Determine which picker to use based on MIDI note
         picker_id = self.right_hand.midi_note_to_picker_id(midi_note)
         if picker_id is None:
             print(f"Warning: MIDI note {midi_note} has no corresponding picker")
             # Return LH trajectory padded with RH motors at current positions
             return self._combine_trajectories(lh_trajectory, None)
         
-        # 4. Generate right hand plucking trajectory (3 motors)
+        # 7. Generate right hand plucking trajectory (3 motors)
         # Create a minimal trajectory that matches the LH timing
         rh_trajectory = self._generate_synchronized_pluck(
             picker_id=picker_id,
             pluck_timestamp=pluck_timestamp,
             pluck_velocity=pluck_velocity,
-            total_duration=lh_trajectory.shape[0] * tu.TIME_STEP
+            total_duration=lh_duration
         )
         
-        # 5. Combine LH and RH trajectories into single 15-motor array
+        # 8. Combine LH and RH trajectories into single 15-motor array
         combined_trajectory = self._combine_trajectories(lh_trajectory, rh_trajectory)
         
         print(f"\nGenerated combined trajectory: {combined_trajectory.shape[0]} timesteps × 15 motors")
         print(f"Duration: {combined_trajectory.shape[0] * tu.TIME_STEP:.3f}s")
         
-        # 6. Plot if enabled
+        # 9. Plot if enabled
         if tu.graph:
             self.plot_combined_trajectory(combined_trajectory, f"Fret+Pluck: MIDI {midi_note}")
         
@@ -168,15 +234,20 @@ class BothHandsParser:
         motion_length = pluck_end_idx - pluck_start_idx
         
         if motion_length > 0:
+            if motion_length < len(pluck_motion):
+                print(f"WARNING: Pluck motion truncated! Expected {len(pluck_motion)} points, only {motion_length} fit")
+            
             rh_trajectory[pluck_start_idx:pluck_end_idx, picker_id] = pluck_motion[:motion_length]
             # Hold at final position for remainder
             if pluck_end_idx < num_timesteps:
                 rh_trajectory[pluck_end_idx:, picker_id] = target_pos
+        else:
+            print(f"ERROR: Pluck timestamp {pluck_timestamp:.3f}s is beyond trajectory duration {total_duration:.3f}s!")
         
         # Update state
         self.right_hand.current_positions[picker_id] = target_pos
         
-        print(f"Pluck scheduled: Picker {picker_id} at t={pluck_timestamp:.3f}s (index {pluck_start_idx})")
+        print(f"Pluck scheduled: Picker {picker_id} at t={pluck_timestamp:.3f}s (index {pluck_start_idx}), motion length={motion_length}/{len(pluck_motion)} points")
         
         return rh_trajectory
     
