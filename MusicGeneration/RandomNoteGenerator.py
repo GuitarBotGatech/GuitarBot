@@ -127,6 +127,11 @@ b_diminished_triads = [
     [41, 50, 59],  # Voicing: [F, D, B]
     [47, 50, 65]   # Voicing: [B, D, F]
 ]
+#Voicings in the Key of A Major, Blues Scale
+
+
+
+
 
 def generate_scale_progression(iterations):
     """
@@ -188,11 +193,6 @@ def sequential_Plucks(iterations):
     print(message)
     return message
 
-
-# Add this near the top of your script, with the other triad definitions.
-
-# A library of rhythmic patterns to be applied to the triads.
-# Each pattern exists within one measure (4 beats).
 # Format: [(start_beat, duration_in_beats), ...]
 RHYTHMIC_PATTERNS = {
     # 1. Simple whole note chord, slightly strummed
@@ -201,7 +201,7 @@ RHYTHMIC_PATTERNS = {
         (0.05, 4),  # Stagger the start times for a strum effect
         (0.1, 4)
     ],
-    # 2. Classic "Alberti Bass" style arpeggio (bottom, top, middle, top)
+    # 2."Alberti Bass" style arpeggio (bottom, top, middle, top)
     "alberti_arpeggio": [
         (0, 0.9),
         (1, 0.9),
@@ -230,8 +230,6 @@ RHYTHMIC_PATTERNS = {
         (3, 0.8)
     ]
 }
-
-# Combination Attempts
 def generate_rhythmic_progression(iterations, bpm=120):
     """
     Generates a musical piece by applying rhythmic patterns to a diatonic
@@ -292,91 +290,87 @@ def generate_rhythmic_progression(iterations, bpm=120):
                 message = [note, note_duration, 1, 0, note_start_time]
                 messages.append(message)
 
-            # Advance the clock by one measure for the next chord
             current_timestamp += measure_duration_in_seconds
 
     return messages
 
-
-MELODIC_PATTERNS = {
-    "alberti_arpeggio": RHYTHMIC_PATTERNS["alberti_arpeggio"],
-    "syncopated_pulse": RHYTHMIC_PATTERNS["syncopated_pulse"],
-    "arpeggio_up": RHYTHMIC_PATTERNS["arpeggio_up"]
-}
-
-
-def generate_polyphonic_texture(iterations, bpm=120):
+def polyrhythms_timestamps(rhythms_to_generate: list, base_notes: int, measures: int, bpm: int = 120):
     """
-    Generates a polyphonic texture by assigning musical roles (bass, harmony,
-    melodic) to the notes of a triad, utilizing sustained tremolos.
-
-    Args:
-        iterations (int): Number of times to repeat the full scale progression.
-        bpm (int): Tempo in beats per minute.
-
-    Returns:
-        list: A list of pluck messages formatted for the robot.
+    Calculates timestamps for multiple layers of notes over a shared duration.
     """
+    seconds_per_quarter_note = 60.0 / bpm
+    measure_duration = base_notes * seconds_per_quarter_note
+    all_timestamps = {}
+    for notes_to_fit in rhythms_to_generate:
+        polyrhythm_note_duration = measure_duration / notes_to_fit
+        timestamps = []
+        for measure in range(measures):
+            measure_start_time = measure * measure_duration
+            for i in range(notes_to_fit):
+                timestamp = measure_start_time + (i * polyrhythm_note_duration)
+                timestamps.append(round(timestamp, 4))
+        all_timestamps[notes_to_fit] = timestamps
+    return all_timestamps
+
+def generate_polyrhythms():
+    """
+    Generates a polyrhythmic arpeggio for each chord in the C major scale.
+    """
+    # --- Configuration ---
+    BPM = 80
+    BASE_DURATION = 3  # Base notes 4 quarter notes (a 4/4 measure)
+    NOTE_DURATION = 0.5
+
+    # Layers will adapt to the number of strings/pluckers.
+    # Must match the number of notes in the triads (3).
+    layers = [3, 2, 2]
     chords_in_key = [
-        c_major_triads, d_minor_triads, e_minor_triads,
-        f_major_triads, g_major_triads, a_minor_triads, b_diminished_triads
+        ("C Major", c_major_triads),
+        ("D Minor", d_minor_triads),
+        ("E Minor", e_minor_triads),
+        ("F Major", f_major_triads),
+        ("G Major", g_major_triads),
+        ("A Minor", a_minor_triads),
+        ("B Diminished", b_diminished_triads)
     ]
 
-    pattern_names = list(MELODIC_PATTERNS.keys())
-
-    seconds_per_beat = 60.0 / bpm
-    measure_duration_in_seconds = 4 * seconds_per_beat
+    # --- Time Calculation ---
+    seconds_per_quarter_note = 60.0 / BPM
+    measure_duration = BASE_DURATION * seconds_per_quarter_note
 
     messages = []
     current_timestamp = 0.0
 
-    print(f"Generating polyphonic texture for {iterations} iteration(s) at {bpm} BPM.")
+    print(f"Generating a {':'.join(map(str, layers))} polyrhythmic run through the C Major scale at {BPM} BPM.")
 
-    for i in range(iterations):
-        for chord_voicings in chords_in_key:
-            # 1. HARMONY: Choose a triad voicing for this measure.
-            # We sort it to ensure the lowest note is always the bass.
-            random_triad = sorted(random.choice(chord_voicings))
+    for chord_name, chord_voicings in chords_in_key:
+        chosen_triad = sorted(random.choice(chord_voicings))
+        print(f"  - Measure for {chord_name}: Using triad notes {chosen_triad}")
 
-            # --- GENERATE THE THREE MUSICAL LAYERS ---
+        timestamps_for_measure = polyrhythms_timestamps(
+            rhythms_to_generate=layers,
+            base_notes=BASE_DURATION,
+            measures=1,
+            bpm=BPM
+        )
 
-            # 2. BASS ROLE: A slow, sustained tremolo on the lowest note.
-            bass_note = random_triad[0]
-            bass_speed = random.randint(1, 4)  # Slow tremolo speed
-            # The bass note sustains for the entire measure.
-            bass_message = [bass_note, measure_duration_in_seconds, bass_speed, 0, current_timestamp]
-            messages.append(bass_message)
+        for string_index, rhythm in enumerate(layers):
+            note = chosen_triad[string_index]
 
-            # 3. HARMONY ROLE: A sustained tremolo on the middle note, starting later.
-            harmony_note = random_triad[1]
-            harmony_speed = random.randint(4, 7)  # Medium tremolo speed
-            # Have the harmony come in on beat 2 to create some movement.
-            harmony_start_time = current_timestamp + (2 * seconds_per_beat)
-            harmony_duration = 2 * seconds_per_beat  # Lasts for the rest of the measure.
-            harmony_message = [harmony_note, harmony_duration, harmony_speed, 0, harmony_start_time]
-            messages.append(harmony_message)
+            timestamps = timestamps_for_measure[rhythm]
 
-            # 4. MELODIC ROLE: An active, rhythmic pattern on the highest note.
-            melodic_note = random_triad[2]
-            chosen_pattern_name = random.choice(pattern_names)
-            rhythmic_pattern = MELODIC_PATTERNS[chosen_pattern_name]
+            for ts in timestamps:
+                message_timestamp = current_timestamp + ts
+                temp_message = [note, NOTE_DURATION, 3, 0, message_timestamp]
+                messages.append(temp_message)
 
-            # Apply the chosen pattern to the single melodic note
-            for start_beat, duration_in_beats in rhythmic_pattern:
-                note_start_time = current_timestamp + (start_beat * seconds_per_beat)
-                # Ensure short notes don't accidentally become tremolos. Max duration is 0.49s.
-                note_duration = min(0.5, duration_in_beats * seconds_per_beat)
-                # print(duration_in_beats * seconds_per_beat)
+        current_timestamp += measure_duration
 
-                # These are non-tremolo notes
-                melodic_message = [melodic_note, note_duration, 6, 0, note_start_time]
-                messages.append(melodic_message)
-
-            # Advance the master clock by one measure for the next chord
-            current_timestamp += measure_duration_in_seconds
-
+    print(messages)
     return messages
+
 # Example usages
 # generateSong() # Random plucks in C Major
 # pluck_message = generate_scale_progression(12) # Play the C Major scale x times
 # pluck_message = sequential_Plucks(1)
+pluck_message = generate_polyrhythms()
