@@ -587,7 +587,7 @@ class AudioAnalyzer:
         
         for i, (filepath, label) in enumerate(zip(filepaths, labels)):
             try:
-                sample_rate, audio_data = self.load_audio(filepath)
+                sample_rate, audio_data, _ = self.load_audio(filepath)
                 
                 # Waveform
                 time_axis = np.arange(len(audio_data)) / sample_rate
@@ -643,8 +643,9 @@ if __name__ == "__main__":
 ╚═══════════════════════════════════════════════════════════════╝
 """)
     
-    # Parse command line arguments for append mode
+    # Parse command line arguments
     append_mode = '--append' in sys.argv or '-a' in sys.argv
+    no_normalize = '--no-normalize' in sys.argv or '-n' in sys.argv
     
     # Remove flags from argv to get file/directory arguments
     args = [arg for arg in sys.argv[1:] if not arg.startswith('-')]
@@ -668,9 +669,9 @@ if __name__ == "__main__":
             audio_subdir = target_path / "output"
             if audio_subdir.exists():
                 print(f"Found audio subdirectory, analyzing: {audio_subdir}")
-                analyzer.analyze_directory(audio_subdir)
+                analyzer.analyze_directory(audio_subdir, normalize=not no_normalize)
             else:
-                analyzer.analyze_directory(target_path)
+                analyzer.analyze_directory(target_path, normalize=not no_normalize)
         else:
             print(f"Error: '{target}' is not a valid file or directory")
     
@@ -750,7 +751,7 @@ if __name__ == "__main__":
                                         audio_dir = session / "audio"
                                         if audio_dir.exists():
                                             print(f"\n--- Analyzing session: {session.name} ---")
-                                            analyzer.analyze_directory(audio_dir)
+                                            analyzer.analyze_directory(audio_dir, normalize=not no_normalize)
                                         else:
                                             print(f"\nSkipping {session.name} (no audio directory)")
                                     
@@ -765,7 +766,7 @@ if __name__ == "__main__":
                                             audio_dir = selected_session / "audio"
                                             
                                             if audio_dir.exists():
-                                                analyzer.analyze_directory(audio_dir)
+                                                analyzer.analyze_directory(audio_dir, normalize=not no_normalize)
                                             else:
                                                 print(f"No audio directory found in {selected_session}")
                                         else:
@@ -779,10 +780,12 @@ if __name__ == "__main__":
         else:
             print("'Recording/output/' directory not found")
             print("\nUsage:")
-            print("  python AudioAnalyzer.py <file.wav>              # Analyze single file")
-            print("  python AudioAnalyzer.py <directory>             # Analyze all WAV files")
-            print("  python AudioAnalyzer.py <directory> --append    # Append to existing CSV")
-            print("  python AudioAnalyzer.py <directory> -a          # Short form for append")
+            print("  python AudioAnalyzer.py <file.wav>                  # Analyze single file")
+            print("  python AudioAnalyzer.py <directory>                 # Analyze all WAV files (normalized)")
+            print("  python AudioAnalyzer.py <directory> --append        # Append to existing CSV")
+            print("  python AudioAnalyzer.py <directory> -a              # Short form for append")
+            print("  python AudioAnalyzer.py <directory> --no-normalize  # Disable normalization")
+            print("  python AudioAnalyzer.py <directory> -n              # Short form for no-normalize")
     
     print("\n✓ Analysis complete!")
     print(f"Results saved to: {analyzer.output_dir}")
