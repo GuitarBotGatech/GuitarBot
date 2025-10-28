@@ -58,8 +58,9 @@ class RecordingTestSession:
         self.selected_input_device = None
         self.selected_input_device_name = None
         
-        # Create output directories
-        self.session_dir = self.output_dir / self.session_name
+        # Create output directories with date subdirectory
+        date_str = datetime.now().strftime("%Y_%m_%d")
+        self.session_dir = self.output_dir / date_str / self.session_name
         self.audio_dir = self.session_dir / "audio"
         self.metadata_dir = self.session_dir / "metadata"
         
@@ -72,7 +73,7 @@ class RecordingTestSession:
         
         # Recording settings
         self.pre_trigger_time = 0.5  # Record 0.5s before OSC message
-        self.post_trigger_time = 3.0  # Record 3s after OSC message
+        self.post_trigger_time = 5.0  # Record 3s after OSC message
         
         print(f"=== Recording Test Session Initialized ===")
         print(f"Session: {self.session_name}")
@@ -233,7 +234,7 @@ class RecordingTestSession:
         
         return test_info
     
-    def test_dynamics_sweep(self, midi_notes, delay_between=3.0):
+    def test_dynamics_sweep(self, midi_notes, delay_between=5.0):
         """
         Test dynamics across multiple MIDI notes.
         
@@ -259,7 +260,7 @@ class RecordingTestSession:
                 print(f"Waiting {delay_between}s before next test...")
                 time.sleep(delay_between)
     
-    def test_fretting_force(self, midi_note, force_levels, delay_between=3.0):
+    def test_fretting_force(self, midi_note, force_levels, delay_between=5.0):
         """
         Test fretting force levels for a single note.
         
@@ -289,7 +290,7 @@ class RecordingTestSession:
                 print(f"Waiting {delay_between}s before next test...")
                 time.sleep(delay_between)
     
-    def test_pluck_velocity(self, midi_note, velocities, delay_between=3.0):
+    def test_pluck_velocity(self, midi_note, velocities, delay_between=5.0):
         """
         Test pluck velocities for a single note.
         
@@ -319,7 +320,7 @@ class RecordingTestSession:
                 print(f"Waiting {delay_between}s before next test...")
                 time.sleep(delay_between)
     
-    def test_repeatability(self, osc_address, osc_data, repetitions=5, delay_between=3.0):
+    def test_repeatability(self, osc_address, osc_data, repetitions=5, delay_between=5.0):
         """
         Test repeatability by executing same command multiple times.
         

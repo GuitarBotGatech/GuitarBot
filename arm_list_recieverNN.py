@@ -10,6 +10,7 @@ from pythonosc.parsing import osc_types
 from GuitarBotParser import GuitarBotParser
 from RightHandParser import RightHandParser
 from LeftHandParser import LeftHandParser
+from BothHandsParser import BothHandsParser
 import numpy as np
 import tune as tu
 
@@ -22,15 +23,16 @@ UDP_PORT = 12000
 message_queue = queue.SimpleQueue()
 chords_queue = queue.SimpleQueue()
 pluck_queue = queue.SimpleQueue()
-dyn_queue = queue.SimpleQueue()  # New queue for dynamics messages
+dyn_queue = queue.SimpleQueue()  # Queue for dynamics messages
 initial_point_queue = queue.SimpleQueue()
 song_trajs_queue = queue.SimpleQueue()
 data_queue = queue.SimpleQueue()
 fret_queue = queue.SimpleQueue()
 
-# Initialize dynamics parser
-rh_parser = RightHandParser()
-lh_parser = LeftHandParser()
+# Initialize parsers
+rh_parser = RightHandParser()  # For /Dyn messages (pluck only)
+lh_parser = LeftHandParser()   # For direct LH testing (if needed)
+both_hands_parser = BothHandsParser()  # For /Fret messages (coordinated fret + pluck)
 
 def decode_osc_message(data):
     print("Message In")
@@ -147,29 +149,61 @@ def dynamics_processor():
         time.sleep(0.001)
 
 def fret_processor():
-    """Process /Fret messages for immediate motor testing."""
+    """Process /Fret messages for coordinated fretting + plucking using BothHandsParser."""
     while True:
         try:
             while not fret_queue.empty():
                 fret_data = fret_queue.get_nowait()
-                print(f"Processing fret message: {fret_data}")
-
-                # shitty conditional data sending
-                if len(fret_data) == 1:
-                    trajectories_list = lh_parser.parse_fret_message(fret_data[0])
-                elif len(fret_data) == 2:
-                    trajectories_list = lh_parser.parse_fret_message(fret_data[0], fret_data[1])
-                elif len(fret_data) == 3:
-                    trajectories_list = lh_parser.parse_fret_message(fret_data[0], fret_data[1], fret_data[2])
-                else:
-                    print("No fret message, skipping")
-                    pass
-                print(f"Fret Trajs Length: {len(trajectories_list)}")
-                print("Executing fret test")
-                RobotController.main(trajectories_list)
-
+                print(f"Processing /Fret message: {fret_data}")
+                
+                # Parse /Fret message data
+                # Expected formats:
+                # [midi_note] - just note, default force & velocity
+                # [midi_note, force] - note + force, default velocity
+                # [midi_note, force, velocity] - note + force + velocity (not typical)
+                
+                midi_note = None
+                presser_force = None
+                pluck_velocity = None
+                
+                if len(fret_data) >= 1:
+                    midi_note = fret_data[0]
+                if len(fret_data) >= 2:
+                    presser_force = fret_data[1]
+                if len(fret_data) >= 3:
+                    pluck_velocity = fret_data[2]
+                
+                if midi_note is None:
+                    print("Error: No MIDI note in /Fret message, skipping")
+                    continue
+                
+                print(f"  MIDI Note: {midi_note}, Force: {presser_force}, Velocity: {pluck_velocity}")
+                
+                # Generate coordinated trajectory (15 motors: LH fretting + RH plucking)
+                trajectory_array = both_hands_parser.parse_fret_with_pluck(
+                    midi_note=midi_note,
+                    presser_force=presser_force,
+                    pluck_velocity=pluck_velocity,
+                    timestamp=0.0
+                )
+                
+                if trajectory_array.size == 0:
+                    print("Error: Failed to generate trajectory")
+                    continue
+                
+                print(f"Generated trajectory shape: {trajectory_array.shape}")
+                print(f"Executing coordinated fret + pluck")
+                
+                # Send to robot controller
+                RobotController.main(trajectory_array)
+                
         except queue.Empty:
             pass
+        except Exception as e:
+            print(f"Error in fret_processor: {e}")
+            import traceback
+            traceback.print_exc()
+        
         time.sleep(0.001)
 
 def robot_controller():
@@ -210,8 +244,14 @@ if __name__ == "__main__":
     robot_controller_thread.start()
 
     print("Main program running. Press Ctrl+C to stop.")
-    print("Supports OSC messages: /Chords, /Pluck, /Dyn")
-    print("/Dyn message format: [mnn1, mnn2, ...] where MNN 40-49→Motor 13, 50-59→Motor 14, 60+→Motor 15")
+    print("Supports OSC messages:")
+    print("  /Chords + /Pluck - Full song parsing with GuitarBotParser")
+    print("  /Dyn [midi_notes] - Pluck only (no fretting change)")
+    print("  /Fret [midi_note, force] - Coordinated fret + pluck (15 motors)")
+    print("    Examples:")
+    print("      /Fret 45        - Fret note 45 with default force, auto-pluck")
+    print("      /Fret 45 0.7    - Fret note 45 with 70% force, auto-pluck")
+    print("      /Fret 45 0.7 100 - Fret note 45, 70% force, velocity 100")
 
     try:
         while True:

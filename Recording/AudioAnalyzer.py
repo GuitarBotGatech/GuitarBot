@@ -44,7 +44,9 @@ class AudioAnalyzer:
             output_dir: Directory for saving analysis plots and reports
             append_mode: If True, append to existing CSV files instead of overwriting
         """
-        self.output_dir = Path(output_dir)
+        # Create output directory with date subdirectory
+        date_str = datetime.now().strftime("%Y_%m_%d")
+        self.output_dir = Path(output_dir) / date_str
         self.output_dir.mkdir(parents=True, exist_ok=True)
         self.append_mode = append_mode
         
@@ -58,15 +60,16 @@ class AudioAnalyzer:
         print(f"Output directory: {self.output_dir}")
         print(f"CSV mode: {'APPEND' if self.append_mode else 'OVERWRITE'}")
     
-    def load_audio(self, filepath):
+    def load_audio(self, filepath, normalization_factor=None):
         """
         Load audio file.
         
         Args:
             filepath: Path to WAV file
+            normalization_factor: Optional normalization factor (max peak from experiment)
             
         Returns:
-            Tuple of (sample_rate, audio_data)
+            Tuple of (sample_rate, audio_data, original_peak)
         """
         filepath = Path(filepath)
         if not filepath.exists():
@@ -81,14 +84,27 @@ class AudioAnalyzer:
         # Convert to float if integer
         if audio_data.dtype in [np.int16, np.int32]:
             audio_data = audio_data.astype(np.float32)
-            audio_data /= np.max(np.abs(audio_data))
+            max_val = np.iinfo(np.int16).max if audio_data.dtype == np.int16 else 32768.0
+            audio_data = audio_data / max_val
         
-        print(f"Loaded: {filepath.name}")
-        print(f"  Sample rate: {sample_rate} Hz")
-        print(f"  Duration: {len(audio_data)/sample_rate:.2f} s")
-        print(f"  Samples: {len(audio_data)}")
+        # Store original peak before normalization
+        original_peak = np.max(np.abs(audio_data))
         
-        return sample_rate, audio_data
+        # Apply normalization if factor provided
+        if normalization_factor is not None and normalization_factor > 0:
+            audio_data = audio_data / normalization_factor
+            print(f"Loaded: {filepath.name}")
+            print(f"  Sample rate: {sample_rate} Hz")
+            print(f"  Duration: {len(audio_data)/sample_rate:.2f} s")
+            print(f"  Original peak: {original_peak:.4f}")
+            print(f"  Normalized to: {normalization_factor:.4f}")
+        else:
+            print(f"Loaded: {filepath.name}")
+            print(f"  Sample rate: {sample_rate} Hz")
+            print(f"  Duration: {len(audio_data)/sample_rate:.2f} s")
+            print(f"  Samples: {len(audio_data)}")
+        
+        return sample_rate, audio_data, original_peak
     
     def compute_spectrogram(self, audio_data, sample_rate):
         """
@@ -236,13 +252,14 @@ class AudioAnalyzer:
         
         return None
     
-    def analyze_single_file(self, filepath, save_plot=True):
+    def analyze_single_file(self, filepath, save_plot=True, normalization_factor=None):
         """
         Perform complete analysis on a single audio file.
         
         Args:
             filepath: Path to audio file
             save_plot: Whether to save analysis plot
+            normalization_factor: Optional normalization factor for experiment consistency
             
         Returns:
             Dictionary with analysis results
@@ -253,7 +270,7 @@ class AudioAnalyzer:
         print(f"{'='*60}")
         
         # Load audio
-        sample_rate, audio_data = self.load_audio(filepath)
+        sample_rate, audio_data, original_peak = self.load_audio(filepath, normalization_factor)
         duration = len(audio_data) / sample_rate
         
         # Compute features
@@ -283,7 +300,10 @@ class AudioAnalyzer:
             'sample_rate': sample_rate,
             'duration': duration,
             'num_samples': len(audio_data),
-            'peak_amplitude': float(peak_amplitude),
+            'original_peak_amplitude': float(original_peak),  # Store original peak
+            'peak_amplitude': float(peak_amplitude),  # Normalized peak (if applied)
+            'normalized': normalization_factor is not None,
+            'normalization_factor': float(normalization_factor) if normalization_factor else None,
             'mean_rms': float(mean_rms),
             'mean_spectral_flatness': float(mean_flatness),
             'onset_time': float(onset_time) if onset_time else None,
@@ -292,7 +312,11 @@ class AudioAnalyzer:
         }
         
         print(f"\nAnalysis Summary:")
-        print(f"  Peak amplitude: {peak_amplitude:.4f}")
+        if normalization_factor:
+            print(f"  Original peak amplitude: {original_peak:.4f}")
+            print(f"  Normalized peak amplitude: {peak_amplitude:.4f}")
+        else:
+            print(f"  Peak amplitude: {peak_amplitude:.4f}")
         print(f"  Mean RMS: {mean_rms:.4f}")
         print(f"  Mean spectral flatness: {mean_flatness:.4f}")
         print(f"  Onset time: {onset_time:.4f} s" if onset_time else "  Onset time: Not detected")
@@ -307,7 +331,9 @@ class AudioAnalyzer:
                 f_spec, t_spec, Sxx,
                 t_flat, flatness,
                 t_rms, rms,
-                onset_time, f0
+                onset_time, f0,
+                normalized=normalization_factor is not None,
+                original_peak=original_peak
             )
         
         return results
@@ -316,7 +342,9 @@ class AudioAnalyzer:
                        f_spec, t_spec, Sxx,
                        t_flat, flatness,
                        t_rms, rms,
-                       onset_time, f0):
+                       onset_time, f0,
+                       normalized=False,
+                       original_peak=None):
         """Create comprehensive analysis plot."""
         
         # Create figure with subplots
@@ -329,7 +357,12 @@ class AudioAnalyzer:
         ax1 = fig.add_subplot(gs[0])
         ax1.plot(time_axis, audio_data, linewidth=0.5, color='steelblue')
         ax1.set_ylabel('Amplitude')
-        ax1.set_title(f'Audio Analysis: {basename}', fontsize=14, fontweight='bold')
+        
+        # Update title to show normalization status
+        title = f'Audio Analysis: {basename}'
+        if normalized:
+            title += f' [NORMALIZED - Original Peak: {original_peak:.4f}]'
+        ax1.set_title(title, fontsize=14, fontweight='bold')
         ax1.grid(True, alpha=0.3)
         ax1.set_xlim(0, time_axis[-1])
         
@@ -400,7 +433,48 @@ class AudioAnalyzer:
         print(f"Saved plot: {plot_filename}")
         plt.close()
     
-    def analyze_directory(self, audio_dir, pattern="*.wav", save_plots=True):
+    def find_normalization_factor(self, audio_files):
+        """
+        Find the maximum peak amplitude across all files for normalization.
+        
+        Args:
+            audio_files: List of audio file paths
+            
+        Returns:
+            Maximum peak amplitude across all files
+        """
+        max_peak = 0.0
+        max_file = None
+        
+        print("\nScanning files for normalization reference...")
+        for audio_file in audio_files:
+            try:
+                sample_rate, audio_data = wavfile.read(audio_file)
+                
+                # Convert to mono if stereo
+                if len(audio_data.shape) > 1:
+                    audio_data = np.mean(audio_data, axis=1)
+                
+                # Convert to float if integer
+                if audio_data.dtype in [np.int16, np.int32]:
+                    audio_data = audio_data.astype(np.float32)
+                    max_val = np.iinfo(audio_data.dtype).max if audio_data.dtype == np.int16 else 32768.0
+                    audio_data = audio_data / max_val
+                
+                peak = np.max(np.abs(audio_data))
+                if peak > max_peak:
+                    max_peak = peak
+                    max_file = audio_file.name
+            except Exception as e:
+                print(f"  Warning: Could not read {audio_file.name}: {e}")
+        
+        if max_peak > 0:
+            print(f"  Normalization reference: {max_file} (peak: {max_peak:.4f})")
+            print(f"  All files will be normalized to this level\n")
+        
+        return max_peak
+    
+    def analyze_directory(self, audio_dir, pattern="*.wav", save_plots=True, normalize=True):
         """
         Analyze all audio files in a directory.
         
@@ -408,6 +482,7 @@ class AudioAnalyzer:
             audio_dir: Directory containing audio files
             pattern: File pattern to match (default: "*.wav")
             save_plots: Whether to save individual plots
+            normalize: If True, normalize all files to the loudest file in the experiment
             
         Returns:
             List of analysis results for all files
@@ -428,13 +503,23 @@ class AudioAnalyzer:
         print(f"BATCH ANALYSIS")
         print(f"Directory: {audio_dir}")
         print(f"Files found: {len(audio_files)}")
+        print(f"Normalization: {'ENABLED' if normalize else 'DISABLED'}")
         print(f"{'='*60}\n")
+        
+        # Find normalization factor if enabled
+        norm_factor = None
+        if normalize:
+            norm_factor = self.find_normalization_factor(audio_files)
+            if norm_factor == 0:
+                print("Warning: Could not determine normalization factor, proceeding without normalization")
+                norm_factor = None
         
         all_results = []
         
         for audio_file in audio_files:
             try:
-                results = self.analyze_single_file(audio_file, save_plot=save_plots)
+                results = self.analyze_single_file(audio_file, save_plot=save_plots, 
+                                                  normalization_factor=norm_factor)
                 all_results.append(results)
             except Exception as e:
                 print(f"Error analyzing {audio_file.name}: {e}")
@@ -595,39 +680,104 @@ if __name__ == "__main__":
         
         recordings_dir = Path("Recording/output")
         if recordings_dir.exists():
-            sessions = [d for d in recordings_dir.iterdir() if d.is_dir()]
+            # Find all date directories (format: YYYY_MM_DD)
+            date_dirs = sorted([d for d in recordings_dir.iterdir() if d.is_dir() and '_' in d.name])
             
-            if sessions:
-                print("Available recording sessions:")
-                for i, session in enumerate(sessions, 1):
-                    audio_dir = session / "audio"
-                    if audio_dir.exists():
-                        num_files = len(list(audio_dir.glob("*.wav")))
-                        print(f"  {i}. {session.name} ({num_files} files)")
-                    else:
-                        print(f"  {i}. {session.name}")
+            if not date_dirs:
+                print("No date directories found in Recording/output/")
+                print("\nUsage:")
+                print("  python AudioAnalyzer.py <file.wav>              # Analyze single file")
+                print("  python AudioAnalyzer.py <directory>             # Analyze all WAV files")
+                print("  python AudioAnalyzer.py <directory> --append    # Append to existing CSV")
+                print("  python AudioAnalyzer.py <directory> -a          # Short form for append")
+            else:
+                # Display available dates
+                print("Available recording dates:")
+                for i, date_dir in enumerate(date_dirs, 1):
+                    # Count sessions in this date
+                    sessions_in_date = [s for s in date_dir.iterdir() if s.is_dir()]
+                    num_sessions = len(sessions_in_date)
+                    
+                    # Count total audio files
+                    total_files = 0
+                    for session in sessions_in_date:
+                        audio_dir = session / "audio"
+                        if audio_dir.exists():
+                            total_files += len(list(audio_dir.glob("*.wav")))
+                    
+                    print(f"  {i}. {date_dir.name} ({num_sessions} sessions, {total_files} files)")
                 
-                choice = input("\nEnter session number to analyze (or 'q' to quit): ").strip()
+                date_choice = input("\nEnter date number (or 'q' to quit): ").strip()
                 
-                if choice.lower() != 'q':
+                if date_choice.lower() == 'q':
+                    pass
+                else:
                     try:
-                        idx = int(choice) - 1
-                        if 0 <= idx < len(sessions):
-                            selected_session = sessions[idx]
-                            audio_dir = selected_session / "audio"
+                        date_idx = int(date_choice) - 1
+                        if 0 <= date_idx < len(date_dirs):
+                            selected_date_dir = date_dirs[date_idx]
                             
-                            if audio_dir.exists():
-                                analyzer.analyze_directory(audio_dir)
+                            # List sessions in selected date
+                            sessions = sorted([s for s in selected_date_dir.iterdir() if s.is_dir()])
+                            
+                            if not sessions:
+                                print(f"No sessions found in {selected_date_dir.name}")
                             else:
-                                print(f"No audio directory found in {selected_session}")
+                                print(f"\n{'='*60}")
+                                print(f"Sessions in {selected_date_dir.name}:")
+                                print(f"{'='*60}")
+                                print("  0. ALL SESSIONS (analyze all)")
+                                
+                                for i, session in enumerate(sessions, 1):
+                                    audio_dir = session / "audio"
+                                    if audio_dir.exists():
+                                        num_files = len(list(audio_dir.glob("*.wav")))
+                                        print(f"  {i}. {session.name} ({num_files} files)")
+                                    else:
+                                        print(f"  {i}. {session.name} (no audio)")
+                                
+                                session_choice = input("\nEnter session number (0 for all, or 'q' to quit): ").strip()
+                                
+                                if session_choice.lower() == 'q':
+                                    pass
+                                elif session_choice == '0':
+                                    # Analyze all sessions in this date
+                                    print(f"\n{'='*60}")
+                                    print(f"ANALYZING ALL SESSIONS IN {selected_date_dir.name}")
+                                    print(f"{'='*60}\n")
+                                    
+                                    for session in sessions:
+                                        audio_dir = session / "audio"
+                                        if audio_dir.exists():
+                                            print(f"\n--- Analyzing session: {session.name} ---")
+                                            analyzer.analyze_directory(audio_dir)
+                                        else:
+                                            print(f"\nSkipping {session.name} (no audio directory)")
+                                    
+                                    print(f"\n{'='*60}")
+                                    print(f"COMPLETED ALL SESSIONS")
+                                    print(f"{'='*60}")
+                                else:
+                                    try:
+                                        session_idx = int(session_choice) - 1
+                                        if 0 <= session_idx < len(sessions):
+                                            selected_session = sessions[session_idx]
+                                            audio_dir = selected_session / "audio"
+                                            
+                                            if audio_dir.exists():
+                                                analyzer.analyze_directory(audio_dir)
+                                            else:
+                                                print(f"No audio directory found in {selected_session}")
+                                        else:
+                                            print("Invalid session number")
+                                    except ValueError:
+                                        print("Please enter a valid number")
                         else:
-                            print("Invalid session number")
+                            print("Invalid date number")
                     except ValueError:
                         print("Please enter a valid number")
-            else:
-                print("No recording sessions found in 'recordings/' directory")
         else:
-            print("'recordings/' directory not found")
+            print("'Recording/output/' directory not found")
             print("\nUsage:")
             print("  python AudioAnalyzer.py <file.wav>              # Analyze single file")
             print("  python AudioAnalyzer.py <directory>             # Analyze all WAV files")

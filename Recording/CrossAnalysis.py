@@ -45,7 +45,9 @@ class CrossAnalyzer:
         Args:
             output_dir: Directory for saving cross-analysis results
         """
-        self.output_dir = Path(output_dir)
+        # Create output directory with date subdirectory
+        date_str = datetime.now().strftime("%Y_%m_%d")
+        self.output_dir = Path(output_dir) / date_str
         self.output_dir.mkdir(parents=True, exist_ok=True)
         
         self.merged_data = None
