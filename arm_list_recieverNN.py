@@ -9,6 +9,7 @@ from pythonosc.osc_message import OscMessage
 from pythonosc.parsing import osc_types
 from GuitarBotParser import GuitarBotParser
 from RightHandParser import RightHandParser
+from LeftHandParser import LeftHandParser
 import numpy as np
 import tune as tu
 
@@ -25,15 +26,17 @@ dyn_queue = queue.SimpleQueue()  # New queue for dynamics messages
 initial_point_queue = queue.SimpleQueue()
 song_trajs_queue = queue.SimpleQueue()
 data_queue = queue.SimpleQueue()
+fret_queue = queue.SimpleQueue()
 
 # Initialize dynamics parser
 rh_parser = RightHandParser()
+lh_parser = LeftHandParser()
 
 def decode_osc_message(data):
     print("Message In")
     try:
         msg = OscMessage(data)
-        if msg.address in ["/Chords", "/Strum", "/Pluck", "/Dyn"]:
+        if msg.address in ["/Chords", "/Strum", "/Pluck", "/Dyn", "/Fret"]:
             return msg.address[1:], msg.params  # Remove the leading '/'
     except osc_types.ParseError:
         print("Failed to parse OSC message")
@@ -69,6 +72,8 @@ def process_messages():
                     pluck_queue.put(data)
                 elif message_type == "Dyn":
                     dyn_queue.put(data)
+                elif message_type == "Fret":
+                    fret_queue.put(data)
                 # print(f"Chords Queue Size1", chords_queue.qsize())
                 # print(f"Pluck Queue Size1", pluck_queue.qsize())
         except queue.Empty:
@@ -141,6 +146,31 @@ def dynamics_processor():
             pass
         time.sleep(0.001)
 
+def fret_processor():
+    """Process /Fret messages for immediate motor testing."""
+    while True:
+        try:
+            while not fret_queue.empty():
+                fret_data = fret_queue.get_nowait()
+                print(f"Processing fret message: {fret_data}")
+
+                # shitty conditional data sending
+                if len(fret_data) == 1:
+                    trajectories_list = lh_parser.parse_fret_message(fret_data[0])
+                elif len(fret_data) == 2:
+                    trajectories_list = lh_parser.parse_fret_message(fret_data[0], fret_data[1])
+                elif len(fret_data) == 3:
+                    trajectories_list = lh_parser.parse_fret_message(fret_data[0], fret_data[1], fret_data[2])
+                else:
+                    print("No fret message, skipping")
+                    pass
+                print(f"Fret Trajs Length: {len(trajectories_list)}")
+                print("Executing fret test")
+                RobotController.main(trajectories_list)
+
+        except queue.Empty:
+            pass
+        time.sleep(0.001)
 
 def robot_controller():
     while True:
@@ -170,9 +200,11 @@ if __name__ == "__main__":
     song_creation_thread = threading.Thread(target=song_creator, daemon=True)
     song_creation_thread.start()
 
-    # Start the dynamics processor thread
     dynamics_thread = threading.Thread(target=dynamics_processor, daemon=True)
     dynamics_thread.start()
+
+    fretting_thread = threading.Thread(target=fret_processor, daemon=True)
+    fretting_thread.start()
 
     robot_controller_thread = threading.Thread(target=robot_controller, daemon=True)
     robot_controller_thread.start()
