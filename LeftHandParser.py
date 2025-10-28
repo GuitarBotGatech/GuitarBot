@@ -89,7 +89,8 @@ class LeftHandParser:
     
     def generate_fret_trajectory(self, string_id, fret_num, presser_force=None, 
                                 num_points=tu.PRESSER_INTERPOLATION_POINTS,
-                                timestamp=0.0):
+                                timestamp=0.0,
+                                force_adjustment_only=False):
         """
         Generate trajectory for fretting a single string at a specific fret.
         Uses 3-phase motion: unpress → slide → press (EXACTLY mimics GuitarBotParser.lh_interpolate 'note' event)
@@ -100,11 +101,12 @@ class LeftHandParser:
             presser_force: Optional force level (0.0-1.0)
             num_points: Points per trajectory phase
             timestamp: When this fret should start (in seconds)
+            force_adjustment_only: If True, only adjust presser force without unpressing (for force tests)
             
         Returns:
             2D numpy array [num_timesteps x 12] with LH motor trajectories
         """
-        print(f"Generating fret trajectory: String {string_id}, Fret {fret_num}, Force: {presser_force}, Timestamp: {timestamp}")
+        print(f"Generating fret trajectory: String {string_id}, Fret {fret_num}, Force: {presser_force}, Timestamp: {timestamp}, Force-only: {force_adjustment_only}")
         
         # Calculate target positions using EXACT same logic as GuitarBotParser
         slider_motor_id = string_id
@@ -116,6 +118,20 @@ class LeftHandParser:
         # Get current positions
         current_slider_pos = self.current_positions[slider_motor_id]
         current_presser_pos = self.current_positions[presser_motor_id]
+        
+        # Check if we're already on the correct fret and just adjusting force
+        current_fret = self.string_states[string_id]['fret']
+        same_fret = (current_fret == fret_num and fret_num > 0)
+        
+        if force_adjustment_only and same_fret:
+            print(f"  Force adjustment mode: incrementing from {current_presser_pos:.1f} to {target_presser_pos:.1f}")
+            # Skip unpress and slide phases - just adjust presser force
+            return self._generate_force_adjustment_trajectory(
+                slider_motor_id, presser_motor_id,
+                current_slider_pos, current_presser_pos,
+                target_slider_pos, target_presser_pos,
+                num_points, timestamp
+            )
         
         # Calculate total trajectory duration to size array properly
         # Based on GuitarBotParser line 297: num_generated_points = tu.PRESSER_INTERPOLATION_POINTS + tu.LH_SINGLE_NOTE_MOTION_POINTS + tu.PRESSER_INTERPOLATION_POINTS
@@ -191,7 +207,74 @@ class LeftHandParser:
         
         return trajectory_array
     
-    def parse_fret_message(self, midi_note_number, presser_force=None, timestamp=0.0):
+    def _generate_force_adjustment_trajectory(self, slider_motor_id, presser_motor_id,
+                                             current_slider_pos, current_presser_pos,
+                                             target_slider_pos, target_presser_pos,
+                                             num_points, timestamp):
+        """
+        Generate trajectory for adjusting presser force WITHOUT unpressing.
+        Used for force testing where we want to incrementally change force on same fret.
+        
+        Args:
+            slider_motor_id: Slider motor index
+            presser_motor_id: Presser motor index
+            current_slider_pos: Current slider position
+            current_presser_pos: Current presser position
+            target_slider_pos: Target slider position (usually unchanged)
+            target_presser_pos: Target presser position
+            num_points: Number of interpolation points
+            timestamp: Start time
+            
+        Returns:
+            2D numpy array [num_timesteps x 12] with trajectory
+        """
+        # Simplified trajectory: just adjust presser, keep slider fixed
+        total_points = num_points  # Only one phase
+        duration = total_points * tu.TIME_STEP
+        buffer = 100 * tu.TIME_STEP
+        num_rows = int((timestamp + duration + buffer) / tu.TIME_STEP)
+        
+        # Initialize trajectory
+        trajectory_array = np.full((num_rows, 12), np.nan)
+        trajectory_array[0, :] = self.current_positions
+        
+        start_index = int(timestamp / tu.TIME_STEP)
+        
+        # Generate smooth transition for presser only
+        presser_points = GuitarBotParser.interp_with_blend(
+            current_presser_pos, 
+            target_presser_pos, 
+            num_points, 
+            tu.TRAJECTORY_BLEND_PERCENT
+        )
+        
+        # Slider stays at current position
+        slider_points = [current_slider_pos] * num_points
+        
+        # Write to trajectory array
+        if start_index + num_points <= num_rows:
+            trajectory_array[start_index: start_index + num_points, slider_motor_id] = slider_points
+            trajectory_array[start_index: start_index + num_points, presser_motor_id] = presser_points
+            self.current_positions[slider_motor_id] = slider_points[-1]
+            self.current_positions[presser_motor_id] = presser_points[-1]
+        else:
+            safe_points = num_rows - start_index
+            if safe_points > 0:
+                trajectory_array[start_index:, slider_motor_id] = slider_points[:safe_points]
+                trajectory_array[start_index:, presser_motor_id] = presser_points[:safe_points]
+                self.current_positions[slider_motor_id] = slider_points[safe_points - 1]
+                self.current_positions[presser_motor_id] = presser_points[safe_points - 1]
+        
+        # Forward-fill NaN values
+        df = pd.DataFrame(trajectory_array)
+        df.ffill(inplace=True)
+        trajectory_array = df.to_numpy()
+        
+        print(f"  Force adjustment trajectory: {num_points} points, {duration:.3f}s")
+        
+        return trajectory_array
+    
+    def parse_fret_message(self, midi_note_number, presser_force=None, timestamp=0.0, force_adjustment_only=False):
         """
         Parse a /Fret OSC message and generate fretting trajectory.
         
@@ -199,11 +282,12 @@ class LeftHandParser:
             midi_note_number: MIDI note number (40-68 based on STRING_MIDI_RANGES)
             presser_force: Optional force level (0.0-1.0)
             timestamp: When this fret should start (in seconds)
+            force_adjustment_only: If True, only adjust force without unpressing (for force tests)
             
         Returns:
             2D numpy array [num_timesteps x 12] with LH motor trajectories
         """
-        print(f"Processing /Fret message: MIDI Note {midi_note_number}, Force {presser_force}, Timestamp {timestamp}")
+        print(f"Processing /Fret message: MIDI Note {midi_note_number}, Force {presser_force}, Timestamp {timestamp}, Force-only: {force_adjustment_only}")
         
         # Validate MIDI note number and map to string/fret
         string_fret_info = self.midi_note_to_string_fret(midi_note_number)
@@ -221,7 +305,11 @@ class LeftHandParser:
         # TODO: 15 x N trajectory array that preserves state.
         # TODO: Get encoder state from arduino and save that.
         # Generate fretting trajectory
-        trajectory = self.generate_fret_trajectory(string_id, fret_num, presser_force, timestamp=timestamp)
+        trajectory = self.generate_fret_trajectory(
+            string_id, fret_num, presser_force, 
+            timestamp=timestamp,
+            force_adjustment_only=force_adjustment_only
+        )
 
         # Plot if graphing is enabled
         if tu.graph:

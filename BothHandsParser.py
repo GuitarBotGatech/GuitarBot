@@ -38,14 +38,16 @@ class BothHandsParser:
         self.right_hand = RightHandParser()
         
         # Timing configuration for coordination
-        self.pluck_delay_after_press = tu.TIME_STEP * 5  # Delay pluck until after pressing completes
+        self.pluck_delay_after_press = tu.TIME_STEP * 10  # Delay pluck to allow fretter to settle
+        self.settling_time = tu.TIME_STEP * 5  # Additional settling time before pluck starts
         
         print("=== BothHandsParser Initialized ===")
         print("Left Hand: 12 motors (sliders + pressers)")
         print("Right Hand: 3 motors (pickers)")
         print(f"Pluck delay: {self.pluck_delay_after_press:.3f}s after press")
+        print(f"Settling time: {self.settling_time:.3f}s before pluck")
     
-    def parse_fret_with_pluck(self, midi_note, presser_force=None, pluck_velocity=None, timestamp=0.0):
+    def parse_fret_with_pluck(self, midi_note, presser_force=None, pluck_velocity=None, timestamp=0.0, force_adjustment_only=False):
         """
         Parse /Fret message and generate coordinated fretting + plucking trajectory.
         
@@ -56,20 +58,22 @@ class BothHandsParser:
             presser_force: Optional force level for pressing (0.0-1.0, None = default)
             pluck_velocity: Optional pluck velocity (0-127, None = state toggle)
             timestamp: When the note should start (seconds)
+            force_adjustment_only: If True, only adjust force without unpressing (for force tests)
             
         Returns:
             2D numpy array [num_timesteps x 15] with complete motor trajectories
         """
         print(f"\n{'='*60}")
         print(f"COORDINATED FRET + PLUCK")
-        print(f"MIDI Note: {midi_note}, Force: {presser_force}, Velocity: {pluck_velocity}, Time: {timestamp}s")
+        print(f"MIDI Note: {midi_note}, Force: {presser_force}, Velocity: {pluck_velocity}, Time: {timestamp}s, Force-only: {force_adjustment_only}")
         print(f"{'='*60}")
         
         # 1. Generate left hand fretting trajectory (12 motors)
         lh_trajectory = self.left_hand.parse_fret_message(
             midi_note_number=midi_note,
             presser_force=presser_force,
-            timestamp=timestamp
+            timestamp=timestamp,
+            force_adjustment_only=force_adjustment_only
         )
         
         if lh_trajectory.size == 0:
@@ -77,15 +81,21 @@ class BothHandsParser:
             return np.array([])
         
         # 2. Calculate when to trigger the pluck
-        # Fretting has 3 phases: unpress -> slide -> press
-        # We want to pluck after the press phase completes
-        press_duration = (
-            tu.PRESSER_INTERPOLATION_POINTS +  # unpress
-            tu.LH_SINGLE_NOTE_MOTION_POINTS +   # slide
-            tu.PRESSER_INTERPOLATION_POINTS     # press
-        ) * tu.TIME_STEP
+        if force_adjustment_only:
+            # For force adjustments, the trajectory is shorter (only presser movement)
+            press_duration = tu.PRESSER_INTERPOLATION_POINTS * tu.TIME_STEP
+        else:
+            # Full fretting has 3 phases: unpress -> slide -> press
+            press_duration = (
+                tu.PRESSER_INTERPOLATION_POINTS +  # unpress
+                tu.LH_SINGLE_NOTE_MOTION_POINTS +   # slide
+                tu.PRESSER_INTERPOLATION_POINTS     # press
+            ) * tu.TIME_STEP
         
-        pluck_timestamp = timestamp + press_duration - self.pluck_delay_after_press
+        # Add settling time after press completes before plucking
+        pluck_timestamp = timestamp + press_duration + self.settling_time
+        
+        print(f"Pluck timing: Press duration={press_duration:.3f}s, Settling={self.settling_time:.3f}s, Pluck at t={pluck_timestamp:.3f}s")
         
         # 3. Determine which picker to use based on MIDI note
         picker_id = self.right_hand.midi_note_to_picker_id(midi_note)
