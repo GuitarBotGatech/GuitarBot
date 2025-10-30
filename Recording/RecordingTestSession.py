@@ -480,9 +480,12 @@ def protocol_dynamics_sweep():
     
     # Test MIDI notes for each string (based on STRING_MIDI_RANGES from tune.py)
     notes = [
-        40,  # Low E string
-        50,  # D string  
-        60,  # B string
+        40,  # Low E string (down)
+        40,  # Low E string (up)
+        50,  # D string (down)  
+        50,  # D string (up)
+        60,  # B string (down)
+        60,  # B string (up)
     ]
     
     session.test_dynamics_sweep(notes, delay_between=5.0)
