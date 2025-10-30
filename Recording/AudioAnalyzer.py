@@ -44,9 +44,12 @@ class AudioAnalyzer:
             output_dir: Directory for saving analysis plots and reports
             append_mode: If True, append to existing CSV files instead of overwriting
         """
-        # Create output directory with date subdirectory
+        # Create output directory with date and time subdirectory
         date_str = datetime.now().strftime("%Y_%m_%d")
-        self.output_dir = Path(output_dir) / date_str
+        time_str = datetime.now().strftime("%H_%M")
+        # Append time to prevent overwrites on same day
+        date_time_str = f"{date_str}_{time_str}"
+        self.output_dir = Path(output_dir) / date_time_str
         self.output_dir.mkdir(parents=True, exist_ok=True)
         self.append_mode = append_mode
         

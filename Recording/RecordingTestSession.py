@@ -60,7 +60,10 @@ class RecordingTestSession:
         
         # Create output directories with date subdirectory
         date_str = datetime.now().strftime("%Y_%m_%d")
-        self.session_dir = self.output_dir / date_str / self.session_name
+        time_str = datetime.now().strftime("%H_%M")
+        # Append time to session name to prevent overwrites on same day
+        session_folder_name = f"{self.session_name}_{time_str}"
+        self.session_dir = self.output_dir / date_str / session_folder_name
         self.audio_dir = self.session_dir / "audio"
         self.metadata_dir = self.session_dir / "metadata"
         
