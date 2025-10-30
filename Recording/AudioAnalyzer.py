@@ -36,14 +36,20 @@ import csv
 class AudioAnalyzer:
     """Analyze audio recordings with spectral and temporal features."""
     
-    def __init__(self, output_dir="Recording/analysis", append_mode=False):
+    def __init__(self, output_dir=None, append_mode=False):
         """
         Initialize audio analyzer.
         
         Args:
-            output_dir: Directory for saving analysis plots and reports
+            output_dir: Directory for saving analysis plots and reports (defaults to ../GuitarBot_Data/analysis)
             append_mode: If True, append to existing CSV files instead of overwriting
         """
+        # Default to external data directory (outside repo)
+        if output_dir is None:
+            # Get repo root (GuitarBot/) and go up one level to GuitarBot_Data/
+            repo_root = Path(__file__).parent.parent
+            output_dir = repo_root.parent / "GuitarBot_Data" / "analysis"
+        
         # Create output directory with date and time subdirectory
         date_str = datetime.now().strftime("%Y_%m_%d")
         time_str = datetime.now().strftime("%H_%M")
@@ -170,7 +176,7 @@ class AudioAnalyzer:
         
         return t, spectral_flatness
     
-    def compute_rms_energy(self, audio_data, sample_rate, frame_length=2048, hop_length=512):
+    def compute_rms_energy(self, audio_data, sample_rate, frame_length=2048, hop_length=512, return_db=True):
         """
         Compute RMS (Root Mean Square) energy over time.
         
@@ -179,9 +185,10 @@ class AudioAnalyzer:
             sample_rate: Sample rate (Hz)
             frame_length: Frame size for RMS computation
             hop_length: Hop size between frames
+            return_db: If True, return values in dBFS (decibels full scale)
             
         Returns:
-            Tuple of (times, rms_values)
+            Tuple of (times, rms_values) where rms_values are in dBFS if return_db=True
         """
         # Frame the audio
         num_frames = 1 + (len(audio_data) - frame_length) // hop_length
@@ -195,6 +202,12 @@ class AudioAnalyzer:
             rms_values[i] = np.sqrt(np.mean(frame**2))
             times[i] = start / sample_rate
         
+        # Convert to dBFS if requested
+        if return_db:
+            # dBFS = 20 * log10(RMS / 1.0) where 1.0 is full scale
+            # Add small epsilon to avoid log(0)
+            rms_values = 20 * np.log10(rms_values + 1e-10)
+        
         return times, rms_values
     
     def detect_onset(self, audio_data, sample_rate, threshold=0.1):
@@ -204,14 +217,15 @@ class AudioAnalyzer:
         Args:
             audio_data: Audio samples
             sample_rate: Sample rate (Hz)
-            threshold: RMS threshold for onset detection (0-1)
+            threshold: RMS threshold for onset detection (0-1, linear scale)
             
         Returns:
             Onset time in seconds (or None if not detected)
         """
-        # Compute RMS with small hop for better resolution
+        # Compute RMS with small hop for better resolution (use linear values for threshold)
         times, rms = self.compute_rms_energy(audio_data, sample_rate, 
-                                             frame_length=512, hop_length=128)
+                                             frame_length=512, hop_length=128,
+                                             return_db=False)
         
         # Find first frame above threshold
         onset_idx = np.where(rms > threshold)[0]
@@ -284,7 +298,7 @@ class AudioAnalyzer:
         t_flat, flatness = self.compute_spectral_flatness(audio_data, sample_rate)
         
         print("Computing RMS energy...")
-        t_rms, rms = self.compute_rms_energy(audio_data, sample_rate)
+        t_rms, rms_db = self.compute_rms_energy(audio_data, sample_rate, return_db=True)
         
         print("Detecting onset...")
         onset_time = self.detect_onset(audio_data, sample_rate)
@@ -294,7 +308,8 @@ class AudioAnalyzer:
         
         # Compute summary statistics
         peak_amplitude = np.max(np.abs(audio_data))
-        mean_rms = np.mean(rms)
+        mean_rms_db = np.mean(rms_db)
+        peak_rms_db = np.max(rms_db)  # Maximum RMS across all frames (loudest moment)
         mean_flatness = np.mean(flatness)
         
         # Create analysis results
@@ -307,7 +322,8 @@ class AudioAnalyzer:
             'peak_amplitude': float(peak_amplitude),  # Normalized peak (if applied)
             'normalized': normalization_factor is not None,
             'normalization_factor': float(normalization_factor) if normalization_factor else None,
-            'mean_rms': float(mean_rms),
+            'mean_rms_db': float(mean_rms_db),  # Mean RMS in dBFS
+            'peak_rms_db': float(peak_rms_db),  # Peak RMS in dBFS (loudest moment)
             'mean_spectral_flatness': float(mean_flatness),
             'onset_time': float(onset_time) if onset_time else None,
             'fundamental_frequency': float(f0) if f0 else None,
@@ -320,7 +336,8 @@ class AudioAnalyzer:
             print(f"  Normalized peak amplitude: {peak_amplitude:.4f}")
         else:
             print(f"  Peak amplitude: {peak_amplitude:.4f}")
-        print(f"  Mean RMS: {mean_rms:.4f}")
+        print(f"  Mean RMS: {mean_rms_db:.2f} dBFS")
+        print(f"  Peak RMS: {peak_rms_db:.2f} dBFS (loudest moment)")
         print(f"  Mean spectral flatness: {mean_flatness:.4f}")
         print(f"  Onset time: {onset_time:.4f} s" if onset_time else "  Onset time: Not detected")
         print(f"  Fundamental freq: {f0:.2f} Hz" if f0 else "  Fundamental freq: Not detected")
@@ -333,7 +350,7 @@ class AudioAnalyzer:
                 audio_data, sample_rate,
                 f_spec, t_spec, Sxx,
                 t_flat, flatness,
-                t_rms, rms,
+                t_rms, rms_db,
                 onset_time, f0,
                 normalized=normalization_factor is not None,
                 original_peak=original_peak
@@ -419,15 +436,18 @@ class AudioAnalyzer:
         ax4 = fig.add_subplot(gs[3])
         ax4.plot(t_rms, rms, linewidth=1.5, color='purple')
         ax4.set_xlabel('Time (s)')
-        ax4.set_ylabel('RMS Energy')
+        ax4.set_ylabel('RMS Energy (dBFS)')
         ax4.set_title('RMS Energy Envelope', fontsize=12)
         ax4.grid(True, alpha=0.3)
         ax4.set_xlim(0, time_axis[-1])
         
-        # Add mean line
+        # Add mean and peak lines
         mean_rms = np.mean(rms)
+        peak_rms = np.max(rms)
         ax4.axhline(mean_rms, color='red', linestyle='--', 
-                   label=f'Mean: {mean_rms:.4f}', alpha=0.7)
+                   label=f'Mean: {mean_rms:.2f} dBFS', alpha=0.7)
+        ax4.axhline(peak_rms, color='orange', linestyle='--', 
+                   label=f'Peak: {peak_rms:.2f} dBFS', alpha=0.7, linewidth=2)
         ax4.legend(loc='upper right')
         
         # Save figure
@@ -530,6 +550,9 @@ class AudioAnalyzer:
         # Save batch summary
         if all_results:
             self._save_batch_summary(audio_dir.name, all_results)
+            
+            # Analyze pick direction differences if this is a dynamics test
+            self._analyze_pick_direction_differences(audio_dir.name, all_results)
         
         return all_results
     
@@ -572,6 +595,246 @@ class AudioAnalyzer:
             json.dump(summary, f, indent=2)
         print(f"Saved JSON summary: {json_file}")
     
+    def _analyze_pick_direction_differences(self, session_name, results):
+        """
+        Analyze amplitude differences between consecutive picks (down vs up).
+        
+        Assumes that consecutive recordings of the same MIDI note represent
+        alternating pick directions (down, up, down, up...).
+        
+        Args:
+            session_name: Name of the session
+            results: List of analysis result dictionaries
+        """
+        # Try to detect if this is a dynamics test by checking filenames
+        has_dynamics = any('dynamics' in r.get('filename', '').lower() for r in results)
+        
+        if not has_dynamics or len(results) < 2:
+            # Not a dynamics test or not enough data
+            return
+        
+        print(f"\n{'='*60}")
+        print(f"PICK DIRECTION ANALYSIS (Down vs Up)")
+        print(f"{'='*60}\n")
+        
+        # Group results by MIDI note (extract from filename)
+        from collections import defaultdict
+        notes_data = defaultdict(list)
+        
+        for result in results:
+            filename = result.get('filename', '')
+            # Try to extract note number from filename (e.g., "0001_dynamics_note40_...")
+            if 'note' in filename:
+                try:
+                    note_str = filename.split('note')[1].split('_')[0]
+                    midi_note = int(note_str)
+                    notes_data[midi_note].append(result)
+                except (IndexError, ValueError):
+                    continue
+        
+        if not notes_data:
+            print("Could not extract MIDI note information from filenames.")
+            return
+        
+        # Analyze pairs for each note
+        pick_comparison_data = []
+        
+        for midi_note in sorted(notes_data.keys()):
+            recordings = notes_data[midi_note]
+            
+            if len(recordings) < 2:
+                continue
+            
+            print(f"MIDI Note {midi_note}:")
+            print(f"  Total recordings: {len(recordings)}")
+            
+            # Compare consecutive pairs (assuming alternating pick direction)
+            for i in range(0, len(recordings) - 1, 2):
+                down_pick = recordings[i]
+                up_pick = recordings[i + 1] if i + 1 < len(recordings) else None
+                
+                if up_pick is None:
+                    continue
+                
+                # Extract metrics for comparison
+                down_peak_rms = down_pick.get('peak_rms_db', None)
+                up_peak_rms = up_pick.get('peak_rms_db', None)
+                down_mean_rms = down_pick.get('mean_rms_db', None)
+                up_mean_rms = up_pick.get('mean_rms_db', None)
+                
+                if None in [down_peak_rms, up_peak_rms, down_mean_rms, up_mean_rms]:
+                    continue
+                
+                # Calculate differences
+                peak_diff = down_peak_rms - up_peak_rms  # Positive = down is louder
+                mean_diff = down_mean_rms - up_mean_rms
+                
+                pair_num = (i // 2) + 1
+                print(f"\n  Pair {pair_num} (Down vs Up):")
+                print(f"    Down pick: Peak RMS = {down_peak_rms:.2f} dBFS, Mean RMS = {down_mean_rms:.2f} dBFS")
+                print(f"    Up pick:   Peak RMS = {up_peak_rms:.2f} dBFS, Mean RMS = {up_mean_rms:.2f} dBFS")
+                print(f"    Difference: Peak = {peak_diff:+.2f} dB, Mean = {mean_diff:+.2f} dB")
+                
+                if abs(peak_diff) > 3.0:
+                    direction = "DOWN" if peak_diff > 0 else "UP"
+                    print(f"     Significant bias toward {direction} pick ({abs(peak_diff):.2f} dB)")
+                
+                # Store for summary
+                pick_comparison_data.append({
+                    'midi_note': midi_note,
+                    'pair': pair_num,
+                    'down_peak_rms_db': down_peak_rms,
+                    'up_peak_rms_db': up_peak_rms,
+                    'down_mean_rms_db': down_mean_rms,
+                    'up_mean_rms_db': up_mean_rms,
+                    'peak_diff_db': peak_diff,
+                    'mean_diff_db': mean_diff
+                })
+        
+        if not pick_comparison_data:
+            print("No valid pick pairs found for comparison.")
+            return
+        
+        # Calculate overall statistics
+        peak_diffs = [d['peak_diff_db'] for d in pick_comparison_data]
+        mean_diffs = [d['mean_diff_db'] for d in pick_comparison_data]
+        
+        avg_peak_diff = np.mean(peak_diffs)
+        std_peak_diff = np.std(peak_diffs)
+        avg_mean_diff = np.mean(mean_diffs)
+        std_mean_diff = np.std(mean_diffs)
+        
+        print(f"\n{'='*60}")
+        print(f"OVERALL STATISTICS")
+        print(f"{'='*60}")
+        print(f"Total pairs analyzed: {len(pick_comparison_data)}")
+        print(f"\nPeak RMS Difference (Down - Up):")
+        print(f"  Average: {avg_peak_diff:+.2f} dB ± {std_peak_diff:.2f} dB")
+        print(f"  Range: [{min(peak_diffs):+.2f}, {max(peak_diffs):+.2f}] dB")
+        
+        print(f"\nMean RMS Difference (Down - Up):")
+        print(f"  Average: {avg_mean_diff:+.2f} dB ± {std_mean_diff:.2f} dB")
+        print(f"  Range: [{min(mean_diffs):+.2f}, {max(mean_diffs):+.2f}] dB")
+        
+        # Interpretation
+        print(f"\nInterpretation:")
+        if abs(avg_peak_diff) < 1.0:
+            print(f"  ✓ Excellent balance between pick directions (< 1 dB difference)")
+        elif abs(avg_peak_diff) < 3.0:
+            print(f"  → Slight bias toward {'DOWN' if avg_peak_diff > 0 else 'UP'} picks ({abs(avg_peak_diff):.2f} dB)")
+        else:
+            print(f"  ⚠️  Significant bias toward {'DOWN' if avg_peak_diff > 0 else 'UP'} picks ({abs(avg_peak_diff):.2f} dB)")
+            print(f"     Consider calibrating picker mechanism or adjusting pick velocities.")
+        
+        # Save pick comparison data
+        self._save_pick_comparison_data(session_name, pick_comparison_data)
+        
+        # Create visualization
+        self._plot_pick_direction_comparison(session_name, pick_comparison_data)
+    
+    def _save_pick_comparison_data(self, session_name, pick_data):
+        """Save pick direction comparison data to CSV."""
+        if not pick_data:
+            return
+        
+        csv_file = self.output_dir / f"{session_name}_pick_comparison.csv"
+        
+        keys = pick_data[0].keys()
+        with open(csv_file, 'w', newline='') as f:
+            writer = csv.DictWriter(f, fieldnames=keys)
+            writer.writeheader()
+            writer.writerows(pick_data)
+        
+        print(f"\n✓ Pick comparison data saved: {csv_file}")
+    
+    def _plot_pick_direction_comparison(self, session_name, pick_data):
+        """Create visualization of pick direction differences."""
+        if not pick_data:
+            return
+        
+        # Convert to arrays
+        midi_notes = np.array([d['midi_note'] for d in pick_data])
+        pairs = np.array([d['pair'] for d in pick_data])
+        peak_diffs = np.array([d['peak_diff_db'] for d in pick_data])
+        mean_diffs = np.array([d['mean_diff_db'] for d in pick_data])
+        
+        # Create figure with multiple subplots
+        fig, axes = plt.subplots(2, 2, figsize=(14, 10))
+        fig.suptitle('Pick Direction Analysis: Down vs Up', fontsize=14, fontweight='bold')
+        
+        # 1. Peak RMS differences by note
+        ax1 = axes[0, 0]
+        unique_notes = sorted(set(midi_notes))
+        for note in unique_notes:
+            mask = midi_notes == note
+            note_peak_diffs = peak_diffs[mask]
+            note_pairs = pairs[mask]
+            ax1.scatter(note_pairs, note_peak_diffs, s=100, alpha=0.7, label=f'Note {note}')
+        
+        ax1.axhline(0, color='black', linestyle='-', linewidth=1, alpha=0.3)
+        ax1.axhline(3, color='red', linestyle='--', linewidth=1, alpha=0.5, label='±3 dB threshold')
+        ax1.axhline(-3, color='red', linestyle='--', linewidth=1, alpha=0.5)
+        ax1.set_xlabel('Pair Number')
+        ax1.set_ylabel('Peak RMS Difference (dB)\n(Down - Up)')
+        ax1.set_title('Peak RMS: Down vs Up Pick')
+        ax1.legend()
+        ax1.grid(True, alpha=0.3)
+        
+        # 2. Distribution of peak differences
+        ax2 = axes[0, 1]
+        ax2.hist(peak_diffs, bins=15, color='steelblue', alpha=0.7, edgecolor='black')
+        ax2.axvline(0, color='black', linestyle='-', linewidth=2, label='Perfect balance')
+        ax2.axvline(np.mean(peak_diffs), color='red', linestyle='--', linewidth=2, 
+                   label=f'Mean: {np.mean(peak_diffs):+.2f} dB')
+        ax2.set_xlabel('Peak RMS Difference (dB)')
+        ax2.set_ylabel('Frequency')
+        ax2.set_title('Distribution of Peak RMS Differences')
+        ax2.legend()
+        ax2.grid(True, alpha=0.3, axis='y')
+        
+        # 3. Mean RMS differences by note
+        ax3 = axes[1, 0]
+        for note in unique_notes:
+            mask = midi_notes == note
+            note_mean_diffs = mean_diffs[mask]
+            note_pairs = pairs[mask]
+            ax3.scatter(note_pairs, note_mean_diffs, s=100, alpha=0.7, label=f'Note {note}')
+        
+        ax3.axhline(0, color='black', linestyle='-', linewidth=1, alpha=0.3)
+        ax3.set_xlabel('Pair Number')
+        ax3.set_ylabel('Mean RMS Difference (dB)\n(Down - Up)')
+        ax3.set_title('Mean RMS: Down vs Up Pick')
+        ax3.legend()
+        ax3.grid(True, alpha=0.3)
+        
+        # 4. Box plot comparison
+        ax4 = axes[1, 1]
+        box_data = [peak_diffs, mean_diffs]
+        bp = ax4.boxplot(box_data, labels=['Peak RMS Diff', 'Mean RMS Diff'],
+                        patch_artist=True, widths=0.6)
+        
+        # Color the boxes
+        colors = ['steelblue', 'lightcoral']
+        for patch, color in zip(bp['boxes'], colors):
+            patch.set_facecolor(color)
+            patch.set_alpha(0.7)
+        
+        ax4.axhline(0, color='black', linestyle='-', linewidth=1, alpha=0.5)
+        ax4.axhline(3, color='red', linestyle='--', linewidth=1, alpha=0.3)
+        ax4.axhline(-3, color='red', linestyle='--', linewidth=1, alpha=0.3)
+        ax4.set_ylabel('Amplitude Difference (dB)\n(Down - Up)')
+        ax4.set_title('Pick Direction Bias Summary')
+        ax4.grid(True, alpha=0.3, axis='y')
+        
+        plt.tight_layout()
+        
+        # Save figure
+        timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+        plot_file = self.output_dir / f"{session_name}_pick_comparison_{timestamp}.png"
+        plt.savefig(plot_file, dpi=150, bbox_inches='tight')
+        print(f"✓ Pick comparison plot saved: {plot_file}")
+        plt.close()
+    
     def compare_recordings(self, filepaths, labels=None):
         """
         Create comparative plots for multiple recordings.
@@ -602,9 +865,9 @@ class AudioAnalyzer:
                 axes[1].plot(t_flat, flatness, linewidth=1.5, 
                            label=label, color=colors[i])
                 
-                # RMS energy
-                t_rms, rms = self.compute_rms_energy(audio_data, sample_rate)
-                axes[2].plot(t_rms, rms, linewidth=1.5, 
+                # RMS energy (in dBFS)
+                t_rms, rms_db = self.compute_rms_energy(audio_data, sample_rate, return_db=True)
+                axes[2].plot(t_rms, rms_db, linewidth=1.5, 
                            label=label, color=colors[i])
                 
             except Exception as e:
@@ -621,7 +884,7 @@ class AudioAnalyzer:
         axes[1].grid(True, alpha=0.3)
         
         axes[2].set_xlabel('Time (s)')
-        axes[2].set_ylabel('RMS Energy')
+        axes[2].set_ylabel('RMS Energy (dBFS)')
         axes[2].set_title('RMS Energy')
         axes[2].legend()
         axes[2].grid(True, alpha=0.3)
@@ -653,7 +916,7 @@ if __name__ == "__main__":
     # Remove flags from argv to get file/directory arguments
     args = [arg for arg in sys.argv[1:] if not arg.startswith('-')]
     
-    analyzer = AudioAnalyzer(output_dir="Recording/analysis", append_mode=append_mode)
+    analyzer = AudioAnalyzer(append_mode=append_mode)
     
     if len(args) > 0:
         target = args[0]
@@ -682,13 +945,15 @@ if __name__ == "__main__":
         # Interactive mode
         print("\nNo arguments provided. Looking for recording sessions...\n")
         
-        recordings_dir = Path("Recording/output")
+        # Look in external data directory
+        repo_root = Path(__file__).parent.parent
+        recordings_dir = repo_root.parent / "GuitarBot_Data" / "recordings"
         if recordings_dir.exists():
             # Find all date directories (format: YYYY_MM_DD)
             date_dirs = sorted([d for d in recordings_dir.iterdir() if d.is_dir() and '_' in d.name])
             
             if not date_dirs:
-                print("No date directories found in Recording/output/")
+                print(f"No date directories found in {recordings_dir}/")
                 print("\nUsage:")
                 print("  python AudioAnalyzer.py <file.wav>              # Analyze single file")
                 print("  python AudioAnalyzer.py <directory>             # Analyze all WAV files")
@@ -781,7 +1046,8 @@ if __name__ == "__main__":
                     except ValueError:
                         print("Please enter a valid number")
         else:
-            print("'Recording/output/' directory not found")
+            print(f"Directory not found: {recordings_dir}")
+            print("Run RecordingTestSession.py first to create recordings.")
             print("\nUsage:")
             print("  python AudioAnalyzer.py <file.wav>                  # Analyze single file")
             print("  python AudioAnalyzer.py <directory>                 # Analyze all WAV files (normalized)")

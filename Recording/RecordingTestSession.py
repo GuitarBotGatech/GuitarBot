@@ -39,7 +39,7 @@ class RecordingTestSession:
                  osc_ip="127.0.0.1", 
                  osc_port=12000,
                  sample_rate=44100,
-                 output_dir="Recording/output",
+                 output_dir=None,
                  session_name=None):
         """
         Initialize recording test session.
@@ -48,11 +48,18 @@ class RecordingTestSession:
             osc_ip: IP address of OSC receiver
             osc_port: Port of OSC receiver
             sample_rate: Audio recording sample rate (Hz)
-            output_dir: Directory for saving recordings and metadata
+            output_dir: Directory for saving recordings and metadata (defaults to ../GuitarBot_Data/recordings)
             session_name: Name for this session (defaults to timestamp)
         """
         self.osc_client = SimpleUDPClient(osc_ip, osc_port)
         self.sample_rate = sample_rate
+        
+        # Default to external data directory (outside repo)
+        if output_dir is None:
+            # Get repo root (GuitarBot/) and go up one level to GuitarBot_Data/
+            repo_root = Path(__file__).parent.parent
+            output_dir = repo_root.parent / "GuitarBot_Data" / "recordings"
+        
         self.output_dir = Path(output_dir)
         self.session_name = session_name or datetime.now().strftime("%Y%m%d_%H%M%S")
         self.selected_input_device = None

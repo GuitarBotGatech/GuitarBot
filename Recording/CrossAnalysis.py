@@ -38,16 +38,25 @@ from scipy import stats
 class CrossAnalyzer:
     """Cross-analyze recording metadata with audio analysis results."""
     
-    def __init__(self, output_dir="Recording/cross_analysis"):
+    def __init__(self, output_dir=None):
         """
         Initialize cross analyzer.
         
         Args:
-            output_dir: Directory for saving cross-analysis results
+            output_dir: Directory for saving cross-analysis results (defaults to ../GuitarBot_Data/cross_analysis)
         """
-        # Create output directory with date subdirectory
+        # Default to external data directory (outside repo)
+        if output_dir is None:
+            # Get repo root (GuitarBot/) and go up one level to GuitarBot_Data/
+            repo_root = Path(__file__).parent.parent
+            output_dir = repo_root.parent / "GuitarBot_Data" / "cross_analysis"
+        
+        # Create output directory with date and time subdirectory
         date_str = datetime.now().strftime("%Y_%m_%d")
-        self.output_dir = Path(output_dir) / date_str
+        time_str = datetime.now().strftime("%H_%M")
+        # Append time to prevent overwrites on same day
+        date_time_str = f"{date_str}_{time_str}"
+        self.output_dir = Path(output_dir) / date_time_str
         self.output_dir.mkdir(parents=True, exist_ok=True)
         
         self.merged_data = None
@@ -111,6 +120,11 @@ class CrossAnalyzer:
     
     def _add_derived_features(self, df):
         """Add derived features useful for analysis."""
+        
+        # Backward compatibility: if mean_rms_db exists, create mean_rms for legacy code
+        if 'mean_rms_db' in df.columns and 'mean_rms' not in df.columns:
+            # Convert dBFS back to linear for calculations
+            df['mean_rms'] = np.power(10, df['mean_rms_db'] / 20.0)
         
         # Signal-to-noise ratio (inverse of spectral flatness)
         # Lower flatness = more tonal = better SNR
@@ -191,7 +205,7 @@ class CrossAnalyzer:
             
             # Compute statistics for key metrics
             metrics = [
-                'peak_amplitude', 'mean_rms', 'mean_spectral_flatness',
+                'peak_amplitude', 'mean_rms', 'mean_rms_db', 'peak_rms_db', 'mean_spectral_flatness',
                 'snr_estimate', 'dynamic_range_db', 'quality_score',
                 'fundamental_frequency', 'pitch_error_cents'
             ]
@@ -323,7 +337,7 @@ class CrossAnalyzer:
         print(f"{'='*60}\n")
         
         # Find strong correlations with quality metrics
-        quality_metrics = ['quality_score', 'snr_estimate', 'mean_rms']
+        quality_metrics = ['quality_score', 'snr_estimate', 'mean_rms', 'mean_rms_db', 'peak_rms_db']
         
         for metric in quality_metrics:
             if metric in corr_matrix.columns:
@@ -336,7 +350,7 @@ class CrossAnalyzer:
         return corr_matrix
     
     def plot_parameter_sweep(self, test_type, param_column, 
-                            metrics=['quality_score', 'mean_rms', 'mean_spectral_flatness']):
+                            metrics=['quality_score', 'mean_rms_db', 'mean_spectral_flatness']):
         """
         Visualize how metrics change with parameter values.
         
@@ -433,7 +447,7 @@ class CrossAnalyzer:
         # Select subset of most interesting columns
         interesting_cols = [
             'midi_note', 'parameter', 'force_level', 'velocity',
-            'peak_amplitude', 'mean_rms', 'mean_spectral_flatness',
+            'peak_amplitude', 'mean_rms', 'mean_rms_db', 'peak_rms_db', 'mean_spectral_flatness',
             'snr_estimate', 'dynamic_range_db', 'quality_score',
             'fundamental_frequency', 'pitch_error_cents'
         ]
@@ -566,15 +580,19 @@ if __name__ == "__main__":
     
     analyzer = CrossAnalyzer()
     
-    # Default paths
+    # Get external data directories
+    repo_root = Path(__file__).parent.parent
+    data_root = repo_root.parent / "GuitarBot_Data"
+    
+    # Default paths (updated for external storage)
     default_sessions = {
         'fretting_force': {
-            'metadata': 'Recording/output/fretting_force_optimization/session_summary.csv',
-            'analysis': 'Recording/analysis/audio_analysis_summary.csv'
+            'metadata': str(data_root / 'recordings' / 'fretting_force_optimization' / 'session_summary.csv'),
+            'analysis': str(data_root / 'analysis' / 'audio_analysis_summary.csv')
         },
         'dynamics': {
-            'metadata': 'Recording/output/dynamics_sweep/session_summary.csv',
-            'analysis': 'Recording/analysis/audio_analysis_summary.csv'
+            'metadata': str(data_root / 'recordings' / 'dynamics_sweep' / 'session_summary.csv'),
+            'analysis': str(data_root / 'analysis' / 'audio_analysis_summary.csv')
         }
     }
     
