@@ -261,11 +261,13 @@ def create_tremolo_message():
 #                    [45, 1, 5, 0, 5], [43, 1, 5, 0, 7], [43, 1, 5, 0, 8], [43, .6, 10, 0, 10],
 #                     ]
 
-chords_message = [["On", 5]] # Should be folded into an function that opens the pressers.
+chords_message = [["On", 50]] # Should be folded into an function that opens the pressers.
 # pluck_message = RandomNoteGenerator.generateSong()
 # pluck_message = RandomNoteGenerator.generate_scale_progression(12)
 # pluck_message = RandomNoteGenerator.sequential_Plucks(1)
-pluck_message = RandomNoteGenerator.generate_polyrhythms()
+# pluck_message = RandomNoteGenerator.generate_polyrhythms()
+pluck_message = RandomNoteGenerator.generate_e_major_blues_progression()
+
 
 E_notes = []
 B_notes = []
@@ -282,11 +284,12 @@ print("E Notes: ",E_notes)
 print("D Notes: ",D_notes)
 print("B Notes: ",B_notes)
 # print(pluck_message)
-pluck_message = [
-                    [40, 3, 1, 0, 1],
-                    [50, 3, 1, 0, 1.01],
-                    [59, 3, 1, 0, 1.02]
-                ]
+# pluck_message = [
+# #                     [40, .1, 1, 0, 1], [45, .1, 1, 0, 2], [47, .1, 1, 0, 3],
+# #                     [56, .1, 1, 0, 1], [52, .1, 1, 0, 2], [54, .1, 1, 0, 3],
+# #                      [59, 1.3333, 7, 0, 0.0], [59, 0.1, 0, 0, 1.3333], [59, 0.1, 0, 0, 2.6667], [59, 0.1, 0, 0, 4.0], [59, 0.1, 0, 0, 5.3333], [59, 0.1, 0, 0, 6.6667], [59, 0.1, 0, 0, 8.0], [59, 0.1, 0, 0, 9.3333], [64, 0.1, 0, 0, 10.666666666666666], [64, 0.1, 0, 0, 11.333366666666667], [64, 0.1, 0, 0, 11.999966666666666], [64, 0.1, 0, 0, 12.666666666666666], [64, 0.1, 0, 0, 13.333366666666667], [64, 0.6667, 7, 0, 13.999966666666666], [64, 0.1, 0, 0, 14.666666666666666], [64, 0.6667, 7, 0, 15.333366666666667], [59, 0.1, 0, 0, 16.0], [63, 0.1, 0, 0, 16.0], [59, 0.1, 0, 0, 16.8889], [63, 0.1, 0, 0, 17.3333], [59, 0.1, 0, 0, 17.7778], [59, 0.1, 0, 0, 18.6667], [63, 0.1, 0, 0, 18.6667], [59, 0.1, 0, 0, 19.5556], [63, 1.3333, 7, 0, 20.0], [59, 0.1, 0, 0, 20.4444]
+#     ]
+
 
 # pluck_message = [
 #                [48, 2, 3, 0, 1],
