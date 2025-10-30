@@ -151,19 +151,21 @@ class RightHandParser:
         
         return trajectory
     
-    def parse_dynamics_message(self, midi_notes, use_velocity_mapping=False):
+    def parse_dynamics_message(self, midi_notes, velocity=100, use_velocity_mapping=False):
         """
         Parse /Dyn message containing list of MIDI note numbers (state-based plucking).
         
         Args:
             midi_notes: List of MIDI note numbers to trigger
+            velocity: MIDI velocity from 0-127
             use_velocity_mapping: If True, use default velocity; if False, use state toggle
             
         Returns:
             List of 15-element position arrays for complete robot trajectory
         """
         print(f"Processing /Dyn message: {midi_notes}")
-        
+        if type(midi_notes) is int:
+            midi_notes = [midi_notes]
         # Group notes by picker
         picker_actions = {}
         for midi_note in midi_notes:
@@ -184,7 +186,7 @@ class RightHandParser:
                 # Picker has actions - generate trajectory
                 if use_velocity_mapping:
                     # Use default velocity for dynamics testing
-                    target_pos = self.velocity_to_position(picker_id, 100)
+                    target_pos = self.velocity_to_position(picker_id, velocity)
                 else:
                     # Use state toggle
                     target_pos, new_state = self.get_next_state_position(picker_id)
@@ -314,14 +316,14 @@ if __name__ == "__main__":
     
     print("\n=== Test 1: Velocity-based plucking ===")
     # Test velocity-based plucking
-    traj1 = parser.parse_dynamics_message(midi_note=42, velocity=127, use_velocity_mapping=True)
-    traj2 = parser.parse_dynamics_message(midi_note=55, velocity=64, use_velocity_mapping=True)
-    traj3 = parser.parse_dynamics_message(midi_note=65, velocity=32, use_velocity_mapping=True)
+    traj1 = parser.parse_dynamics_message(midi_notes=42, velocity=127, use_velocity_mapping=True)
+    traj2 = parser.parse_dynamics_message(midi_notes=55, velocity=64, use_velocity_mapping=True)
+    traj3 = parser.parse_dynamics_message(midi_notes=65, velocity=32, use_velocity_mapping=True)
     
     print("\n=== Test 2: State-based plucking ===")
     # Test state-based plucking (like original DynamicsParser)
-    traj4 = parser.parse_dynamics_message(midi_note=42, use_velocity_mapping=False)
-    traj5 = parser.parse_dynamics_message(midi_note=42, use_velocity_mapping=False)  # Should toggle
+    traj4 = parser.parse_dynamics_message(midi_notes=42, use_velocity_mapping=False)
+    traj5 = parser.parse_dynamics_message(midi_notes=42, use_velocity_mapping=False)  # Should toggle
     
     print("\n=== Test 3: Dynamics message ===")
     # Test /Dyn message (multiple notes)

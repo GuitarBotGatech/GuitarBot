@@ -23,7 +23,7 @@ def main():
     # chords_message = [['On', gen.final_dur]]
 
     # send_osc_message(client, "/Fret", [41, 0.0])
-    send_osc_message(client, "/Dyn", [40])
+    send_osc_message(client, "/Dyn", [[40, 40], [127, 0]])
     # send_osc_message(client, "/Chords", chords_message)
     # send_osc_message(client, "/Strum", strum_message)
 

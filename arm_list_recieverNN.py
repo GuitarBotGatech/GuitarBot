@@ -129,23 +129,126 @@ def song_creator():
 
 
 def dynamics_processor():
-    """Process /Dyn messages for immediate motor testing."""
+    """
+    Process /Dyn messages for immediate motor testing.
+    
+    Supported formats:
+    1. /Dyn [40, 45]              - Multiple notes, no velocity (state toggle)
+    2. /Dyn 40                    - Single note, no velocity (state toggle)
+    3. /Dyn 40 60                 - Single note with velocity
+    4. /Dyn [40, 45] [60, 127]    - Multiple notes with respective velocities
+    """
     while True:
         try:
             while not dyn_queue.empty():
                 dyn_data = dyn_queue.get_nowait()
                 print(f"Processing dynamics message: {dyn_data}")
                 
-                # Parse the dynamics message (list of MNN values)
-
-                trajectories_list = rh_parser.parse_dynamics_message(dyn_data) #TODO: add velocity
+                midi_notes = []
+                velocities = []
+                use_velocity = False
                 
-                print(f"Dynamics Trajs Length: {len(trajectories_list)}")
+                # Parse the message format
+                if isinstance(dyn_data, list):
+                    if len(dyn_data) == 0:
+                        print("Warning: Empty /Dyn message, skipping")
+                        continue
+                    
+                    # Check if first element is a list (format: [[notes], [velocities]])
+                    if isinstance(dyn_data[0], list):
+                        # Format: /Dyn [40, 45] [60, 127]
+                        midi_notes = dyn_data[0]
+                        if len(dyn_data) >= 2 and isinstance(dyn_data[1], list):
+                            velocities = dyn_data[1]
+                            use_velocity = True
+                            
+                            if len(velocities) != len(midi_notes):
+                                print(f"Warning: Velocity count ({len(velocities)}) doesn't match note count ({len(midi_notes)})")
+                                print("Using state toggle instead")
+                                use_velocity = False
+                                velocities = []
+                        else:
+                            # Only notes provided, no velocities
+                            pass
+                    
+                    elif len(dyn_data) == 1:
+                        # Format: /Dyn [40] or /Dyn 40 (single value in list)
+                        midi_notes = [dyn_data[0]] if not isinstance(dyn_data[0], list) else dyn_data[0]
+                    
+                    elif len(dyn_data) == 2:
+                        # Could be: /Dyn 40 60 (note + velocity)
+                        # or: /Dyn [40] [60] (note list + velocity list)
+                        first_elem = dyn_data[0]
+                        second_elem = dyn_data[1]
+                        
+                        if isinstance(first_elem, list) and isinstance(second_elem, list):
+                            # Format: /Dyn [40, 45] [60, 127]
+                            midi_notes = first_elem
+                            velocities = second_elem
+                            use_velocity = True
+                            
+                            if len(velocities) != len(midi_notes):
+                                print(f"Warning: Velocity count ({len(velocities)}) doesn't match note count ({len(midi_notes)})")
+                                print("Using state toggle instead")
+                                use_velocity = False
+                                velocities = []
+                        else:
+                            # Format: /Dyn 40 60 (single note with velocity)
+                            midi_notes = [first_elem]
+                            velocities = [second_elem]
+                            use_velocity = True
+                    
+                    else:
+                        # Assume it's a list of notes: /Dyn [40, 45, 50]
+                        midi_notes = dyn_data
+                
+                else:
+                    # Single value: /Dyn 40
+                    midi_notes = [dyn_data]
+                
+                if not midi_notes:
+                    print("Warning: No MIDI notes found in /Dyn message")
+                    continue
+                
+                print(f"  Parsed - Notes: {midi_notes}, Velocities: {velocities if use_velocity else 'state toggle'}")
+                
+                # Generate trajectories based on whether we have velocity data
+                if use_velocity and velocities:
+                    # Process each note with its velocity
+                    all_trajectories = []
+                    for note, vel in zip(midi_notes, velocities):
+                        traj = rh_parser.parse_dynamics_message(
+                            midi_notes=[note],
+                            velocity=vel,
+                            use_velocity_mapping=True
+                        )
+                        all_trajectories.append(traj)
+                    
+                    # Combine all trajectories
+                    if all_trajectories:
+                        # Stack them vertically (play in sequence)
+                        trajectories_list = np.vstack(all_trajectories)
+                    else:
+                        print("Warning: No trajectories generated")
+                        continue
+                else:
+                    # Use state toggle (no velocity)
+                    trajectories_list = rh_parser.parse_dynamics_message(
+                        midi_notes=midi_notes,
+                        use_velocity_mapping=False
+                    )
+                
+                print(f"Dynamics Trajs Shape: {np.array(trajectories_list).shape}")
                 print("Executing dynamics test")
                 RobotController.main(trajectories_list)
                 
         except queue.Empty:
             pass
+        except Exception as e:
+            print(f"Error in dynamics_processor: {e}")
+            import traceback
+            traceback.print_exc()
+        
         time.sleep(0.001)
 
 def fret_processor():
@@ -246,12 +349,20 @@ if __name__ == "__main__":
     print("Main program running. Press Ctrl+C to stop.")
     print("Supports OSC messages:")
     print("  /Chords + /Pluck - Full song parsing with GuitarBotParser")
-    print("  /Dyn [midi_notes] - Pluck only (no fretting change)")
-    print("  /Fret [midi_note, force] - Coordinated fret + pluck (15 motors)")
-    print("    Examples:")
-    print("      /Fret 45        - Fret note 45 with default force, auto-pluck")
-    print("      /Fret 45 0.7    - Fret note 45 with 70% force, auto-pluck")
-    print("      /Fret 45 0.7 100 - Fret note 45, 70% force, velocity 100")
+    print("")
+    print("  /Dyn - Pluck only (no fretting change)")
+    print("    Format options:")
+    print("      /Dyn [40, 45]           - Multiple notes, state toggle")
+    print("      /Dyn 40                 - Single note, state toggle")
+    print("      /Dyn 40 60              - Single note with velocity 60")
+    print("      /Dyn [40, 45] [60, 127] - Multiple notes with velocities")
+    print("")
+    print("  /Fret - Coordinated fret + pluck (15 motors)")
+    print("    Format options:")
+    print("      /Fret 45                - Fret note 45 with default force, auto-pluck")
+    print("      /Fret 45 0.7            - Fret note 45 with 70% force, auto-pluck")
+    print("      /Fret 45 0.7 100        - Fret note 45, 70% force, velocity 100")
+    print("")
 
     try:
         while True:
