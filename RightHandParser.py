@@ -68,30 +68,28 @@ class RightHandParser:
         
         return None  # Note not supported by available pickers
     
-    def velocity_to_position(self, picker_id, velocity):
+    def velocity_to_num_points(self, velocity):
         """
-        Convert MIDI velocity to pluck position.
+        Convert MIDI velocity to number of interpolation points.
+        Higher velocity = fewer points = steeper slope = faster movement.
         
         Args:
-            picker_id: Picker motor ID (0, 1, 2)
             velocity: MIDI velocity (0-127)
             
         Returns:
-            Target position in encoder ticks
+            Number of interpolation points
         """
-        if picker_id not in self.motor_info:
-            return None
-        
-        # Convert velocity to depth ratio (0-127 -> 0.0-1.0)
+        # Convert velocity to ratio (0-127 -> 0.0-1.0)
         velocity_ratio = velocity / 127.0
         
-        # Calculate position between up and down limits
-        up_ticks = self.motor_info[picker_id]['up_ticks']
-        down_ticks = self.motor_info[picker_id]['down_ticks']
+        # Calculate number of points
+        # velocity 127 (max) -> minimum points (fastest)
+        # velocity 1 (min) -> maximum points (slowest)
+        min_points = tu.PICKER_PLUCK_MOTION_POINTS  # Fastest movement
+        max_points = tu.PICKER_PLUCK_MOTION_POINTS * 4  # Slowest movement
+        num_points = int(max_points - velocity_ratio * (max_points - min_points))
         
-        target_ticks = up_ticks + velocity_ratio * (down_ticks - up_ticks)
-        
-        return round(target_ticks, 3)
+        return num_points
     
     def get_next_state_position(self, picker_id):
         """
@@ -157,8 +155,8 @@ class RightHandParser:
         
         Args:
             midi_notes: List of MIDI note numbers to trigger
-            velocity: MIDI velocity from 0-127
-            use_velocity_mapping: If True, use default velocity; if False, use state toggle
+            velocity: MIDI velocity from 0-127 (controls movement speed/slope)
+            use_velocity_mapping: If True, use velocity to control speed; if False, use state toggle
             
         Returns:
             List of 15-element position arrays for complete robot trajectory
@@ -184,18 +182,22 @@ class RightHandParser:
         for picker_id in self.motor_info:
             if picker_id in picker_actions:
                 # Picker has actions - generate trajectory
-                if use_velocity_mapping:
-                    # Use default velocity for dynamics testing
-                    target_pos = self.velocity_to_position(picker_id, velocity)
-                else:
-                    # Use state toggle
-                    target_pos, new_state = self.get_next_state_position(picker_id)
+                # Get target position based on state toggle
+                target_pos, new_state = self.get_next_state_position(picker_id)
                 
-                trajectory = self.generate_pluck_trajectory(picker_id, target_pos)
+                # Calculate number of points based on velocity (if using velocity mapping)
+                if use_velocity_mapping:
+                    num_points = self.velocity_to_num_points(velocity)
+                else:
+                    num_points = tu.PICKER_PLUCK_MOTION_POINTS
+                
+                trajectory = self.generate_pluck_trajectory(picker_id, target_pos, num_points)
                 self.current_positions[picker_id] = target_pos
                 
                 state_name = 'down' if self.picker_states[picker_id] == 0 else 'up'
-                print(f"Picker {picker_id}: {target_pos:.1f} ticks ({state_name})")
+                duration = len(trajectory) * tu.TIME_STEP if trajectory is not None else 0
+                print(f"Picker {picker_id}: {target_pos:.1f} ticks ({state_name}), "
+                      f"{num_points} pts, {duration:.4f}s")
                 
             else:
                 # Picker stays at current position
@@ -314,11 +316,14 @@ if __name__ == "__main__":
         print(f"{picker_id}: Motor {info['motor_id']}, {info['position_ticks']:.1f} ticks "
               f"({info['position_mm']:.2f}mm) - {info['state']}")
     
-    print("\n=== Test 1: Velocity-based plucking ===")
-    # Test velocity-based plucking
+    print("\n=== Test 1: Velocity-based plucking (velocity controls speed) ===")
+    # Test velocity-based plucking - higher velocity = faster movement (fewer points)
+    print("High velocity (fast):")
     traj1 = parser.parse_dynamics_message(midi_notes=42, velocity=127, use_velocity_mapping=True)
-    traj2 = parser.parse_dynamics_message(midi_notes=55, velocity=64, use_velocity_mapping=True)
-    traj3 = parser.parse_dynamics_message(midi_notes=65, velocity=32, use_velocity_mapping=True)
+    print("Medium velocity (medium speed):")
+    traj2 = parser.parse_dynamics_message(midi_notes=42, velocity=64, use_velocity_mapping=True)
+    print("Low velocity (slow):")
+    traj3 = parser.parse_dynamics_message(midi_notes=42, velocity=32, use_velocity_mapping=True)
     
     print("\n=== Test 2: State-based plucking ===")
     # Test state-based plucking (like original DynamicsParser)
