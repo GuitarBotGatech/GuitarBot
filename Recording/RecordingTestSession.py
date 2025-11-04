@@ -244,7 +244,7 @@ class RecordingTestSession:
         
         return test_info
     
-    def test_dynamics_sweep(self, midi_notes, delay_between=5.0):
+    def test_dynamics_sweep(self, midi_notes, velocities, delay_between=5.0):
         """
         Test dynamics across multiple MIDI notes.
         
@@ -256,19 +256,20 @@ class RecordingTestSession:
         print(f"DYNAMICS SWEEP TEST")
         print(f"Notes: {midi_notes}")
         print(f"{'='*60}\n")
-        
-        for midi_note in midi_notes:
-            test_info = {
-                'test_type': 'dynamics',
-                'midi_note': midi_note,
-                'parameter': 'state_toggle'
-            }
-            
-            self.execute_test("/Dyn", midi_note, test_info)
-            
-            if midi_note != midi_notes[-1]:
-                print(f"Waiting {delay_between}s before next test...")
-                time.sleep(delay_between)
+        for velocity in velocities:
+            for midi_note in midi_notes:
+                test_info = {
+                    'test_type': 'dynamics',
+                    'midi_note': midi_note,
+                    'velocity' : velocity,
+                    'parameter': 'state_toggle'
+                }
+                
+                self.execute_test("/Dyn", [midi_note, velocity], test_info)
+                
+                if midi_note != midi_notes[-1]:
+                    print(f"Waiting {delay_between}s before next test...")
+                    time.sleep(delay_between)
     
     def test_fretting_force(self, midi_note, force_levels, delay_between=5.0):
         """
@@ -497,8 +498,15 @@ def protocol_dynamics_sweep():
         60,  # B string (down)
         60,  # B string (up)
     ]
-    
-    session.test_dynamics_sweep(notes, delay_between=5.0)
+    velocities = [
+        10,
+        30,
+        50,
+        70,
+        90,
+        127
+    ]
+    session.test_dynamics_sweep(notes, velocities, delay_between=5.0)
     session.close_session()
 
 

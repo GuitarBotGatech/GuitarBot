@@ -31,18 +31,20 @@ import matplotlib.gridspec as gridspec
 from datetime import datetime
 import json
 import csv
+import re
 
 
 class AudioAnalyzer:
     """Analyze audio recordings with spectral and temporal features."""
     
-    def __init__(self, output_dir=None, append_mode=False):
+    def __init__(self, output_dir=None, append_mode=False, match_recording_structure=True):
         """
         Initialize audio analyzer.
         
         Args:
             output_dir: Directory for saving analysis plots and reports (defaults to ../GuitarBot_Data/analysis)
             append_mode: If True, append to existing CSV files instead of overwriting
+            match_recording_structure: If True, mirror the recording session's date/time structure
         """
         # Default to external data directory (outside repo)
         if output_dir is None:
@@ -50,14 +52,10 @@ class AudioAnalyzer:
             repo_root = Path(__file__).parent.parent
             output_dir = repo_root.parent / "GuitarBot_Data" / "analysis"
         
-        # Create output directory with date and time subdirectory
-        date_str = datetime.now().strftime("%Y_%m_%d")
-        time_str = datetime.now().strftime("%H_%M")
-        # Append time to prevent overwrites on same day
-        date_time_str = f"{date_str}_{time_str}"
-        self.output_dir = Path(output_dir) / date_time_str
-        self.output_dir.mkdir(parents=True, exist_ok=True)
+        self.base_output_dir = Path(output_dir)
+        self.output_dir = None  # Will be set when analyzing
         self.append_mode = append_mode
+        self.match_recording_structure = match_recording_structure
         
         # Analysis parameters
         self.nperseg = 2048  # FFT window size for spectrogram
@@ -66,8 +64,9 @@ class AudioAnalyzer:
         self.freq_max = 8000  # Maximum frequency to display (Hz)
         
         print(f"AudioAnalyzer initialized")
-        print(f"Output directory: {self.output_dir}")
+        print(f"Base output directory: {self.base_output_dir}")
         print(f"CSV mode: {'APPEND' if self.append_mode else 'OVERWRITE'}")
+        print(f"Structure matching: {'ENABLED' if self.match_recording_structure else 'DISABLED'}")
     
     def load_audio(self, filepath, normalization_factor=None):
         """
@@ -269,6 +268,47 @@ class AudioAnalyzer:
         
         return None
     
+    def _load_metadata(self, audio_filepath):
+        """
+        Load metadata JSON file corresponding to an audio file.
+        
+        Args:
+            audio_filepath: Path to the audio file (e.g., "0001_dynamics_note40_param64.wav")
+            
+        Returns:
+            Dictionary with metadata, or None if not found
+        """
+        audio_filepath = Path(audio_filepath)
+        
+        # Look for metadata file in parent directory structure
+        # Typical structure: session_dir/audio/0001_xxx.wav
+        #                   session_dir/metadata/0001_metadata.json
+        
+        # Extract test number from filename (e.g., "0001" from "0001_dynamics_note40.wav")
+        match = re.match(r'^(\d{4})_', audio_filepath.name)
+        if not match:
+            return None
+        
+        test_number = match.group(1)
+        
+        # Look for metadata file
+        # Try parent/metadata directory first (RecordingTestSession structure)
+        audio_dir = audio_filepath.parent
+        session_dir = audio_dir.parent
+        metadata_dir = session_dir / "metadata"
+        metadata_file = metadata_dir / f"{test_number}_metadata.json"
+        
+        if metadata_file.exists():
+            try:
+                with open(metadata_file, 'r') as f:
+                    metadata = json.load(f)
+                return metadata
+            except Exception as e:
+                print(f"  Warning: Failed to load metadata from {metadata_file}: {e}")
+                return None
+        
+        return None
+    
     def analyze_single_file(self, filepath, save_plot=True, normalization_factor=None):
         """
         Perform complete analysis on a single audio file.
@@ -306,6 +346,9 @@ class AudioAnalyzer:
         print("Estimating fundamental frequency...")
         f0 = self.compute_fundamental_frequency(audio_data, sample_rate)
         
+        # Load metadata if available (look for corresponding JSON file)
+        metadata = self._load_metadata(filepath)
+        
         # Compute summary statistics
         peak_amplitude = np.max(np.abs(audio_data))
         mean_rms_db = np.mean(rms_db)
@@ -330,6 +373,15 @@ class AudioAnalyzer:
             'analysis_timestamp': datetime.now().isoformat()
         }
         
+        # Add metadata fields if available (velocity, midi_note, test_type, etc.)
+        if metadata:
+            # Add relevant metadata fields to results
+            metadata_fields = ['velocity', 'midi_note', 'test_type', 'parameter', 
+                             'test_number', 'osc_address', 'force_level']
+            for field in metadata_fields:
+                if field in metadata:
+                    results[field] = metadata[field]
+        
         print(f"\nAnalysis Summary:")
         if normalization_factor:
             print(f"  Original peak amplitude: {original_peak:.4f}")
@@ -342,6 +394,18 @@ class AudioAnalyzer:
         print(f"  Onset time: {onset_time:.4f} s" if onset_time else "  Onset time: Not detected")
         print(f"  Fundamental freq: {f0:.2f} Hz" if f0 else "  Fundamental freq: Not detected")
         
+        # Print metadata if available
+        if metadata:
+            print(f"\nMetadata:")
+            if 'test_type' in metadata:
+                print(f"  Test type: {metadata['test_type']}")
+            if 'midi_note' in metadata:
+                print(f"  MIDI note: {metadata['midi_note']}")
+            if 'velocity' in metadata:
+                print(f"  Velocity: {metadata['velocity']}")
+            if 'force_level' in metadata:
+                print(f"  Force level: {metadata['force_level']}")
+        
         # Create visualization
         if save_plot:
             print("\nGenerating plots...")
@@ -353,7 +417,8 @@ class AudioAnalyzer:
                 t_rms, rms_db,
                 onset_time, f0,
                 normalized=normalization_factor is not None,
-                original_peak=original_peak
+                original_peak=original_peak,
+                metadata=metadata
             )
         
         return results
@@ -364,7 +429,8 @@ class AudioAnalyzer:
                        t_rms, rms,
                        onset_time, f0,
                        normalized=False,
-                       original_peak=None):
+                       original_peak=None,
+                       metadata=None):
         """Create comprehensive analysis plot."""
         
         # Create figure with subplots
@@ -378,10 +444,26 @@ class AudioAnalyzer:
         ax1.plot(time_axis, audio_data, linewidth=0.5, color='steelblue')
         ax1.set_ylabel('Amplitude')
         
-        # Update title to show normalization status
+        # Update title to show normalization status and metadata
         title = f'Audio Analysis: {basename}'
         if normalized:
             title += f' [NORMALIZED - Original Peak: {original_peak:.4f}]'
+        
+        # Add metadata to title if available
+        if metadata:
+            metadata_parts = []
+            if 'test_type' in metadata:
+                metadata_parts.append(f"Type: {metadata['test_type']}")
+            if 'midi_note' in metadata:
+                metadata_parts.append(f"Note: {metadata['midi_note']}")
+            if 'velocity' in metadata:
+                metadata_parts.append(f"Velocity: {metadata['velocity']}")
+            if 'force_level' in metadata:
+                metadata_parts.append(f"Force: {metadata['force_level']:.2f}")
+            
+            if metadata_parts:
+                title += '\n' + ' | '.join(metadata_parts)
+        
         ax1.set_title(title, fontsize=14, fontweight='bold')
         ax1.grid(True, alpha=0.3)
         ax1.set_xlim(0, time_axis[-1])
@@ -450,6 +532,31 @@ class AudioAnalyzer:
                    label=f'Peak: {peak_rms:.2f} dBFS', alpha=0.7, linewidth=2)
         ax4.legend(loc='upper right')
         
+        # Add metadata info box if available
+        if metadata:
+            info_lines = []
+            if 'test_type' in metadata:
+                info_lines.append(f"Test: {metadata['test_type']}")
+            if 'midi_note' in metadata:
+                info_lines.append(f"MIDI Note: {metadata['midi_note']}")
+            if 'velocity' in metadata:
+                info_lines.append(f"Velocity: {metadata['velocity']}")
+            if 'force_level' in metadata:
+                info_lines.append(f"Force: {metadata['force_level']:.2f}")
+            if 'test_number' in metadata:
+                info_lines.append(f"Test #: {metadata['test_number']}")
+            
+            if info_lines:
+                info_text = '\n'.join(info_lines)
+                # Add text box in lower right corner
+                ax4.text(0.98, 0.02, info_text, 
+                        transform=ax4.transAxes,
+                        fontsize=9,
+                        verticalalignment='bottom',
+                        horizontalalignment='right',
+                        bbox=dict(boxstyle='round', facecolor='wheat', alpha=0.8),
+                        family='monospace')
+        
         # Save figure
         plot_filename = self.output_dir / f"{basename}_analysis.png"
         plt.savefig(plot_filename, dpi=150, bbox_inches='tight')
@@ -497,6 +604,56 @@ class AudioAnalyzer:
         
         return max_peak
     
+    def _setup_output_directory(self, audio_dir):
+        """
+        Set up output directory, optionally matching recording session structure.
+        
+        Args:
+            audio_dir: Directory being analyzed (e.g., .../recordings/2025_11_04/session_14_30/audio/)
+            
+        Returns:
+            Path to output directory
+        """
+        if not self.match_recording_structure:
+            # Create timestamped directory (old behavior)
+            date_str = datetime.now().strftime("%Y_%m_%d")
+            time_str = datetime.now().strftime("%H_%M")
+            date_time_str = f"{date_str}_{time_str}"
+            output_dir = self.base_output_dir / date_time_str
+            output_dir.mkdir(parents=True, exist_ok=True)
+            return output_dir
+        
+        # Try to detect recording session structure
+        audio_dir = Path(audio_dir)
+        
+        # Expected structure: .../recordings/YYYY_MM_DD/session_name_HH_MM/audio/
+        # We want to create:     .../analysis/YYYY_MM_DD/session_name_HH_MM/
+        
+        # Check if this is within a recording session structure
+        if audio_dir.name == "audio" and audio_dir.parent.parent.name.count('_') >= 2:
+            # Extract date and session name
+            session_dir = audio_dir.parent
+            date_dir = session_dir.parent
+            
+            # Create matching structure in analysis directory
+            output_dir = self.base_output_dir / date_dir.name / session_dir.name
+            output_dir.mkdir(parents=True, exist_ok=True)
+            
+            print(f"  Matched recording structure:")
+            print(f"    Recording: {date_dir.name}/{session_dir.name}")
+            print(f"    Analysis:  {date_dir.name}/{session_dir.name}")
+            
+            return output_dir
+        
+        # Fallback: create timestamped directory
+        print(f"  Warning: Could not detect recording session structure, using timestamp")
+        date_str = datetime.now().strftime("%Y_%m_%d")
+        time_str = datetime.now().strftime("%H_%M")
+        date_time_str = f"{date_str}_{time_str}"
+        output_dir = self.base_output_dir / date_time_str
+        output_dir.mkdir(parents=True, exist_ok=True)
+        return output_dir
+    
     def analyze_directory(self, audio_dir, pattern="*.wav", save_plots=True, normalize=True):
         """
         Analyze all audio files in a directory.
@@ -515,6 +672,9 @@ class AudioAnalyzer:
         if not audio_dir.exists():
             raise FileNotFoundError(f"Directory not found: {audio_dir}")
         
+        # Set up output directory (matching recording structure if possible)
+        self.output_dir = self._setup_output_directory(audio_dir)
+        
         # Find all matching audio files
         audio_files = sorted(audio_dir.glob(pattern))
         
@@ -525,6 +685,7 @@ class AudioAnalyzer:
         print(f"\n{'='*60}")
         print(f"BATCH ANALYSIS")
         print(f"Directory: {audio_dir}")
+        print(f"Output: {self.output_dir}")
         print(f"Files found: {len(audio_files)}")
         print(f"Normalization: {'ENABLED' if normalize else 'DISABLED'}")
         print(f"{'='*60}\n")
@@ -538,7 +699,6 @@ class AudioAnalyzer:
                 norm_factor = None
         
         all_results = []
-        
         for audio_file in audio_files:
             try:
                 results = self.analyze_single_file(audio_file, save_plot=save_plots, 
@@ -546,14 +706,27 @@ class AudioAnalyzer:
                 all_results.append(results)
             except Exception as e:
                 print(f"Error analyzing {audio_file.name}: {e}")
-        
+
+        # Annotate pick direction for dynamics tests
+        if all_results and any('dynamics' in r.get('filename', '').lower() for r in all_results):
+            # Group by midi_note
+            from collections import defaultdict
+            note_groups = defaultdict(list)
+            for idx, result in enumerate(all_results):
+                midi_note = result.get('midi_note')
+                if midi_note is not None:
+                    note_groups[midi_note].append((idx, result))
+            # For each note, assign pick_direction alternately
+            for group in note_groups.values():
+                for i, (idx, result) in enumerate(sorted(group, key=lambda x: x[1].get('filename', ''))):
+                    pick = 'down' if i % 2 == 0 else 'up'
+                    all_results[idx]['pick_direction'] = pick
+
         # Save batch summary
         if all_results:
             self._save_batch_summary(audio_dir.name, all_results)
-            
             # Analyze pick direction differences if this is a dynamics test
             self._analyze_pick_direction_differences(audio_dir.name, all_results)
-        
         return all_results
     
     def _save_batch_summary(self, session_name, results):
@@ -844,7 +1017,18 @@ class AudioAnalyzer:
             labels: Optional list of labels for each file
         """
         if labels is None:
-            labels = [Path(f).stem for f in filepaths]
+            labels = []
+            for f in filepaths:
+                # Try to load metadata to create informative labels
+                filepath = Path(f)
+                metadata = self._load_metadata(filepath)
+                if metadata and 'velocity' in metadata:
+                    label = f"{filepath.stem} (vel:{metadata['velocity']})"
+                elif metadata and 'midi_note' in metadata:
+                    label = f"{filepath.stem} (note:{metadata['midi_note']})"
+                else:
+                    label = filepath.stem
+                labels.append(label)
         
         fig, axes = plt.subplots(3, 1, figsize=(14, 10))
         fig.suptitle('Comparative Audio Analysis', fontsize=14, fontweight='bold')
@@ -912,11 +1096,12 @@ if __name__ == "__main__":
     # Parse command line arguments
     append_mode = '--append' in sys.argv or '-a' in sys.argv
     no_normalize = '--no-normalize' in sys.argv or '-n' in sys.argv
+    no_match_structure = '--no-match-structure' in sys.argv
     
     # Remove flags from argv to get file/directory arguments
     args = [arg for arg in sys.argv[1:] if not arg.startswith('-')]
     
-    analyzer = AudioAnalyzer(append_mode=append_mode)
+    analyzer = AudioAnalyzer(append_mode=append_mode, match_recording_structure=not no_match_structure)
     
     if len(args) > 0:
         target = args[0]
@@ -955,10 +1140,12 @@ if __name__ == "__main__":
             if not date_dirs:
                 print(f"No date directories found in {recordings_dir}/")
                 print("\nUsage:")
-                print("  python AudioAnalyzer.py <file.wav>              # Analyze single file")
-                print("  python AudioAnalyzer.py <directory>             # Analyze all WAV files")
-                print("  python AudioAnalyzer.py <directory> --append    # Append to existing CSV")
-                print("  python AudioAnalyzer.py <directory> -a          # Short form for append")
+                print("  python AudioAnalyzer.py <file.wav>                    # Analyze single file")
+                print("  python AudioAnalyzer.py <directory>                   # Analyze all WAV files")
+                print("  python AudioAnalyzer.py <directory> --append          # Append to existing CSV")
+                print("  python AudioAnalyzer.py <directory> -a                # Short form for append")
+                print("  python AudioAnalyzer.py <directory> --no-normalize    # Skip normalization")
+                print("  python AudioAnalyzer.py <directory> --no-match-structure  # Use timestamped dirs")
             else:
                 # Display available dates
                 print("Available recording dates:")
