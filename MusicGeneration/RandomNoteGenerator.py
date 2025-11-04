@@ -412,10 +412,11 @@ def generate_e_major_blues_progression():
 
     # A longer, 16-measure chord progression
     CHORD_PROGRESSION = [
-        ("E_Major", 4, [3, 4, 4]),
-        ("C#_Minor", 4, [4, 4, 3]),
-        ("F#_Minor", 4, [2, 4, 3]),
-        ("B_Major", 4, [4, 3, 2]),
+        ("E_Major", 2, [3, 2, 4]),
+        ("C#_Minor", 2, [4, 5, 3]),
+        ("F#_Minor", 2, [2, 4, 3]),
+        ("B_Major", 2, [5, 3, 2]),
+        ("E_Major", 2, [3, 4, 4])
     ]
 
     # --- Message Generation ---
@@ -469,7 +470,7 @@ def generate_e_major_blues_progression():
 
     messages.sort(key=lambda x: x[4])
 
-    print("\n--- Generated Messages (Sample) ---")
+    print("\n--- Generated Message ---")
     for msg in messages:
         print(msg)
 

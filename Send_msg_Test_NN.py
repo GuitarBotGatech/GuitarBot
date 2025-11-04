@@ -4,6 +4,70 @@ from pythonosc.udp_client import SimpleUDPClient
 UDP_IP = "127.0.0.1"
 UDP_PORT = 12000
 from MusicGeneration import RandomNoteGenerator
+import mido
+
+def midi_to_pluck_messages(midi_file_path: str):
+    """
+    Converts a MIDI file into a list of pluck messages for a guitar robot.
+
+    This function reads a MIDI file, extracts all note events, and converts them
+    into a specific message format of a pluck message. Each new note onset is considered its own note,
+    and its duration is calculated based on the corresponding note-off event.
+
+    The format of a pluck message is:
+    [note (midi value), duration (s), speed (velocity), slide_toggle, timestamp (s)]
+
+    Args:
+        midi_file_path: The file path to the MIDI file (.mid).
+
+    Returns:
+        A list of lists, where each inner list is a pluck message.
+        Returns an empty list if the file cannot be parsed.
+    """
+    pluck_messages = []
+    try:
+        mid = mido.MidiFile("Midi/" + midi_file_path)
+    except Exception as e:
+        print(f"Error opening or parsing MIDI file: {e}")
+        return []
+
+    # A dictionary to keep track of notes that are currently "on".
+    # Key: (channel, note_number), Value: {'onset': time_in_seconds, 'velocity': midi_velocity}
+    open_notes = {}
+    absolute_time = 0.0
+
+    # When iterating over a MidiFile object, mido provides delta times in seconds.
+    for msg in mid:
+        absolute_time += msg.time
+
+        if msg.type == 'note_on' and msg.velocity > 0:
+            # A new note has started. Store its onset time and velocity.
+            note_key = (msg.channel, msg.note)
+            open_notes[note_key] = {'onset': absolute_time, 'velocity': msg.velocity}
+
+        elif msg.type == 'note_off' or (msg.type == 'note_on' and msg.velocity == 0):
+            # A note has ended. Find its corresponding note_on event to calculate duration.
+            note_key = (msg.channel, msg.note)
+            if note_key in open_notes:
+                note_on_info = open_notes.pop(note_key)
+                onset = note_on_info['onset']
+                velocity = note_on_info['velocity']
+
+                # Duration is the difference between the 'off' and 'on' times.
+                duration = absolute_time - onset
+
+                # Format the message as per the specification.
+                # [note, duration, speed, slide_toggle, timestamp]
+                pluck_message = [msg.note, duration, velocity - 90, 0, onset]
+                pluck_messages.append(pluck_message)
+
+    # Sort messages by timestamp to ensure they are in chronological order
+    pluck_messages.sort(key=lambda x: x[4])
+    print("Messages converted from Midi file to Pluck messages:")
+    for msg in pluck_messages:
+        print(msg)
+
+    return pluck_messages
 
 # FORMAT
 # chords_message = [[Chord, timestamp]]
@@ -261,13 +325,13 @@ def create_tremolo_message():
 #                    [45, 1, 5, 0, 5], [43, 1, 5, 0, 7], [43, 1, 5, 0, 8], [43, .6, 10, 0, 10],
 #                     ]
 
-chords_message = [["On", 50]] # Should be folded into an function that opens the pressers.
+chords_message = [["On", 33]] # Should be folded into an function that opens the pressers.
 # pluck_message = RandomNoteGenerator.generateSong()
 # pluck_message = RandomNoteGenerator.generate_scale_progression(12)
 # pluck_message = RandomNoteGenerator.sequential_Plucks(1)
 # pluck_message = RandomNoteGenerator.generate_polyrhythms()
 pluck_message = RandomNoteGenerator.generate_e_major_blues_progression()
-
+# test = midi_to_pluck_messages("Test.MID")
 
 E_notes = []
 B_notes = []
@@ -285,7 +349,7 @@ print("D Notes: ",D_notes)
 print("B Notes: ",B_notes)
 # print(pluck_message)
 # pluck_message = [
-# #                     [40, .1, 1, 0, 1], [45, .1, 1, 0, 2], [47, .1, 1, 0, 3],
+#                      [40, .1, 1, 0, 1], [45, .1, 1, 0, 2],
 # #                     [56, .1, 1, 0, 1], [52, .1, 1, 0, 2], [54, .1, 1, 0, 3],
 # #                      [59, 1.3333, 7, 0, 0.0], [59, 0.1, 0, 0, 1.3333], [59, 0.1, 0, 0, 2.6667], [59, 0.1, 0, 0, 4.0], [59, 0.1, 0, 0, 5.3333], [59, 0.1, 0, 0, 6.6667], [59, 0.1, 0, 0, 8.0], [59, 0.1, 0, 0, 9.3333], [64, 0.1, 0, 0, 10.666666666666666], [64, 0.1, 0, 0, 11.333366666666667], [64, 0.1, 0, 0, 11.999966666666666], [64, 0.1, 0, 0, 12.666666666666666], [64, 0.1, 0, 0, 13.333366666666667], [64, 0.6667, 7, 0, 13.999966666666666], [64, 0.1, 0, 0, 14.666666666666666], [64, 0.6667, 7, 0, 15.333366666666667], [59, 0.1, 0, 0, 16.0], [63, 0.1, 0, 0, 16.0], [59, 0.1, 0, 0, 16.8889], [63, 0.1, 0, 0, 17.3333], [59, 0.1, 0, 0, 17.7778], [59, 0.1, 0, 0, 18.6667], [63, 0.1, 0, 0, 18.6667], [59, 0.1, 0, 0, 19.5556], [63, 1.3333, 7, 0, 20.0], [59, 0.1, 0, 0, 20.4444]
 #     ]
@@ -310,6 +374,7 @@ print("B Notes: ",B_notes)
 # strum_message = [["UP", 0.0]]
 # pluck_message = [[50, 10, 10, 0, 1]]
 # pluck_message = [[50, 0.1, 1, 0, 0], [50, 0.1, 1, 0, 5], [50, 0.1, 1, 0, 10], [50, 0.1, 1, 0, 15], [50, 0.1, 1, 0, 20], [50, 0.1, 1, 0, 25], [50, 0.1, 1, 0, 30], [50, 0.1, 1, 0, 35], [50, 0.1, 1, 0, 40], [50, 0.1, 1, 0, 45]]
+
 
 def send_osc_message(client, address, data):
     print(f"Sending OSC message to {address}: {data}")
