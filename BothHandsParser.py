@@ -38,8 +38,8 @@ class BothHandsParser:
         self.right_hand = RightHandParser()
         
         # Timing configuration for coordination
-        self.pluck_delay_after_press = tu.TIME_STEP * 5  # Delay pluck to allow fretter to settle
-        self.settling_time = tu.TIME_STEP * 5  # Additional settling time before pluck starts
+        self.pluck_delay_after_press = tu.TIME_STEP * 50  # Delay pluck to allow fretter to settle
+        self.settling_time = tu.TIME_STEP * 20  # Additional settling time before pluck starts
         
         print("=== BothHandsParser Initialized ===")
         print("Left Hand: 12 motors (sliders + pressers)")
@@ -47,7 +47,7 @@ class BothHandsParser:
         print(f"Pluck delay: {self.pluck_delay_after_press:.3f}s after press")
         print(f"Settling time: {self.settling_time:.3f}s before pluck")
     
-    def parse_fret_with_pluck(self, midi_note, presser_force=None, pluck_velocity=None, timestamp=0.0, force_adjustment_only=False):
+    def parse_fret_with_pluck(self, midi_note, presser_position=None, pluck_velocity=None, timestamp=0.0, position_adjustment_only=False):
         """
         Parse /Fret message and generate coordinated fretting + plucking trajectory.
         
@@ -55,25 +55,25 @@ class BothHandsParser:
         
         Args:
             midi_note: MIDI note number (40-68)
-            presser_force: Optional force level for pressing (0.0-1.0, None = default)
+            presser_position: Optional presser position in encoder ticks (None = default)
             pluck_velocity: Optional pluck velocity (0-127, None = state toggle)
             timestamp: When the note should start (seconds)
-            force_adjustment_only: If True, only adjust force without unpressing (for force tests)
+            position_adjustment_only: If True, only adjust position without unpressing (for position tests)
             
         Returns:
             2D numpy array [num_timesteps x 15] with complete motor trajectories
         """
         print(f"\n{'='*60}")
         print(f"COORDINATED FRET + PLUCK")
-        print(f"MIDI Note: {midi_note}, Force: {presser_force}, Velocity: {pluck_velocity}, Time: {timestamp}s, Force-only: {force_adjustment_only}")
+        print(f"MIDI Note: {midi_note}, Position: {presser_position}, Velocity: {pluck_velocity}, Time: {timestamp}s, Position-only: {position_adjustment_only}")
         print(f"{'='*60}")
         
         # 1. Generate left hand fretting trajectory (12 motors)
         lh_trajectory = self.left_hand.parse_fret_message(
             midi_note_number=midi_note,
-            presser_force=presser_force,
+            presser_position=presser_position,
             timestamp=timestamp,
-            force_adjustment_only=force_adjustment_only
+            position_adjustment_only=position_adjustment_only
         )
         
         if lh_trajectory.size == 0:
@@ -343,7 +343,7 @@ class BothHandsParser:
             events: List of event dictionaries with format:
                 {'type': 'fret' or 'dyn',
                  'midi_note': int (for fret) or 'midi_notes': list (for dyn),
-                 'presser_force': float (optional, for fret),
+                 'presser_position': int (optional, for fret),
                  'pluck_velocity': int (optional, for fret),
                  'timestamp': float}
         
@@ -362,12 +362,12 @@ class BothHandsParser:
             
             if event_type == 'fret':
                 midi_note = event.get('midi_note')
-                presser_force = event.get('presser_force', None)
+                presser_position = event.get('presser_position', None)
                 pluck_velocity = event.get('pluck_velocity', None)
                 
                 trajectory = self.parse_fret_with_pluck(
                     midi_note=midi_note,
-                    presser_force=presser_force,
+                    presser_position=presser_position,
                     pluck_velocity=pluck_velocity,
                     timestamp=timestamp
                 )
@@ -501,7 +501,7 @@ if __name__ == "__main__":
     # Play MIDI note 45 (Low E, 5th fret) with automatic plucking
     traj1 = parser.parse_fret_with_pluck(
         midi_note=45,
-        presser_force=0.7,
+        presser_position=400,
         pluck_velocity=None,  # Use state toggle
         timestamp=0.0
     )
@@ -526,13 +526,13 @@ if __name__ == "__main__":
         {
             'type': 'fret',
             'midi_note': 45,  # Low E, 5th fret
-            'presser_force': 0.8,
+            'presser_position': 400,
             'timestamp': 1.0
         },
         {
             'type': 'fret',
             'midi_note': 47,  # Low E, 7th fret
-            'presser_force': 0.8,
+            'presser_position': 450,
             'timestamp': 2.0
         },
         {

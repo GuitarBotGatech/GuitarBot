@@ -271,33 +271,33 @@ class RecordingTestSession:
                     print(f"Waiting {delay_between}s before next test...")
                     time.sleep(delay_between)
     
-    def test_fretting_force(self, midi_note, force_levels, delay_between=5.0):
+    def test_fretting_position(self, midi_note, position_levels, delay_between=5.0):
         """
-        Test fretting force levels for a single note.
+        Test fretting position levels for a single note.
         
         Args:
             midi_note: MIDI note number
-            force_levels: List of force values (0.0-1.0)
+            position_levels: List of position values (encoder ticks, e.g., 0, 100, 200...500)
             delay_between: Delay between tests (seconds)
         """
         print(f"\n{'='*60}")
-        print(f"FRETTING FORCE TEST")
+        print(f"FRETTING POSITION TEST")
         print(f"Note: {midi_note}")
-        print(f"Force levels: {force_levels}")
+        print(f"Position levels: {position_levels}")
         print(f"{'='*60}\n")
         
-        for force in force_levels:
+        for position in position_levels:
             test_info = {
-                'test_type': 'fretting_force',
+                'test_type': 'fretting_position',
                 'midi_note': midi_note,
-                'parameter': force,
-                'force_level': force
+                'parameter': position,
+                'position_level': position
             }
             
-            # Send /Fret message with force parameter
-            self.execute_test("/Fret", [midi_note, force], test_info)
+            # Send /Fret message with position parameter
+            self.execute_test("/Fret", [midi_note, position], test_info)
             
-            if force != force_levels[-1]:
+            if position != position_levels[-1]:
                 print(f"Waiting {delay_between}s before next test...")
                 time.sleep(delay_between)
     
@@ -510,15 +510,19 @@ def protocol_dynamics_sweep():
     session.close_session()
 
 
-def protocol_fretting_force_optimization():
-    """Protocol: Optimize fretting force for clean notes."""
-    session = RecordingTestSession(session_name="fretting_force_optimization")
+def protocol_fretting_position_optimization():
+    """Protocol: Optimize fretting position for clean notes."""
+    session = RecordingTestSession(session_name="fretting_position_optimization")
     
-    # Test multiple force levels on Low E 5th fret
+    # Test multiple position levels on Low E 5th fret
+    # Position values are encoder ticks (0 = unpressed, 500 = fully pressed)
     midi_note = 45
-    force_levels = [0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0]
+    position_levels = [0, 150, 200, 250, 300, 350, 400, 450, 500]
     
-    session.test_fretting_force(midi_note, force_levels, delay_between=4.0)
+    # Send two notes for each position to account for down/up plucks
+    two_note_positions = [item for item in position_levels for _ in range(2)]
+
+    session.test_fretting_position(midi_note, two_note_positions, delay_between=4.0)
     session.close_session()
 
 
@@ -570,7 +574,7 @@ if __name__ == "__main__":
     
     print("Available test protocols:")
     print("  1. Dynamics Sweep (test all strings)")
-    print("  2. Fretting Force Optimization")
+    print("  2. Fretting Position Optimization")
     print("  3. Repeatability Test")
     print("  4. Custom Test (original pattern)")
     print("  5. Quick Demo")
@@ -584,7 +588,7 @@ if __name__ == "__main__":
     if protocol == "1":
         protocol_dynamics_sweep()
     elif protocol == "2":
-        protocol_fretting_force_optimization()
+        protocol_fretting_position_optimization()
     elif protocol == "3":
         protocol_repeatability_test()
     elif protocol == "4":

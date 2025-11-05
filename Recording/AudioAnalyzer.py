@@ -68,16 +68,62 @@ class AudioAnalyzer:
         print(f"CSV mode: {'APPEND' if self.append_mode else 'OVERWRITE'}")
         print(f"Structure matching: {'ENABLED' if self.match_recording_structure else 'DISABLED'}")
     
-    def load_audio(self, filepath, normalization_factor=None):
+    def trim_silence(self, audio_data, sample_rate, threshold_db=-40, frame_length=2048, hop_length=512):
+        """
+        Trim silence from the beginning of audio signal.
+        
+        Args:
+            audio_data: Audio samples
+            sample_rate: Sample rate (Hz)
+            threshold_db: Threshold in dBFS below which audio is considered silence
+            frame_length: Frame size for RMS computation
+            hop_length: Hop size between frames
+            
+        Returns:
+            Tuple of (trimmed_audio, trim_start_samples, trim_start_time)
+        """
+        # Compute RMS energy in dB
+        num_frames = 1 + (len(audio_data) - frame_length) // hop_length
+        rms_values = np.zeros(num_frames)
+        
+        for i in range(num_frames):
+            start = i * hop_length
+            end = start + frame_length
+            frame = audio_data[start:end]
+            rms_values[i] = np.sqrt(np.mean(frame**2))
+        
+        # Convert to dBFS
+        rms_db = 20 * np.log10(rms_values + 1e-10)
+        
+        # Find first frame above threshold
+        above_threshold = np.where(rms_db > threshold_db)[0]
+        
+        if len(above_threshold) > 0:
+            # Start a bit before the first non-silent frame (for attack transient)
+            first_non_silent = above_threshold[0]
+            # Go back 5 frames (or to beginning) to capture attack
+            trim_frame = max(0, first_non_silent - 5)
+            trim_sample = trim_frame * hop_length
+            trim_time = trim_sample / sample_rate
+            
+            trimmed_audio = audio_data[trim_sample:]
+            
+            return trimmed_audio, trim_sample, trim_time
+        else:
+            # All silence, return original
+            return audio_data, 0, 0.0
+    
+    def load_audio(self, filepath, normalization_factor=None, trim_silence=True):
         """
         Load audio file.
         
         Args:
             filepath: Path to WAV file
             normalization_factor: Optional normalization factor (max peak from experiment)
+            trim_silence: If True, trim silence from beginning (default: True)
             
         Returns:
-            Tuple of (sample_rate, audio_data, original_peak)
+            Tuple of (sample_rate, audio_data, original_peak, trim_time)
         """
         filepath = Path(filepath)
         if not filepath.exists():
@@ -97,22 +143,36 @@ class AudioAnalyzer:
         
         # Store original peak before normalization
         original_peak = np.max(np.abs(audio_data))
+        original_duration = len(audio_data) / sample_rate
+        
+        # Trim silence from beginning
+        trim_time = 0.0
+        if trim_silence:
+            audio_data, trim_samples, trim_time = self.trim_silence(audio_data, sample_rate)
+            if trim_samples > 0:
+                print(f"Loaded: {filepath.name}")
+                print(f"  Sample rate: {sample_rate} Hz")
+                print(f"  Original duration: {original_duration:.2f} s")
+                print(f"  Trimmed {trim_time:.3f} s of silence from beginning")
+                print(f"  Final duration: {len(audio_data)/sample_rate:.2f} s")
         
         # Apply normalization if factor provided
         if normalization_factor is not None and normalization_factor > 0:
             audio_data = audio_data / normalization_factor
-            print(f"Loaded: {filepath.name}")
-            print(f"  Sample rate: {sample_rate} Hz")
-            print(f"  Duration: {len(audio_data)/sample_rate:.2f} s")
+            if not trim_silence or trim_samples == 0:
+                print(f"Loaded: {filepath.name}")
+                print(f"  Sample rate: {sample_rate} Hz")
+                print(f"  Duration: {len(audio_data)/sample_rate:.2f} s")
             print(f"  Original peak: {original_peak:.4f}")
             print(f"  Normalized to: {normalization_factor:.4f}")
         else:
-            print(f"Loaded: {filepath.name}")
-            print(f"  Sample rate: {sample_rate} Hz")
-            print(f"  Duration: {len(audio_data)/sample_rate:.2f} s")
-            print(f"  Samples: {len(audio_data)}")
+            if not trim_silence or trim_samples == 0:
+                print(f"Loaded: {filepath.name}")
+                print(f"  Sample rate: {sample_rate} Hz")
+                print(f"  Duration: {len(audio_data)/sample_rate:.2f} s")
+                print(f"  Samples: {len(audio_data)}")
         
-        return sample_rate, audio_data, original_peak
+        return sample_rate, audio_data, original_peak, trim_time
     
     def compute_spectrogram(self, audio_data, sample_rate):
         """
@@ -326,8 +386,8 @@ class AudioAnalyzer:
         print(f"Analyzing: {filepath.name}")
         print(f"{'='*60}")
         
-        # Load audio
-        sample_rate, audio_data, original_peak = self.load_audio(filepath, normalization_factor)
+        # Load audio (with automatic silence trimming)
+        sample_rate, audio_data, original_peak, trim_time = self.load_audio(filepath, normalization_factor)
         duration = len(audio_data) / sample_rate
         
         # Compute features
@@ -361,6 +421,7 @@ class AudioAnalyzer:
             'sample_rate': sample_rate,
             'duration': duration,
             'num_samples': len(audio_data),
+            'trim_time': float(trim_time),  # Time trimmed from beginning
             'original_peak_amplitude': float(original_peak),  # Store original peak
             'peak_amplitude': float(peak_amplitude),  # Normalized peak (if applied)
             'normalized': normalization_factor is not None,
@@ -418,7 +479,8 @@ class AudioAnalyzer:
                 onset_time, f0,
                 normalized=normalization_factor is not None,
                 original_peak=original_peak,
-                metadata=metadata
+                metadata=metadata,
+                trim_time=trim_time
             )
         
         return results
@@ -430,7 +492,8 @@ class AudioAnalyzer:
                        onset_time, f0,
                        normalized=False,
                        original_peak=None,
-                       metadata=None):
+                       metadata=None,
+                       trim_time=0.0):
         """Create comprehensive analysis plot."""
         
         # Create figure with subplots
@@ -444,8 +507,10 @@ class AudioAnalyzer:
         ax1.plot(time_axis, audio_data, linewidth=0.5, color='steelblue')
         ax1.set_ylabel('Amplitude')
         
-        # Update title to show normalization status and metadata
+        # Update title to show normalization status, trim info, and metadata
         title = f'Audio Analysis: {basename}'
+        if trim_time > 0:
+            title += f' [TRIMMED: {trim_time:.3f}s removed]'
         if normalized:
             title += f' [NORMALIZED - Original Peak: {original_peak:.4f}]'
         
@@ -1037,7 +1102,7 @@ class AudioAnalyzer:
         
         for i, (filepath, label) in enumerate(zip(filepaths, labels)):
             try:
-                sample_rate, audio_data, _ = self.load_audio(filepath)
+                sample_rate, audio_data, _, _ = self.load_audio(filepath)
                 
                 # Waveform
                 time_axis = np.arange(len(audio_data)) / sample_rate

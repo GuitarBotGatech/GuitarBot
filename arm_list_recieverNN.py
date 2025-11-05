@@ -261,18 +261,18 @@ def fret_processor():
                 
                 # Parse /Fret message data
                 # Expected formats:
-                # [midi_note] - just note, default force & velocity
-                # [midi_note, force] - note + force, default velocity
-                # [midi_note, force, velocity] - note + force + velocity (not typical)
+                # [midi_note] - just note, default position & velocity
+                # [midi_note, position] - note + position, default velocity
+                # [midi_note, position, velocity] - note + position + velocity (not typical)
                 
                 midi_note = None
-                presser_force = None
+                presser_position = None
                 pluck_velocity = None
                 
                 if len(fret_data) >= 1:
                     midi_note = fret_data[0]
                 if len(fret_data) >= 2:
-                    presser_force = fret_data[1]
+                    presser_position = fret_data[1]
                 if len(fret_data) >= 3:
                     pluck_velocity = fret_data[2]
                 
@@ -280,12 +280,12 @@ def fret_processor():
                     print("Error: No MIDI note in /Fret message, skipping")
                     continue
                 
-                print(f"  MIDI Note: {midi_note}, Force: {presser_force}, Velocity: {pluck_velocity}")
+                print(f"  MIDI Note: {midi_note}, Position: {presser_position}, Velocity: {pluck_velocity}")
                 
                 # Generate coordinated trajectory (15 motors: LH fretting + RH plucking)
                 trajectory_array = both_hands_parser.parse_fret_with_pluck(
                     midi_note=midi_note,
-                    presser_force=presser_force,
+                    presser_position=presser_position,
                     pluck_velocity=pluck_velocity,
                     timestamp=0.0
                 )
