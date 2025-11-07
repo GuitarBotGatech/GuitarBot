@@ -82,7 +82,7 @@ class RecordingTestSession:
         self.test_counter = 0
         
         # Recording settings
-        self.pre_trigger_time = 0.5  # Record 0.5s before OSC message
+        self.pre_trigger_time = 0.1  # Record 0.5s before OSC message
         self.post_trigger_time = 5.0  # Record 3s after OSC message
         
         print(f"=== Recording Test Session Initialized ===")

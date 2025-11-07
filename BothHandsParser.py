@@ -80,8 +80,7 @@ class BothHandsParser:
             print("Error: Failed to generate left hand trajectory")
             return np.array([])
         
-        # 2. Find when the presser torque reaches 0 (rest state)
-        # We need to analyze the LH trajectory to find when presser is at 0
+        # 2. Analyze presser trajectory to find when it settles at target position
         
         # Determine which presser motor based on MIDI note
         string_fret_info = self.left_hand.midi_note_to_string_fret(midi_note)
@@ -89,59 +88,65 @@ class BothHandsParser:
             print(f"Error: Cannot determine string for MIDI note {midi_note}")
             return np.array([])
         
-        string_id, _ = string_fret_info
+        string_id, target_fret = string_fret_info
         presser_motor_id = string_id + 6
         
         # Extract presser trajectory
         presser_trajectory = lh_trajectory[:, presser_motor_id]
         
-        # Find when torque reaches 0 (or close to 0, within tolerance)
-        # For force testing, the trajectory should end with torque=0
-        # We want to find the LAST time it reaches 0 before the buffer
-        
-        # Remove NaN values and find non-zero regions
+        # Remove NaN values
         valid_indices = ~np.isnan(presser_trajectory)
-        valid_traj = presser_trajectory[valid_indices]
+        valid_positions = np.where(valid_indices)[0]
         
-        if len(valid_traj) == 0:
+        if len(valid_positions) == 0:
             print("Warning: No valid presser trajectory data")
-            torque_zero_idx = 0
+            settle_idx = 0
+            settle_time = timestamp
         else:
-            # Find indices where torque is close to 0 (within 5 units)
-            near_zero = np.abs(valid_traj) < 5.0
+            # Get the target position
+            target_presser_pos = self.left_hand.get_presser_position(string_id, target_fret, presser_position)
             
-            if np.any(near_zero):
-                # Find the last contiguous block of near-zero values
-                # This should be the REST phase
-                zero_indices = np.where(near_zero)[0]
-                
-                # Find the start of the last zero block
-                # Look for gaps larger than 5 indices
-                gaps = np.diff(zero_indices)
-                large_gaps = np.where(gaps > 5)[0]
-                
-                if len(large_gaps) > 0:
-                    # Start of last block
-                    last_block_start = zero_indices[large_gaps[-1] + 1]
+            print(f"Presser analysis:")
+            print(f"  Target position: {target_presser_pos:.1f}")
+            print(f"  Trajectory length: {len(presser_trajectory)} steps")
+            
+            # Find when presser reaches and settles at target position
+            # Look for where position is within 5% of target and stays there
+            tolerance = max(5.0, target_presser_pos * 0.05)
+            at_target = np.abs(presser_trajectory - target_presser_pos) < tolerance
+            
+            # Find the first index where we reach target and stay there for at least 5 timesteps
+            settle_idx = None
+            for i in valid_positions:
+                if i < len(at_target) and at_target[i]:
+                    # Check if next 5 points also at target
+                    end_check = min(i + 5, len(at_target))
+                    if np.all(at_target[i:end_check]):
+                        settle_idx = i
+                        break
+            
+            if settle_idx is None:
+                # Fallback: find where trajectory stops changing (derivative near 0)
+                print("  Warning: Could not find stable settling point, using fallback detection")
+                if len(valid_positions) > 1:
+                    diffs = np.abs(np.diff(presser_trajectory[valid_positions]))
+                    stable_threshold = 1.0
+                    stable_points = np.where(diffs < stable_threshold)[0]
+                    if len(stable_points) > 0:
+                        settle_idx = valid_positions[stable_points[0]]
+                    else:
+                        settle_idx = valid_positions[-1]
                 else:
-                    # All zeros are contiguous, use first zero
-                    last_block_start = zero_indices[0]
-                
-                torque_zero_idx = last_block_start
-            else:
-                # Torque never reaches 0, use end of trajectory
-                print("Warning: Torque never reaches 0 in trajectory")
-                torque_zero_idx = len(valid_traj) - 1
+                    settle_idx = valid_positions[0]
+            
+            settle_time = timestamp + (settle_idx * tu.TIME_STEP)
+            
+            print(f"  Settles at index {settle_idx}, t={settle_time:.3f}s")
+            if settle_idx < len(presser_trajectory):
+                print(f"  Position at settle: {presser_trajectory[settle_idx]:.1f}")
         
-        torque_zero_time = timestamp + (torque_zero_idx * tu.TIME_STEP)
-        
-        print(f"Presser torque analysis:")
-        print(f"  Torque reaches 0 at index {torque_zero_idx}, t={torque_zero_time:.3f}s")
-        if torque_zero_idx > 0 and torque_zero_idx < len(presser_trajectory):
-            print(f"  Torque value at rest: {presser_trajectory[torque_zero_idx]:.1f}")
-        
-        # 3. Add settling time AFTER torque reaches 0, BEFORE pluck starts
-        pluck_timestamp = torque_zero_time + self.settling_time
+        # 3. Add settling time AFTER presser reaches target, BEFORE pluck starts
+        pluck_timestamp = settle_time + self.settling_time
         
         # 4. Calculate pluck duration
         pluck_motion_duration = tu.PICKER_PLUCK_MOTION_POINTS * tu.TIME_STEP
@@ -159,7 +164,7 @@ class BothHandsParser:
             lh_duration = lh_trajectory.shape[0] * tu.TIME_STEP
             print(f"Extended LH trajectory to {lh_duration:.3f}s to accommodate pluck")
         
-        print(f"Timing: Torque→0 at t={torque_zero_time:.3f}s, Settling={self.settling_time:.3f}s, Pluck at t={pluck_timestamp:.3f}s, Pluck duration={pluck_motion_duration:.3f}s")
+        print(f"Timing: Presser settles at t={settle_time:.3f}s, Settling={self.settling_time:.3f}s, Pluck at t={pluck_timestamp:.3f}s, Pluck duration={pluck_motion_duration:.3f}s")
         
         # 6. Determine which picker to use based on MIDI note
         picker_id = self.right_hand.midi_note_to_picker_id(midi_note)
