@@ -104,7 +104,7 @@ def song_creator():
         else:
             if chords_queue.qsize() == 0 and pluck_queue.qsize() == 0:
                 if time.time() - last_activity_time > IDLE_TIMEOUT_SECONDS:
-                    print(f" idle for over {IDLE_TIMEOUT_SECONDS} seconds. Sending 'On' to reset state.")
+                    #print(f" idle for over {IDLE_TIMEOUT_SECONDS} seconds. Sending 'On' to reset state.")
                     idle_chord_message = [["On", 0]]
                     # message_queue.put(("Chords", idle_chord_message))
                     last_activity_time = time.time()

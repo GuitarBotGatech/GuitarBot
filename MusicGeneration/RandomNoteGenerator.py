@@ -481,4 +481,4 @@ def generate_e_major_blues_progression():
 # pluck_message = generate_scale_progression(12) # Play the C Major scale x times
 # pluck_message = sequential_Plucks(1)
 # pluck_message = generate_polyrhythms()
-generate_e_major_blues_progression()
+# generate_e_major_blues_progression()

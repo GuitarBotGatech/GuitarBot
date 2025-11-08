@@ -38,6 +38,9 @@ def midi_to_pluck_messages(midi_file_path: str):
 
     # When iterating over a MidiFile object, mido provides delta times in seconds.
     for msg in mid:
+        print(msg)
+        if msg.time > 1000.0:
+            continue
         absolute_time += msg.time
 
         if msg.type == 'note_on' and msg.velocity > 0:
@@ -54,13 +57,15 @@ def midi_to_pluck_messages(midi_file_path: str):
                 velocity = note_on_info['velocity']
 
                 # Duration is the difference between the 'off' and 'on' times.
-                duration = absolute_time - onset
+                # duration = absolute_time - onset
+                # Change all notes to plucks
+                duration = .1
+
 
                 # Format the message as per the specification.
                 # [note, duration, speed, slide_toggle, timestamp]
-                pluck_message = [msg.note, duration, velocity - 90, 0, onset]
+                pluck_message = [msg.note - 12, duration, velocity - 90, 0, round(onset,3)]
                 pluck_messages.append(pluck_message)
-
     # Sort messages by timestamp to ensure they are in chronological order
     pluck_messages.sort(key=lambda x: x[4])
     print("Messages converted from Midi file to Pluck messages:")
@@ -325,13 +330,13 @@ def create_tremolo_message():
 #                    [45, 1, 5, 0, 5], [43, 1, 5, 0, 7], [43, 1, 5, 0, 8], [43, .6, 10, 0, 10],
 #                     ]
 
-chords_message = [["On", 33]] # Should be folded into an function that opens the pressers.
+chords_message = [["On", 25]] # Should be folded into an function that opens the pressers.
 # pluck_message = RandomNoteGenerator.generateSong()
 # pluck_message = RandomNoteGenerator.generate_scale_progression(12)
 # pluck_message = RandomNoteGenerator.sequential_Plucks(1)
 # pluck_message = RandomNoteGenerator.generate_polyrhythms()
-pluck_message = RandomNoteGenerator.generate_e_major_blues_progression()
-# test = midi_to_pluck_messages("Test.MID")
+#pluck_message = RandomNoteGenerator.generate_e_major_blues_progression()
+pluck_message = midi_to_pluck_messages("PolyRhythmicPracticeSong.mid")
 
 E_notes = []
 B_notes = []
@@ -339,20 +344,20 @@ D_notes = []
 for message in pluck_message:
     if message[0] > 39 and message[0] < 50:
         E_notes.append(message)
-    if message[0] > 49 and message[0] < 60:
+    elif message[0] > 49 and message[0] < 60:
         D_notes.append(message)
-    if message[0] > 58 and message[0] < 69:
+    elif message[0] > 58 and message[0] < 69:
         B_notes.append(message)
 
 print("E Notes: ",E_notes)
 print("D Notes: ",D_notes)
 print("B Notes: ",B_notes)
 # print(pluck_message)
-# pluck_message = [
-#                      [40, .1, 1, 0, 1], [45, .1, 1, 0, 2],
-# #                     [56, .1, 1, 0, 1], [52, .1, 1, 0, 2], [54, .1, 1, 0, 3],
-# #                      [59, 1.3333, 7, 0, 0.0], [59, 0.1, 0, 0, 1.3333], [59, 0.1, 0, 0, 2.6667], [59, 0.1, 0, 0, 4.0], [59, 0.1, 0, 0, 5.3333], [59, 0.1, 0, 0, 6.6667], [59, 0.1, 0, 0, 8.0], [59, 0.1, 0, 0, 9.3333], [64, 0.1, 0, 0, 10.666666666666666], [64, 0.1, 0, 0, 11.333366666666667], [64, 0.1, 0, 0, 11.999966666666666], [64, 0.1, 0, 0, 12.666666666666666], [64, 0.1, 0, 0, 13.333366666666667], [64, 0.6667, 7, 0, 13.999966666666666], [64, 0.1, 0, 0, 14.666666666666666], [64, 0.6667, 7, 0, 15.333366666666667], [59, 0.1, 0, 0, 16.0], [63, 0.1, 0, 0, 16.0], [59, 0.1, 0, 0, 16.8889], [63, 0.1, 0, 0, 17.3333], [59, 0.1, 0, 0, 17.7778], [59, 0.1, 0, 0, 18.6667], [63, 0.1, 0, 0, 18.6667], [59, 0.1, 0, 0, 19.5556], [63, 1.3333, 7, 0, 20.0], [59, 0.1, 0, 0, 20.4444]
-#     ]
+pluck_message = [
+#                     [40, 5, 5, 0, 1],
+#                     [51, 0.1, 10, 0, 0.375], [52, 0.1, 10, 0, 1.042], [51, 0.1, 10, 0, 1.708], [54, 0.1, 10, 0, 2.375], [51, 0.1, 10, 0, 3.042], [52, 0.1, 10, 0, 3.708], [59, 0.1, 10, 0, 3.875], [51, 0.1, 10, 0, 4.375], [54, 0.1, 10, 0, 5.042], [56, 0.1, 10, 0, 5.708], [54, 0.1, 10, 0, 6.375], [51, 0.1, 10, 0, 7.042], [54, 0.1, 10, 0, 7.708], [51, 0.1, 10, 0, 8.375], [52, 0.1, 10, 0, 9.042], [59, 0.1, 10, 0, 9.172], [51, 0.1, 10, 0, 9.708], [54, 0.1, 10, 0, 10.375], [51, 0.1, 10, 0, 11.042], [52, 0.1, 10, 0, 11.708], [51, 0.1, 10, 0, 12.375], [54, 0.1, 10, 0, 13.042], [56, 0.1, 10, 0, 13.708], [54, 0.1, 10, 0, 14.375], [51, 0.1, 10, 0, 15.042], [54, 0.1, 10, 0, 15.708], [54, 0.1, 10, 0, 16.375], [51, 0.1, 10, 0, 16.875], [52, 0.1, 10, 0, 17.375], [51, 0.1, 10, 0, 17.875], [52, 0.1, 10, 0, 18.375], [52, 0.1, 10, 0, 19.042], [52, 0.1, 10, 0, 19.708], [51, 0.1, 10, 0, 20.375], [52, 0.1, 10, 0, 20.875], [51, 0.1, 10, 0, 21.375], [52, 0.1, 10, 0, 21.875], [54, 0.1, 10, 0, 22.375], [52, 0.1, 10, 0, 23.042], [54, 0.1, 10, 0, 23.708],
+                      [59, 0.1, 10, 0, 0.375], [61, 0.1, 10, 0, 0.875], [63, 0.1, 10, 0, 1.875], [61, 0.1, 10, 0, 2.375], [59, 0.1, 10, 0, 2.875], [59, 0.1, 10, 0, 3.875], [61, 0.1, 10, 0, 4.375], [63, 0.1, 10, 0, 5.375], [61, 0.1, 10, 0, 6.375], [59, 0.1, 10, 0, 6.875], [63, 0.1, 10, 0, 8.375], [61, 0.1, 10, 0, 8.75], [59, 0.1, 10, 0, 9.172], [61, 0.1, 10, 0, 9.573], [59, 0.1, 10, 0, 9.974], [61, 0.1, 10, 0, 10.375], [59, 0.1, 10, 0, 10.875], [59, 0.1, 10, 0, 11.875], [61, 0.1, 10, 0, 12.375], [63, 0.1, 10, 0, 13.375], [61, 0.1, 10, 0, 14.375], [59, 0.1, 10, 0, 14.875], [59, 0.1, 10, 0, 16.375], [61, 0.1, 10, 0, 17.042], [59, 0.1, 10, 0, 17.708], [63, 0.1, 10, 0, 18.375], [59, 0.1, 10, 0, 18.875], [61, 0.1, 10, 0, 20.875], [63, 0.1, 10, 0, 21.875], [61, 0.1, 10, 0, 22.875], [59, 0.1, 10, 0, 23.375]
+    ]
 
 
 # pluck_message = [
