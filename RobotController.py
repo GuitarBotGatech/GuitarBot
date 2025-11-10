@@ -50,14 +50,9 @@ def main(song_trajs):
 
         num_points_in_chunk = len(chunk)
         print(f"Sent batch {i // BATCH_SIZE_POINTS + 1}: {num_points_in_chunk} points ({len(byte_payload)} bytes).")
-
-        # --- Timed Wait ---
-        # To stay in sync, we wait for the duration of the chunk.
-        # We account for the time it took to prepare and send the data
-        # to make the timing more precise.
         elapsed_time = time.time() - start_time
 
-        # The last chunk might be smaller, so we calculate its specific duration
+        # The last chunk might be smaller, so we find specific duration
         actual_chunk_interval = num_points_in_chunk * TIME_PER_POINT_S
         sleep_time = max(0, actual_chunk_interval - elapsed_time)
 
