@@ -378,7 +378,7 @@ def generate_e_major_blues_progression():
     # --- Configuration ---
     BPM = 80
     BASE_DURATION = 4
-    DEFAULT_NOTE_DURATION = 0.1
+    DEFAULT_NOTE_DURATION = 0.49
     TREMOLO_SPEED = 7
     TREMOLO_MIN_DURATION = 0.5
     TREMOLO_PROBABILITY = 0.3  # 30% chance for a B-string note to be tremolo
@@ -475,6 +475,32 @@ def generate_e_major_blues_progression():
         print(msg)
 
     return messages
+
+
+import random
+
+
+def polyrhythms_timestamps(rhythms_to_generate, base_notes, measures, bpm):
+    """
+    Generates timestamps for polyrhythmic layers over a number of measures.
+    """
+    seconds_per_quarter_note = 60.0 / bpm
+    measure_duration = base_notes * seconds_per_quarter_note
+    section_duration = measure_duration * measures
+    timestamps = {}
+
+    for rhythm in set(rhythms_to_generate):
+        if rhythm > 0:
+            time_between_notes = section_duration / (rhythm * measures)
+            timestamps[rhythm] = [i * time_between_notes for i in range(rhythm * measures)]
+    return timestamps
+
+
+# --- Example Usage ---
+# generated_music = generate_e_major_blues_improvisation()
+# print("\n--- Final Generated Message ---")
+# for msg in generated_music:
+#     print(msg)
 
 # Example usages
 # generateSong() # Random plucks in C Major

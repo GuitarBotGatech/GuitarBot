@@ -6,24 +6,8 @@ UDP_PORT = 12000
 from MusicGeneration import RandomNoteGenerator
 import mido
 
-def midi_to_pluck_messages(midi_file_path: str, length):
-    """
-    Converts a MIDI file into a list of pluck messages for a guitar robot.
 
-    This function reads a MIDI file, extracts all note events, and converts them
-    into a specific message format of a pluck message. Each new note onset is considered its own note,
-    and its duration is calculated based on the corresponding note-off event.
-
-    The format of a pluck message is:
-    [note (midi value), duration (s), speed (velocity), slide_toggle, timestamp (s)]
-
-    Args:
-        midi_file_path: The file path to the MIDI file (.mid).
-
-    Returns:
-        A list of lists, where each inner list is a pluck message.
-        Returns an empty list if the file cannot be parsed.
-    """
+def midi_to_pluck_messages(midi_file_path: str, length: float, target_bpm: float = None):
     pluck_messages = []
     try:
         mid = mido.MidiFile("Midi/" + midi_file_path)
@@ -31,45 +15,62 @@ def midi_to_pluck_messages(midi_file_path: str, length):
         print(f"Error opening or parsing MIDI file: {e}")
         return []
 
-    # A dictionary to keep track of notes that are currently "on".
-    # Key: (channel, note_number), Value: {'onset': time_in_seconds, 'velocity': midi_velocity}
-    open_notes = {}
-    absolute_time = 0.0
+    # --- Tempo handling ---
+    ticks_per_beat = mid.ticks_per_beat
 
-    # When iterating over a MidiFile object, mido provides delta times in seconds.
-    for msg in mid:
-        print(msg)
-        if msg.time > 1000.0:
-            continue
-        absolute_time += msg.time
+    # If a target BPM is specified, calculate tempo from it.
+    # Otherwise, start with the MIDI default (120 BPM) and read from the file.
+    if target_bpm is not None:
+        current_tempo = mido.bpm2tempo(target_bpm)
+        print(f"Using specified target BPM: {target_bpm}")
+    else:
+        # Default MIDI tempo is 120 BPM (500,000 microseconds per beat)
+        current_tempo = 500000
+
+    absolute_ticks = 0
+    open_notes = {}
+    merged_track = mido.merge_tracks(mid.tracks)
+
+    for msg in merged_track:
+        absolute_ticks += msg.time
+
+        # If no target_bpm is set, listen for tempo changes within the file.
+        if target_bpm is None and msg.is_meta and msg.type == 'set_tempo':
+            current_tempo = msg.tempo
+            print(f"Tempo changed to {mido.tempo2bpm(current_tempo):.2f} BPM at tick {absolute_ticks}")
+
+        # Convert current absolute tick time to seconds using the determined tempo
+        absolute_time_seconds = mido.tick2second(absolute_ticks, ticks_per_beat, current_tempo)
 
         if msg.type == 'note_on' and msg.velocity > 0:
-            # A new note has started. Store its onset time and velocity.
             note_key = (msg.channel, msg.note)
-            open_notes[note_key] = {'onset': absolute_time, 'velocity': msg.velocity}
+            open_notes[note_key] = {'onset': absolute_time_seconds, 'velocity': msg.velocity}
 
         elif msg.type == 'note_off' or (msg.type == 'note_on' and msg.velocity == 0):
-            # A note has ended. Find its corresponding note_on event to calculate duration.
             note_key = (msg.channel, msg.note)
             if note_key in open_notes:
                 note_on_info = open_notes.pop(note_key)
                 onset = note_on_info['onset']
                 velocity = note_on_info['velocity']
 
-                # Duration is the difference between the 'off' and 'on' times.
-                # duration = absolute_time - onset
-                # Change all notes to plucks
-                duration = .49
+                duration_seconds = absolute_time_seconds - onset
 
+                # Preserving original duration logic
+                duration = round(duration_seconds - 0.01, 3)
+                if duration > .5:
+                    duration = .49
+                else:
+                    duration = 0.49
 
-                # Format the message as per the specification.
-                # [note, duration, speed, slide_toggle, timestamp]
-                pluck_message = [msg.note, duration, max(1, velocity - 90), 0, round(onset,3)]
-                if round(onset,3) <= length and msg.note > 39 and msg.note < 70:
+                pluck_message = [msg.note, duration, 1, 0, round(onset, 3)]
+
+                # Preserving original filtering logic
+                if round(onset, 3) <= length and 39 < msg.note < 70:
                     pluck_messages.append(pluck_message)
+
     # Sort messages by timestamp to ensure they are in order
     pluck_messages.sort(key=lambda x: x[4])
-    print("Messages converted from Midi file to Pluck messages:")
+    print("\nMessages converted from Midi file to Pluck messages:")
     for msg in pluck_messages:
         print(msg)
 
@@ -331,13 +332,13 @@ def create_tremolo_message():
 #                    [45, 1, 5, 0, 5], [43, 1, 5, 0, 7], [43, 1, 5, 0, 8], [43, .6, 10, 0, 10],
 #                     ]
 
-chords_message = [["On", 42]] # Should be folded into an function that opens the pressers.
+chords_message = [["On", 32]] # Should be folded into an function that opens the pressers.
 # pluck_message = RandomNoteGenerator.generateSong()
 # pluck_message = RandomNoteGenerator.generate_scale_progression(12)
 # pluck_message = RandomNoteGenerator.sequential_Plucks(1)
 # pluck_message = RandomNoteGenerator.generate_polyrhythms()
-#pluck_message = RandomNoteGenerator.generate_e_major_blues_progression()
-pluck_message = midi_to_pluck_messages("PRIntroGB.mid", 40)
+# pluck_message = RandomNoteGenerator.generate_e_major_blues_progression()
+pluck_message = midi_to_pluck_messages("Test10.mid", 35)
 
 E_notes = []
 B_notes = []
@@ -355,9 +356,13 @@ print("D Notes: ",D_notes)
 print("B Notes: ",B_notes)
 # print(pluck_message)
 # pluck_message = [
-# #                     [40, 0.49, -18, 0, 4.0], [48, 0.1, -18, 0, 7.75], [48, 0.1, -18, 0, 7.875], [48, 0.1, -18, 0, 8.0], [42, 0.1, -18, 0, 15.0], [40, 0.1, -18, 0, 20.0], [48, 0.1, -18, 0, 23.75], [48, 0.1, -18, 0, 23.875], [48, 0.1, -18, 0, 24.0], [48, 0.1, -18, 0, 25.0], [48, 0.1, -18, 0, 26.0], [42, 0.1, -18, 0, 31.0], [42, 0.1, -18, 0, 34.0], [47, 0.1, -18, 0, 35.5],
-# #                     [51, 0.1, 10, 0, 0.375], [52, 0.1, 10, 0, 1.042], [51, 0.1, 10, 0, 1.708], [54, 0.1, 10, 0, 2.375], [51, 0.1, 10, 0, 3.042], [52, 0.1, 10, 0, 3.708], [59, 0.1, 10, 0, 3.875], [51, 0.1, 10, 0, 4.375], [54, 0.1, 10, 0, 5.042], [56, 0.1, 10, 0, 5.708], [54, 0.1, 10, 0, 6.375], [51, 0.1, 10, 0, 7.042], [54, 0.1, 10, 0, 7.708], [51, 0.1, 10, 0, 8.375], [52, 0.1, 10, 0, 9.042], [59, 0.1, 10, 0, 9.172], [51, 0.1, 10, 0, 9.708], [54, 0.1, 10, 0, 10.375], [51, 0.1, 10, 0, 11.042], [52, 0.1, 10, 0, 11.708], [51, 0.1, 10, 0, 12.375], [54, 0.1, 10, 0, 13.042], [56, 0.1, 10, 0, 13.708], [54, 0.1, 10, 0, 14.375], [51, 0.1, 10, 0, 15.042], [54, 0.1, 10, 0, 15.708], [54, 0.1, 10, 0, 16.375], [51, 0.1, 10, 0, 16.875], [52, 0.1, 10, 0, 17.375], [51, 0.1, 10, 0, 17.875], [52, 0.1, 10, 0, 18.375], [52, 0.1, 10, 0, 19.042], [52, 0.1, 10, 0, 19.708], [51, 0.1, 10, 0, 20.375], [52, 0.1, 10, 0, 20.875], [51, 0.1, 10, 0, 21.375], [52, 0.1, 10, 0, 21.875], [54, 0.1, 10, 0, 22.375], [52, 0.1, 10, 0, 23.042], [54, 0.1, 10, 0, 23.708],
-# #                      [59, 0.1, 10, 0, 0.375], [61, 0.1, 10, 0, 0.875], [63, 0.1, 10, 0, 1.875], [61, 0.1, 10, 0, 2.375], [59, 0.1, 10, 0, 2.875], [59, 0.1, 10, 0, 3.875], [61, 0.1, 10, 0, 4.375], [63, 0.1, 10, 0, 5.375], [61, 0.1, 10, 0, 6.375], [59, 0.1, 10, 0, 6.875], [63, 0.1, 10, 0, 8.375], [61, 0.1, 10, 0, 8.75], [59, 0.1, 10, 0, 9.172], [61, 0.1, 10, 0, 9.573], [59, 0.1, 10, 0, 9.974], [61, 0.1, 10, 0, 10.375], [59, 0.1, 10, 0, 10.875], [59, 0.1, 10, 0, 11.875], [61, 0.1, 10, 0, 12.375], [63, 0.1, 10, 0, 13.375], [61, 0.1, 10, 0, 14.375], [59, 0.1, 10, 0, 14.875], [59, 0.1, 10, 0, 16.375], [61, 0.1, 10, 0, 17.042], [59, 0.1, 10, 0, 17.708], [63, 0.1, 10, 0, 18.375], [59, 0.1, 10, 0, 18.875], [61, 0.1, 10, 0, 20.875], [63, 0.1, 10, 0, 21.875], [61, 0.1, 10, 0, 22.875], [59, 0.1, 10, 0, 23.375]
+#                     [40, 1, 5, 0, 1],
+#
+#
+#                     [56, 1, 5, 0, 1],
+#
+#
+#                     [61, 1, 5, 0, 1],
 #     ]
 
 
