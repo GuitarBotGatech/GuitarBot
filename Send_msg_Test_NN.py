@@ -55,10 +55,9 @@ def midi_to_pluck_messages(midi_file_path: str, length: float, target_bpm: float
 
                 duration_seconds = absolute_time_seconds - onset
 
-                # Preserving original duration logic
                 duration = round(duration_seconds - 0.01, 3)
                 if duration > .5:
-                    duration = .49
+                    duration = round(duration_seconds - 0.01, 3)
                 else:
                     duration = 0.49
 
@@ -337,8 +336,8 @@ chords_message = [["On", 32]] # Should be folded into an function that opens the
 # pluck_message = RandomNoteGenerator.generate_scale_progression(12)
 # pluck_message = RandomNoteGenerator.sequential_Plucks(1)
 # pluck_message = RandomNoteGenerator.generate_polyrhythms()
-# pluck_message = RandomNoteGenerator.generate_e_major_blues_progression()
-pluck_message = midi_to_pluck_messages("Test10.mid", 35)
+pluck_message = RandomNoteGenerator.generate_e_major_blues_progression()
+# pluck_message = midi_to_pluck_messages("Test11.mid", 16)
 
 E_notes = []
 B_notes = []
@@ -355,15 +354,12 @@ print("E Notes: ",E_notes)
 print("D Notes: ",D_notes)
 print("B Notes: ",B_notes)
 # print(pluck_message)
-# pluck_message = [
-#                     [40, 1, 5, 0, 1],
-#
-#
-#                     [56, 1, 5, 0, 1],
-#
-#
-#                     [61, 1, 5, 0, 1],
-#     ]
+pluck_message = [
+                    [50, .49, 5, 0, 3, 1]
+#                    [56, .49, 5, 0, 1], [56, .5, 5, 0, 2], [56, .49, 5, 0, 3], [56, .49, 5, 0, 4], [52, .49, 5, 0, 5], [52, .5, 5, 0, 6],  [52, .49, 5, 0, 7], [52, .49, 5, 0, 8],
+
+#                    [61, .49, 5, 0, 1], [61, .49, 5, 0, 2], [61, .49, 5, 0, 3], [61, .49, 5, 0, 4],[61, .49, 5, 0, 5], [64, .49, 5, 0, 6], [64, .49, 5, 0, 7], [64, .49, 5, 0, 8]
+    ]
 
 
 # pluck_message = [

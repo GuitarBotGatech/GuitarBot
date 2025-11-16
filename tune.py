@@ -51,7 +51,7 @@ LH_PRESSER_SLIDE_PRESS_POS = 400
 # Time (in seconds) the left hand needs to prepare before a picker plucks a new note.
 # This ensures the fretting hand is in position before the string is struck.
 # Given in terms of seconds.
-LH_PREP_TIME_BEFORE_PICK = 0.400
+LH_PREP_TIME_BEFORE_PICK = 0.450
 
 # The time window (in seconds) to check for overlaps between left-hand and picker movements.
 # If a pick event occurs within this window of a left-hand event, it may be adjusted or ignored.
