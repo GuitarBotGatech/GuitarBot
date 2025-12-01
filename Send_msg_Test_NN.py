@@ -391,8 +391,8 @@ pluck_message2 = [
                  # [59, .49, 5, 0, 3, 33], [61, .49, 5, 0, 3, 37], [61, .49, 5, 0, 3, 41], [61, .49, 5, 0, 3, 45],
 ]
 
-pluck_message = pluck_message1+pluck_message2
-
+pluck_message = pluck_message2 + pluck_message1
+print(pluck_message)
 chords_message = [["On", 65]]
 
 
