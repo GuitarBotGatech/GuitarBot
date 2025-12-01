@@ -421,7 +421,7 @@ def generate_e_major_blues_progression():
 
     # --- Message Generation ---
     messages = []
-    current_timestamp = 0.0
+    current_timestamp = 33.0
     seconds_per_quarter_note = 60.0 / BPM
     measure_duration = BASE_DURATION * seconds_per_quarter_note
 
@@ -507,4 +507,4 @@ def polyrhythms_timestamps(rhythms_to_generate, base_notes, measures, bpm):
 # pluck_message = generate_scale_progression(12) # Play the C Major scale x times
 # pluck_message = sequential_Plucks(1)
 # pluck_message = generate_polyrhythms()
-# generate_e_major_blues_progression()
+generate_e_major_blues_progression()
