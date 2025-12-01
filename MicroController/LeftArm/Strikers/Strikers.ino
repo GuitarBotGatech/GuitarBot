@@ -7,9 +7,9 @@
 #include "src/strikerController.h"
 #include "src/logger.h"
 #include <SPI.h>
-#include "Ethernet.h" // Using the local or modified system library
+#include "Ethernet.h" 
 #include <EthernetUdp.h>
-#include <ArduinoQueue.h> // We need this for our software buffer
+#include <ArduinoQueue.h>
 
 // --- Global Objects ---
 StrikerController* pController = nullptr;
@@ -41,7 +41,6 @@ void setup() {
     Serial.begin(115200);
     LOG_LOG("--- GuitarBot Controller ---");
 
-    // Initialize Ethernet using the proven working method
     Ethernet.init(10);
     Ethernet.begin(mac, ip);
     delay(1000);
