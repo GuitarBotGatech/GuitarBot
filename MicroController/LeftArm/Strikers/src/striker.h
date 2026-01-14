@@ -6,8 +6,8 @@
 #define STRIKER_H
 
 #include "def.h"
-#include "epos4/epos4.h"
 #include "util.h"
+#include "epos4/epos4.h"
 #include "ErrorDef.h"
 
 class Striker {

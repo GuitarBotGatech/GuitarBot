@@ -5,7 +5,9 @@
 
 #pragma once
 
-#include <Ethernet.h>
+#include "util.h"
+//#include <Ethernet_Generic.h>
+#include "libraries/Ethernet/src/Ethernet.h"
 #include <EthernetUdp.h>
 #include "def.h"
 #include "ErrorDef.h"

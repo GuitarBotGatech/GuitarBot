@@ -6,12 +6,13 @@
 #include <math.h>
 
 #include "def.h"
+#include "util.h"
 #include "striker.h"
 #include <HardwareTimer.h>
 #include "Trajectory.h"
 #include <ArduinoQueue.h>
 #include <ArduinoEigen.h>
-#include "networkHandler.h"
+//#include "networkHandler.h"
 #include <iostream>
 #include "tune.h"
 
@@ -320,6 +321,36 @@ public:
         }
         //Serial.println("-------");
         m_traj.push(temp_point);
+    }
+
+    void processTrajChunk(char* buffer, int size) {
+        // Each point consists of NUM_MOTORS floats.
+        const int floats_per_point = NUM_MOTORS;
+        const int bytes_per_point = floats_per_point * sizeof(float);
+
+        // Check for corrupted data
+        if (size % bytes_per_point != 0) {
+            LOG_ERROR("Packet size %d is not divisible by point size %d. Corrupted data.", size, bytes_per_point);
+            return;
+        }
+
+        int num_points_in_chunk = size / bytes_per_point;
+        Trajectory<int32_t>::point_t temp_point;
+
+        // Iterate through the buffer, one full point at a time
+        for (int i = 0; i < num_points_in_chunk; ++i) {
+            float* point_data_start = (float*)(buffer + i * bytes_per_point);
+
+            for (int motor_idx = 0; motor_idx < floats_per_point; ++motor_idx) {
+                // Cast the incoming float to the int32_t ticks the controller expects.
+                temp_point[motor_idx] = static_cast<int32_t>(point_data_start[motor_idx]);
+            }
+
+            // Push the fully-formed point into the real-time playback queue
+            m_traj.push(temp_point);
+        }
+
+        LOG_LOG("Pushed %d new points to the trajectory queue. Queue size is now: %d", num_points_in_chunk, m_traj.count());
     }
 
     void start() {
