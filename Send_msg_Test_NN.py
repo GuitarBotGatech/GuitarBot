@@ -386,7 +386,7 @@ pluck_message = [
     #                    [50, .5, 1, 0, 1, 10], [50, .5, 1, 0, 1, 10.5],  [50, .5, 2, 0, 1, 11], [50, 1, 6, 0, 1, 12],
     #                    [59, .5, 1, 0, 3, 10], [59, .5, 10, 0, 3, 10.5], [59, .5, 6, 0, 3, 11], [59, 1, 10, 0, 3, 12],
     ]
-chords_message = [["On", 12]]
+chords_message = [["On", 30]]
 
 # pluck_message = [
 #                [48, 2, 3, 0, 1],
@@ -405,7 +405,7 @@ chords_message = [["On", 12]]
 # Test Audio
 # chords_message = [["On", 10]]
 # strum_message = [["UP", 0.0]]
-# pluck_message = [[50, 10, 10, 0, 1]]
+pluck_message = [[41, 4, 3, 0, 1], [41, 4, 3, 0, 5], ]
 # pluck_message = [[50, 0.1, 1, 0, 0], [50, 0.1, 1, 0, 5], [50, 0.1, 1, 0, 10], [50, 0.1, 1, 0, 15], [50, 0.1, 1, 0, 20], [50, 0.1, 1, 0, 25], [50, 0.1, 1, 0, 30], [50, 0.1, 1, 0, 35], [50, 0.1, 1, 0, 40], [50, 0.1, 1, 0, 45]]
 
 
@@ -418,12 +418,13 @@ def main():
     client = SimpleUDPClient(UDP_IP, UDP_PORT)
 
     client = SimpleUDPClient(UDP_IP, UDP_PORT)
-    send_osc_message(client, "/Chords", chords_message)
+    print("sent")
+    # send_osc_message(client, "/Chords", chords_message)
     #long_pluck_message_list = RandomNoteGenerator.generate_scale_progression(iterations=20)
 
     # 2. Call the new batch sender function
     # batch_send_pluck_messages(client, long_pluck_message_list, batch_size=60)
-    # send_osc_message(client, "/Chords", chords_message)
+    send_osc_message(client, "/Chords", chords_message)
 
     # pluck_message = create_tremolo_message()
     send_osc_message(client, "/Pluck", pluck_message)
