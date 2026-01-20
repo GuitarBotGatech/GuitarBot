@@ -22,7 +22,7 @@ def main():
     # pluck_message = gen.scale(duration=0.69,slide_toggle=True, true_dur=0.1)
     # chords_message = [['On', gen.final_dur]]
 
-    send_osc_message(client, "/Fret", [41, 1.0])
+    send_osc_message(client, "/Fret", [62, 0.1])
     # send_osc_message(client, "/Dyn", [[41, 40], [127, 0]])
     # send_osc_message(client, "/Chords", chords_message)
     # send_osc_message(client, "/Strum", strum_message)

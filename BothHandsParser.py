@@ -47,28 +47,40 @@ class BothHandsParser:
         print(f"Pluck delay: {self.pluck_delay_after_press:.3f}s after press")
         print(f"Settling time: {self.settling_time:.3f}s before pluck")
     
-    def parse_fret_with_pluck(self, midi_note, presser_force=None, pluck_velocity=None, timestamp=0.0, force_adjustment_only=False):
+    def parse_fret_with_pluck(self, midi_note, presser_force=None, pluck_velocity=None, timestamp=0.0, force_adjustment_only=False, unpress_after=True):
         """
         Parse /Fret message and generate coordinated fretting + plucking trajectory.
         
         This is the main function for playing notes - it frets AND plucks automatically.
         
+        Trajectory sequence:
+        1. LH trajectory: UNPRESS → SLIDE → PRESS → HOLD (ends at target torque)
+        2. Settling time (brief pause while string is pressed)
+        3. RH pluck (pluck happens while string is still pressed)
+        4. REST phase: presser returns to -650 (after pluck completes) - if unpress_after=True
+        
+        This ensures the pluck ALWAYS happens while the string is pressed.
+        
         Args:
             midi_note: MIDI note number (40-68)
-            presser_force: Optional force level for pressing (0.0-1.0, None = default)
+            presser_force: Force level 0.0-1.0 (affects target torque, None = full force 500)
             pluck_velocity: Optional pluck velocity (0-127, None = state toggle)
             timestamp: When the note should start (seconds)
             force_adjustment_only: If True, only adjust force without unpressing (for force tests)
+            unpress_after: If True (default), presser returns to -650 after pluck for safety.
+                          If False, presser stays at target torque after pluck.
             
         Returns:
             2D numpy array [num_timesteps x 15] with complete motor trajectories
         """
         print(f"\n{'='*60}")
         print(f"COORDINATED FRET + PLUCK")
-        print(f"MIDI Note: {midi_note}, Force: {presser_force}, Velocity: {pluck_velocity}, Time: {timestamp}s, Force-only: {force_adjustment_only}")
+        print(f"MIDI Note: {midi_note}, Force: {presser_force}, Velocity: {pluck_velocity}, Time: {timestamp}s")
+        print(f"Force-only: {force_adjustment_only}, Unpress after: {unpress_after}")
         print(f"{'='*60}")
         
         # 1. Generate left hand fretting trajectory (12 motors)
+        # This ends at target torque (500) - string is pressed
         lh_trajectory = self.left_hand.parse_fret_message(
             midi_note_number=midi_note,
             presser_force=presser_force,
@@ -80,106 +92,117 @@ class BothHandsParser:
             print("Error: Failed to generate left hand trajectory")
             return np.array([])
         
-        # 2. Find when the presser torque reaches 0 (rest state)
-        # We need to analyze the LH trajectory to find when presser is at 0
-        
-        # Determine which presser motor based on MIDI note
+        # 2. Get string/fret info for the presser motor ID
         string_fret_info = self.left_hand.midi_note_to_string_fret(midi_note)
         if not string_fret_info:
             print(f"Error: Cannot determine string for MIDI note {midi_note}")
             return np.array([])
         
-        string_id, _ = string_fret_info
-        presser_motor_id = string_id + 6
+        string_id, fret_num = string_fret_info
+        presser_motor_id = string_id + 6  # Presser motors are 6-11
         
-        # Extract presser trajectory
-        presser_trajectory = lh_trajectory[:, presser_motor_id]
+        # Get current presser torque (should be 500 at end of LH trajectory)
+        current_presser_torque = lh_trajectory[-1, presser_motor_id]
         
-        # Find when torque reaches 0 (or close to 0, within tolerance)
-        # For force testing, the trajectory should end with torque=0
-        # We want to find the LAST time it reaches 0 before the buffer
+        # 3. Get LH trajectory duration - pluck will be placed AFTER this
+        lh_num_points = lh_trajectory.shape[0]
+        lh_duration = lh_num_points * tu.TIME_STEP
         
-        # Remove NaN values and find non-zero regions
-        valid_indices = ~np.isnan(presser_trajectory)
-        valid_traj = presser_trajectory[valid_indices]
+        print(f"LH trajectory: {lh_num_points} points, {lh_duration:.3f}s duration")
+        print(f"  Presser {presser_motor_id} ends at torque: {current_presser_torque}")
         
-        if len(valid_traj) == 0:
-            print("Warning: No valid presser trajectory data")
-            torque_zero_idx = 0
-        else:
-            # Find indices where torque is close to 0 (within 5 units)
-            near_zero = np.abs(valid_traj) < 5.0
-            
-            if np.any(near_zero):
-                # Find the last contiguous block of near-zero values
-                # This should be the REST phase
-                zero_indices = np.where(near_zero)[0]
-                
-                # Find the start of the last zero block
-                # Look for gaps larger than 5 indices
-                gaps = np.diff(zero_indices)
-                large_gaps = np.where(gaps > 5)[0]
-                
-                if len(large_gaps) > 0:
-                    # Start of last block
-                    last_block_start = zero_indices[large_gaps[-1] + 1]
-                else:
-                    # All zeros are contiguous, use first zero
-                    last_block_start = zero_indices[0]
-                
-                torque_zero_idx = last_block_start
-            else:
-                # Torque never reaches 0, use end of trajectory
-                print("Warning: Torque never reaches 0 in trajectory")
-                torque_zero_idx = len(valid_traj) - 1
+        # 4. Calculate pluck timing - place it after LH trajectory + settling time
+        pluck_timestamp = lh_duration + self.settling_time
         
-        torque_zero_time = timestamp + (torque_zero_idx * tu.TIME_STEP)
-        
-        print(f"Presser torque analysis:")
-        print(f"  Torque reaches 0 at index {torque_zero_idx}, t={torque_zero_time:.3f}s")
-        if torque_zero_idx > 0 and torque_zero_idx < len(presser_trajectory):
-            print(f"  Torque value at rest: {presser_trajectory[torque_zero_idx]:.1f}")
-        
-        # 3. Add settling time AFTER torque reaches 0, BEFORE pluck starts
-        pluck_timestamp = torque_zero_time + self.settling_time
-        
-        # 4. Calculate pluck duration
+        # 5. Calculate total duration needed:
+        # LH + settling + pluck motion + (REST phase if unpress_after) + buffer
+        # REST phase duration scales inversely with torque to reduce bouncing
+        # Lower torque = slower unpress to avoid string pushing back on motor
         pluck_motion_duration = tu.PICKER_PLUCK_MOTION_POINTS * tu.TIME_STEP
-        lh_duration = lh_trajectory.shape[0] * tu.TIME_STEP
         
-        # 5. Ensure trajectory is long enough for: all phases + settling + pluck + buffer
-        min_required_duration = pluck_timestamp + pluck_motion_duration + (50 * tu.TIME_STEP)
+        if unpress_after:
+            # Scale REST phase points based on torque level
+            # Lower torque needs more points (slower release) to avoid bouncing
+            # torque_ratio: 0.0 (low) → 1.0 (high torque 500)
+            max_torque = tu.LH_PRESSER_PRESSED_POS  # e.g., 500
+            torque_ratio = current_presser_torque / max_torque if max_torque > 0 else 1.0
+            torque_ratio = max(0.1, min(1.0, torque_ratio))  # Clamp to 0.1-1.0
+            
+            # Scale factor: lower torque = more points (slower)
+            # e.g., torque_ratio=1.0 → 1x points, torque_ratio=0.1 → 3x points
+            rest_scale_factor = 1.0 + (2.0 * (1.0 - torque_ratio))  # 1.0 to 3.0
+            
+            rest_phase_points = int(tu.PRESSER_INTERPOLATION_POINTS * rest_scale_factor)
+            rest_phase_duration = rest_phase_points * tu.TIME_STEP
+        else:
+            rest_phase_points = 0
+            rest_phase_duration = 0
         
-        if lh_duration < min_required_duration:
-            # Extend LH trajectory to accommodate pluck
-            additional_timesteps = int((min_required_duration - lh_duration) / tu.TIME_STEP) + 1
+        total_duration = pluck_timestamp + pluck_motion_duration + rest_phase_duration + (50 * tu.TIME_STEP)
+        
+        # 6. Extend LH trajectory to accommodate the pluck and REST phase
+        total_points = int(total_duration / tu.TIME_STEP)
+        if total_points > lh_num_points:
+            additional_timesteps = total_points - lh_num_points
             last_row = lh_trajectory[-1:, :]
             extension = np.tile(last_row, (additional_timesteps, 1))
             lh_trajectory = np.vstack([lh_trajectory, extension])
-            lh_duration = lh_trajectory.shape[0] * tu.TIME_STEP
-            print(f"Extended LH trajectory to {lh_duration:.3f}s to accommodate pluck")
+            print(f"Extended LH trajectory: {lh_num_points} → {lh_trajectory.shape[0]} points ({total_duration:.3f}s)")
         
-        print(f"Timing: Torque→0 at t={torque_zero_time:.3f}s, Settling={self.settling_time:.3f}s, Pluck at t={pluck_timestamp:.3f}s, Pluck duration={pluck_motion_duration:.3f}s")
-        
-        # 6. Determine which picker to use based on MIDI note
-        picker_id = self.right_hand.midi_note_to_picker_id(midi_note)
-        # 6. Determine which picker to use based on MIDI note
+        # 7. Determine which picker to use based on MIDI note
         picker_id = self.right_hand.midi_note_to_picker_id(midi_note)
         if picker_id is None:
             print(f"Warning: MIDI note {midi_note} has no corresponding picker")
             # Return LH trajectory padded with RH motors at current positions
             return self._combine_trajectories(lh_trajectory, None)
         
-        # 7. Generate right hand plucking trajectory (3 motors)
-        # Create a minimal trajectory that matches the LH timing
+        # 8. Generate right hand plucking trajectory (3 motors)
         rh_trajectory = self._generate_synchronized_pluck(
             picker_id=picker_id,
             pluck_timestamp=pluck_timestamp,
             pluck_velocity=pluck_velocity,
-            total_duration=lh_duration
+            total_duration=total_duration  # Use total duration including REST
         )
         
-        # 8. Combine LH and RH trajectories into single 15-motor array
+        # 9. Generate REST phase - presser returns to -650 AFTER pluck completes (if enabled)
+        rest_start_time = pluck_timestamp + pluck_motion_duration
+        rest_start_idx = int(rest_start_time / tu.TIME_STEP)
+        
+        print(f"Timing: LH ends at t={lh_duration:.3f}s, Pluck at t={pluck_timestamp:.3f}s")
+        
+        if unpress_after:
+            # Generate REST trajectory for presser (current_torque → -650)
+            # Uses scaled point count for slower release at lower torques
+            from GuitarBotParser import GuitarBotParser
+            rest_points = GuitarBotParser.interp_with_blend(
+                current_presser_torque, 
+                tu.LH_PRESSER_UNPRESSED_POS,  # Return to unpressed (-650)
+                rest_phase_points, 
+                tu.TRAJECTORY_BLEND_PERCENT
+            )
+            
+            # Insert REST phase into LH trajectory
+            rest_end_idx = min(rest_start_idx + len(rest_points), lh_trajectory.shape[0])
+            for i, torque in enumerate(rest_points):
+                if rest_start_idx + i < lh_trajectory.shape[0]:
+                    lh_trajectory[rest_start_idx + i, presser_motor_id] = torque
+            
+            # Hold at unpressed for remaining trajectory
+            if rest_end_idx < lh_trajectory.shape[0]:
+                lh_trajectory[rest_end_idx:, presser_motor_id] = tu.LH_PRESSER_UNPRESSED_POS
+            
+            # Update left hand's current position to reflect the REST
+            self.left_hand.current_positions[presser_motor_id] = tu.LH_PRESSER_UNPRESSED_POS
+            
+            rest_duration_ms = rest_phase_points * tu.TIME_STEP * 1000
+            print(f"REST phase: Presser {presser_motor_id} returns to {tu.LH_PRESSER_UNPRESSED_POS} at t={rest_start_time:.3f}s")
+            print(f"  Torque: {current_presser_torque}→{tu.LH_PRESSER_UNPRESSED_POS}, Duration: {rest_duration_ms:.0f}ms ({rest_phase_points} points)")
+            print(f"  Scale factor: {rest_scale_factor:.2f}x (lower torque = slower unpress to reduce bouncing)")
+        else:
+            # No unpress - presser stays at target torque
+            print(f"No unpress: Presser {presser_motor_id} stays at torque {current_presser_torque}")
+        
+        # 10. Combine LH and RH trajectories into single 15-motor array
         combined_trajectory = self._combine_trajectories(lh_trajectory, rh_trajectory)
         
         print(f"\nGenerated combined trajectory: {combined_trajectory.shape[0]} timesteps × 15 motors")

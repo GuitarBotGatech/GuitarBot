@@ -71,30 +71,37 @@ class LeftHandParser:
         - Zero: Motor is idle/holding
         - Inspired by slide_toggle behavior in GuitarBotParser
         
+        The presser_force parameter (0.0-1.0) scales the target torque:
+        - force=1.0 → full torque (LH_PRESSER_PRESSED_POS = 500)
+        - force=0.5 → half torque (250)
+        - force=None → full torque (default)
+        
         Args:
             string_id: String index (0-5)
             fret_num: Fret number (0 for open, 1+ for frets)
-            presser_force: Optional force override (0.0-1.0, None uses default)
+            presser_force: Force level 0.0-1.0 (None = full force)
             
         Returns:
-            Presser torque command (0 = idle, >0 = apply force)
+            Presser torque command (0 = idle, up to 500 = apply force)
         """
         if fret_num == 0:  # Open string - no pressure needed
             return 0  # Idle
         
-        # Use force parameter if provided, otherwise use default
+        # Scale torque based on force parameter
+        max_torque = tu.LH_PRESSER_PRESSED_POS  # e.g., 500
+        
         if presser_force is not None:
-            # Scale between 0 (no torque) and max torque
-            # LH_PRESSER_PRESSED_POS represents maximum torque (e.g., 500 = 50% of rated)
-            max_torque = tu.LH_PRESSER_PRESSED_POS
-            torque = presser_force * max_torque
-            return round(torque, 3)
+            # Clamp force to valid range
+            force_factor = max(0.1, min(1.0, presser_force))
+            torque = int(max_torque * force_factor)
         else:
-            # Use default pressed torque
-            return tu.LH_PRESSER_PRESSED_POS
+            # Default to full torque
+            torque = max_torque
+        
+        return torque
     
     def generate_fret_trajectory(self, string_id, fret_num, presser_force=None, 
-                                num_points=tu.PRESSER_INTERPOLATION_POINTS,
+                                num_points=tu.PRESSER_INTERPOLATION_POINTS * 10,
                                 timestamp=0.0,
                                 force_adjustment_only=False):
         """
@@ -104,12 +111,13 @@ class LeftHandParser:
         - Presser commands are TORQUE values, not positions
         - Positive value = motor applies force
         - Zero = motor is idle/holding position
-        
+        - -650 = motor is unpressing
+
         Two modes:
         1. Normal fretting (force_adjustment_only=False):
-           Phase 1: Unpress (torque → 0)
+           Phase 1: Unpress (torque → -650)
            Phase 2: Slide (torque = 0, slider moves)
-           Phase 3: Press (torque → target)
+           Phase 3: Press (torque → increase → 0 (stops increasing))
            
         2. Force adjustment (force_adjustment_only=True):
            Single phase: Torque increment (current → target)
@@ -154,33 +162,34 @@ class LeftHandParser:
                     string_id, fret_num,
                     slider_motor_id, presser_motor_id,
                     current_slider_pos, current_presser_torque,
-                    target_slider_pos, tu.LH_PRESSER_UNPRESSED_POS,  # Go to unpressed position
-                    num_points, timestamp
+                    target_slider_pos, tu.LH_PRESSER_UNPRESSED_POS,
+                    num_points, timestamp, presser_force
                 )
             elif same_fret:
-                # Same fret, just adjust torque (no unpressing)
-                print(f"  Force adjustment mode: Torque {current_presser_torque:.1f} → {target_presser_torque:.1f}")
+                # Same fret, just adjust force duration (no unpressing)
+                print(f"  Force adjustment mode: Force={presser_force} (controls hold duration)")
                 return self._generate_simple_trajectory(
                     string_id, fret_num,
                     slider_motor_id, presser_motor_id,
                     current_slider_pos, current_presser_torque,
                     target_slider_pos, target_presser_torque,
-                    num_points, timestamp
+                    num_points, timestamp, presser_force
                 )
             else:
                 # Different fret: Need to slide, but keep it simple
                 # Go to idle (0) → slide → apply torque
-                print(f"  Force adjustment mode: Fret {current_fret} → {fret_num}, torque {target_presser_torque:.1f}")
+                print(f"  Force adjustment mode: Fret {current_fret} → {fret_num}, force={presser_force}")
                 return self._generate_simple_fret_change(
                     string_id, fret_num,
                     slider_motor_id, presser_motor_id,
                     current_slider_pos, current_presser_torque,
                     target_slider_pos, target_presser_torque,
-                    num_points, timestamp
+                    num_points, timestamp, presser_force
                 )
         
         # Calculate total trajectory duration to size array properly
-        # Based on GuitarBotParser line 297: num_generated_points = tu.PRESSER_INTERPOLATION_POINTS + tu.LH_SINGLE_NOTE_MOTION_POINTS + tu.PRESSER_INTERPOLATION_POINTS
+        # 3 phases: UNPRESS + SLIDE + PRESS (ends at target torque)
+        # NOTE: No hold phase - ends immediately at target torque
         total_points = num_points + tu.LH_SINGLE_NOTE_MOTION_POINTS + num_points
         duration = total_points * tu.TIME_STEP
         buffer = 100 * tu.TIME_STEP
@@ -219,9 +228,10 @@ class LeftHandParser:
         slider_points.extend(s2)
         presser_points.extend(p2)
         
-        # Phase 3: PRESS (apply target torque)
+        # Phase 3: PRESS (apply target torque, ends here)
+        # Trajectory ENDS at target torque - REST phase handled by BothHandsParser
         s3 = GuitarBotParser.interp_with_blend(qf_slider, qf_slider, num_points, tu.TRAJECTORY_BLEND_PERCENT)
-        p3 = GuitarBotParser.interp_with_blend(0, qf_presser_torque, num_points, tu.TRAJECTORY_BLEND_PERCENT)  # 0 → Target torque
+        p3 = GuitarBotParser.interp_with_blend(0, qf_presser_torque, num_points, tu.TRAJECTORY_BLEND_PERCENT)  # 0 → target
         slider_points.extend(s3)
         presser_points.extend(p3)
         
@@ -249,8 +259,10 @@ class LeftHandParser:
         # Update state tracking
         self.string_states[string_id] = {'fret': fret_num, 'pressed': fret_num > 0}
         
-        print(f"Generated trajectory array shape: {trajectory_array.shape}")
-        print(f"Final positions - Slider: {self.current_positions[slider_motor_id]}, Presser: {self.current_positions[presser_motor_id]}")
+        print(f"Generated trajectory: 3 phases (UNPRESS→SLIDE→PRESS)")
+        print(f"  Target torque: {qf_presser_torque}, Array shape: {trajectory_array.shape}")
+        print(f"  Final positions - Slider: {self.current_positions[slider_motor_id]}, Presser: {self.current_positions[presser_motor_id]}")
+        print(f"  NOTE: Ends at target torque ({qf_presser_torque}). REST phase handled by BothHandsParser after pluck.")
         
         return trajectory_array
     def _generate_force_adjustment_trajectory_torque(self, slider_motor_id, presser_motor_id,
@@ -324,15 +336,14 @@ class LeftHandParser:
                                    slider_motor_id, presser_motor_id,
                                    current_slider_pos, current_torque,
                                    target_slider_pos, target_torque,
-                                   num_points, timestamp):
+                                   num_points, timestamp, presser_force=None):
         """
-        Generate simple trajectory for force testing with REST phase.
+        Generate simple trajectory for force testing.
         
-        For force testing, we need:
-        Phase 1: Apply target torque (current → target)
-        Phase 2: REST - Release to 0 torque (target → 0) so motor is idle for pluck
+        For force testing, applies target torque and ends there.
+        Force parameter affects the target torque magnitude.
         
-        This ensures the pluck happens when torque=0 (motor at rest).
+        Pattern: 0 → target_torque (ends here)
         
         Args:
             string_id: String index (0-5)
@@ -340,11 +351,12 @@ class LeftHandParser:
             slider_motor_id: Slider motor index
             presser_motor_id: Presser motor index
             current_slider_pos: Current slider position
-            current_torque: Current presser torque
+            current_torque: Current presser torque (ignored for force testing, starts from 0)
             target_slider_pos: Target slider position
-            target_torque: Target presser torque (can be LH_PRESSER_UNPRESSED_POS for unpressing)
+            target_torque: Target presser torque (scaled by force, or LH_PRESSER_UNPRESSED_POS for unpressing)
             num_points: Number of interpolation points
             timestamp: Start time
+            presser_force: Force level (0.0-1.0) affects target_torque magnitude
             
         Returns:
             2D numpy array [num_timesteps x 12] with trajectory
@@ -352,12 +364,8 @@ class LeftHandParser:
         # Special case: If target is unpressed position, just do single phase
         is_unpressing = (target_torque == tu.LH_PRESSER_UNPRESSED_POS)
         
-        if is_unpressing:
-            # Single phase: current → unpressed
-            total_points = num_points
-        else:
-            # Two phases: apply torque → release to 0
-            total_points = num_points * 2
+        # Single phase: ramp to target
+        total_points = num_points
         
         duration = total_points * tu.TIME_STEP
         buffer = 100 * tu.TIME_STEP
@@ -388,7 +396,8 @@ class LeftHandParser:
                 tu.TRAJECTORY_BLEND_PERCENT
             )
         else:
-            # Phase 1: Apply target torque
+            # Single phase: PRESS - Apply target torque (0 → target)
+            # Trajectory ENDS here - REST phase handled by BothHandsParser
             s1 = GuitarBotParser.interp_with_blend(
                 current_slider_pos,
                 target_slider_pos,
@@ -396,29 +405,13 @@ class LeftHandParser:
                 tu.TRAJECTORY_BLEND_PERCENT
             )
             t1 = GuitarBotParser.interp_with_blend(
-                current_torque,
-                target_torque,
+                0,  # Start from idle (0)
+                target_torque,  # Press to target torque
                 num_points,
                 tu.TRAJECTORY_BLEND_PERCENT
             )
             slider_points.extend(s1)
             torque_points.extend(t1)
-            
-            # Phase 2: REST - Release to 0 (motor idle for pluck)
-            s2 = GuitarBotParser.interp_with_blend(
-                target_slider_pos,
-                target_slider_pos,  # Hold slider position
-                num_points,
-                tu.TRAJECTORY_BLEND_PERCENT
-            )
-            t2 = GuitarBotParser.interp_with_blend(
-                target_torque,
-                0,  # Release to idle
-                num_points,
-                tu.TRAJECTORY_BLEND_PERCENT
-            )
-            slider_points.extend(s2)
-            torque_points.extend(t2)
         
         # Write to trajectory array
         num_generated_points = len(slider_points)
@@ -446,7 +439,7 @@ class LeftHandParser:
         if is_unpressing:
             print(f"  Simple trajectory (unpress): Torque {current_torque:.1f}→{target_torque:.1f}")
         else:
-            print(f"  Simple trajectory: Apply {target_torque:.1f} → Rest to 0 (2 phases, {num_generated_points} points)")
+            print(f"  Simple trajectory: 0 → {target_torque} (ends at target torque)")
         
         return trajectory_array
     
@@ -454,14 +447,18 @@ class LeftHandParser:
                                     slider_motor_id, presser_motor_id,
                                     current_slider_pos, current_torque,
                                     target_slider_pos, target_torque,
-                                    num_points, timestamp):
+                                    num_points, timestamp, presser_force=None):
         """
         Generate trajectory for changing frets during force testing.
         
-        Phase 1: Release to idle (torque → 0)
+        Force parameter affects target torque magnitude.
+        
+        Pattern: current → 0 → (slide) → 0 → target_torque (ends here)
+        NOTE: REST phase is handled by BothHandsParser AFTER pluck
+        
+        Phase 1: Release to idle (current_torque → 0)
         Phase 2: Slide (slider moves, torque = 0)
-        Phase 3: Apply target torque (0 → target)
-        Phase 4: REST - Release to 0 (target → 0) so motor is idle for pluck
+        Phase 3: Apply target torque (0 → target_torque) - ENDS HERE
         
         Args:
             string_id: String index (0-5)
@@ -471,15 +468,16 @@ class LeftHandParser:
             current_slider_pos: Current slider position
             current_torque: Current presser torque
             target_slider_pos: Target slider position
-            target_torque: Target presser torque
+            target_torque: Target presser torque (scaled by force)
             num_points: Number of interpolation points per phase
             timestamp: Start time
+            presser_force: Force level (0.0-1.0) affects target_torque
             
         Returns:
             2D numpy array [num_timesteps x 12] with trajectory
         """
-        # 4 phases for fret change
-        total_points = num_points * 4
+        # 3 phases for fret change: RELEASE + SLIDE + PRESS (ends at target torque)
+        total_points = num_points * 3
         duration = total_points * tu.TIME_STEP
         buffer = 100 * tu.TIME_STEP
         num_rows = int((timestamp + duration + buffer) / tu.TIME_STEP)
@@ -504,17 +502,12 @@ class LeftHandParser:
         slider_points.extend(s2)
         presser_points.extend(p2)
         
-        # Phase 3: Apply target torque
+        # Phase 3: PRESS - Apply target torque (0 → target_torque)
+        # Trajectory ENDS here - REST phase handled by BothHandsParser
         s3 = GuitarBotParser.interp_with_blend(target_slider_pos, target_slider_pos, num_points, tu.TRAJECTORY_BLEND_PERCENT)
         p3 = GuitarBotParser.interp_with_blend(0, target_torque, num_points, tu.TRAJECTORY_BLEND_PERCENT)
         slider_points.extend(s3)
         presser_points.extend(p3)
-        
-        # Phase 4: REST - Release to 0 (motor idle for pluck)
-        s4 = GuitarBotParser.interp_with_blend(target_slider_pos, target_slider_pos, num_points, tu.TRAJECTORY_BLEND_PERCENT)
-        p4 = GuitarBotParser.interp_with_blend(target_torque, 0, num_points, tu.TRAJECTORY_BLEND_PERCENT)
-        slider_points.extend(s4)
-        presser_points.extend(p4)
         
         # Write to trajectory array
         num_generated_points = len(slider_points)
@@ -539,7 +532,7 @@ class LeftHandParser:
         # Update state tracking
         self.string_states[string_id] = {'fret': fret_num, 'pressed': fret_num > 0}
         
-        print(f"  Fret change: Release → Slide → Apply {target_torque:.1f} → Rest to 0 (4 phases)")
+        print(f"  Fret change: Release → Slide → 0 → {target_torque} (ends at target torque, 3 phases)")
         
         return trajectory_array
     
