@@ -475,23 +475,52 @@ def reset_processor():
                 print(f"Current robot position (last endpoint): {last_robot_position}")
                 print(f"Target positions: {tu.initial_point}")
                 
-                # Create smooth interpolated trajectory from last known position to initial_point
-                num_transition_points = 200  # ~1.0 seconds at 5ms timesteps
-                reset_trajectory = np.zeros((num_transition_points, 15))
+                # PHASE 1: Safely unpress all pressers first (motors 6-11)
+                # This prevents string damage from moving sliders while pressed
+                unpress_points = 400  # ~2000ms to unpress #TODO: magic numbers
+                unpress_trajectory = np.zeros((unpress_points, 15))
                 
-                # Interpolate each motor independently
                 for motor in range(15):
                     q0 = last_robot_position[motor]
-                    qf = tu.initial_point[motor]
+                    
+                    if 6 <= motor <= 11:  # Pressers
+                        # Move to unpressed position
+                        qf = tu.LH_PRESSER_UNPRESSED_POS
+                    else:  # Sliders and pickers
+                        # Hold current position
+                        qf = q0
+                    
                     motor_traj = GuitarBotParser.interp_with_blend(
-                        q0, qf, num_transition_points, tu.TRAJECTORY_BLEND_PERCENT
+                        q0, qf, unpress_points, tu.TRAJECTORY_BLEND_PERCENT
                     )
-                    reset_trajectory[:, motor] = motor_traj
+                    unpress_trajectory[:, motor] = motor_traj
+                
+                print(f"  Phase 1: Unpressing pressers ({unpress_points} points, {unpress_points * 5}ms)...")
+                
+                # PHASE 2: Home sliders and pickers while keeping pressers unpressed
+                home_points = 200  # ~1.0 seconds for smooth homing
+                home_trajectory = np.zeros((home_points, 15))
+                
+                # Starting position is the end of phase 1
+                phase1_end = unpress_trajectory[-1, :]
+                
+                for motor in range(15):
+                    q0 = phase1_end[motor]
+                    qf = tu.initial_point[motor]
+                    
+                    motor_traj = GuitarBotParser.interp_with_blend(
+                        q0, qf, home_points, tu.TRAJECTORY_BLEND_PERCENT
+                    )
+                    home_trajectory[:, motor] = motor_traj
+                
+                print(f"  Phase 2: Homing sliders and pickers ({home_points} points, {home_points * 5}ms)...")
+                
+                # Combine both phases
+                reset_trajectory = np.vstack([unpress_trajectory, home_trajectory])
                 
                 print(f"Generated reset trajectory: {reset_trajectory.shape}")
-                print(f"  First point: {reset_trajectory[0, :3]}... (should match last position)")
-                print(f"  Last point: {reset_trajectory[-1, :3]}... (should match initial_point)")
-                print(f"Executing reset motion...")
+                print(f"  Total duration: {reset_trajectory.shape[0] * 5}ms")
+                print(f"Executing safe reset motion...")
                 
                 # Send reset trajectory to robot
                 RobotController.main(reset_trajectory)
@@ -549,19 +578,44 @@ def cleanup_and_reset():
         print(f"Current robot position: {last_robot_position[:3]}...")
         print(f"Target initial position: {tu.initial_point[:3]}...")
         
-        num_transition_points = 200  # ~1.0 seconds
-        reset_trajectory = np.zeros((num_transition_points, 15))
-            
-        # Interpolate each motor
+        # PHASE 1: Safely unpress all pressers first
+        unpress_points = 100  # ~500ms
+        unpress_trajectory = np.zeros((unpress_points, 15))
+        
         for motor in range(15):
             q0 = last_robot_position[motor]
+            
+            if 6 <= motor <= 11:  # Pressers
+                qf = tu.LH_PRESSER_UNPRESSED_POS
+            else:  # Sliders and pickers - hold position
+                qf = q0
+            
+            motor_traj = GuitarBotParser.interp_with_blend(
+                q0, qf, unpress_points, tu.TRAJECTORY_BLEND_PERCENT
+            )
+            unpress_trajectory[:, motor] = motor_traj
+        
+        print(f"Phase 1: Unpressing pressers ({unpress_points * 5}ms)...")
+        
+        # PHASE 2: Home sliders and pickers
+        home_points = 200  # ~1.0 seconds
+        home_trajectory = np.zeros((home_points, 15))
+        phase1_end = unpress_trajectory[-1, :]
+        
+        for motor in range(15):
+            q0 = phase1_end[motor]
             qf = tu.initial_point[motor]
             motor_traj = GuitarBotParser.interp_with_blend(
-                q0, qf, num_transition_points, tu.TRAJECTORY_BLEND_PERCENT
+                q0, qf, home_points, tu.TRAJECTORY_BLEND_PERCENT
             )
-            reset_trajectory[:, motor] = motor_traj
+            home_trajectory[:, motor] = motor_traj
         
-        print(f"Sending reset trajectory ({reset_trajectory.shape[0]} points)...")
+        print(f"Phase 2: Homing sliders and pickers ({home_points * 5}ms)...")
+        
+        # Combine phases
+        reset_trajectory = np.vstack([unpress_trajectory, home_trajectory])
+        
+        print(f"Sending safe reset trajectory ({reset_trajectory.shape[0]} points, {reset_trajectory.shape[0] * 5}ms total)...")
         RobotController.main(reset_trajectory)
         
         print("Reset complete. Motors at safe initial positions.")
