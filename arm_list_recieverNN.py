@@ -13,6 +13,7 @@ from LeftHandParser import LeftHandParser
 from BothHandsParser import BothHandsParser
 import numpy as np
 import tune as tu
+import traceback
 
 # For External
 # UDP_IP = "192.168.1.1"
@@ -28,17 +29,21 @@ initial_point_queue = queue.SimpleQueue()
 song_trajs_queue = queue.SimpleQueue()
 data_queue = queue.SimpleQueue()
 fret_queue = queue.SimpleQueue()
+reset_queue = queue.SimpleQueue()
 
 # Initialize parsers
 rh_parser = RightHandParser()  # For /Dyn messages (pluck only)
 lh_parser = LeftHandParser()   # For direct LH testing (if needed)
 both_hands_parser = BothHandsParser()  # For /Fret messages (coordinated fret + pluck)
 
+# Track the actual robot position (last trajectory endpoint sent to RobotController)
+last_robot_position = tu.initial_point.copy()  # Start at initial position
+
 def decode_osc_message(data):
     print("Message In")
     try:
         msg = OscMessage(data)
-        if msg.address in ["/Chords", "/Strum", "/Pluck", "/Dyn", "/Fret"]:
+        if msg.address in ["/Chords", "/Strum", "/Pluck", "/Dyn", "/Fret", "/Reset"]:
             return msg.address[1:], msg.params  # Remove the leading '/'
     except osc_types.ParseError:
         print("Failed to parse OSC message")
@@ -76,6 +81,8 @@ def process_messages():
                     dyn_queue.put(data)
                 elif message_type == "Fret":
                     fret_queue.put(data)
+                elif message_type == "Reset":
+                    reset_queue.put(data)
                 # print(f"Chords Queue Size1", chords_queue.qsize())
                 # print(f"Pluck Queue Size1", pluck_queue.qsize())
         except queue.Empty:
@@ -242,11 +249,16 @@ def dynamics_processor():
                 print("Executing dynamics test")
                 RobotController.main(trajectories_list)
                 
+                # Update last robot position
+                global last_robot_position
+                if len(trajectories_list) > 0:
+                    last_robot_position = np.array(trajectories_list)[-1, :].copy()
+                    print(f"Updated last_robot_position after /Dyn")
+                
         except queue.Empty:
             pass
         except Exception as e:
             print(f"Error in dynamics_processor: {e}")
-            import traceback
             traceback.print_exc()
         
         time.sleep(0.001)
@@ -300,11 +312,68 @@ def fret_processor():
                 # Send to robot controller
                 RobotController.main(trajectory_array)
                 
+                # Update last robot position
+                global last_robot_position
+                last_robot_position = trajectory_array[-1, :].copy()
+                print(f"Updated last_robot_position after /Fret")
+                
         except queue.Empty:
             pass
         except Exception as e:
             print(f"Error in fret_processor: {e}")
-            import traceback
+            traceback.print_exc()
+        
+        time.sleep(0.001)
+
+def reset_processor():
+    """Process /Reset messages to return motors to initial positions."""
+    while True:
+        try:
+            while not reset_queue.empty():
+                reset_data = reset_queue.get_nowait()
+                print(f"Processing /Reset message: {reset_data}")
+                
+                # Use the tracked robot position to create smooth trajectory to initial_point
+                global last_robot_position
+                
+                print("Generating reset trajectory to initial positions...")
+                print(f"Current robot position (last endpoint): {last_robot_position}")
+                print(f"Target positions: {tu.initial_point}")
+                
+                # Create smooth interpolated trajectory from last known position to initial_point
+                num_transition_points = 200  # ~1.0 seconds at 5ms timesteps
+                reset_trajectory = np.zeros((num_transition_points, 15))
+                
+                # Interpolate each motor independently
+                for motor in range(15):
+                    q0 = last_robot_position[motor]
+                    qf = tu.initial_point[motor]
+                    motor_traj = GuitarBotParser.interp_with_blend(
+                        q0, qf, num_transition_points, tu.TRAJECTORY_BLEND_PERCENT
+                    )
+                    reset_trajectory[:, motor] = motor_traj
+                
+                print(f"Generated reset trajectory: {reset_trajectory.shape}")
+                print(f"  First point: {reset_trajectory[0, :3]}... (should match last position)")
+                print(f"  Last point: {reset_trajectory[-1, :3]}... (should match initial_point)")
+                print(f"Executing reset motion...")
+                
+                # Send reset trajectory to robot
+                RobotController.main(reset_trajectory)
+                
+                # Update last robot position and reset parser states
+                last_robot_position = tu.initial_point.copy()
+                rh_parser.reset_positions()
+                lh_parser.reset_positions()
+                both_hands_parser.reset_all()
+                print("Reset complete. Robot and parsers at initial positions.")
+                
+                print("Reset complete. All motors returned to initial positions.")
+                
+        except queue.Empty:
+            pass
+        except Exception as e:
+            print(f"Error in reset_processor: {e}")
             traceback.print_exc()
         
         time.sleep(0.001)
@@ -322,10 +391,50 @@ def robot_controller():
                     print("Total Song Trajs Shape: ", song_trajectories_list.shape)
                     print("Starting Song")
                     RobotController.main(song_trajectories_list)
+                    
+                    # Update last robot position
+                    global last_robot_position
+                    last_robot_position = song_trajectories_list[-1, :].copy()
+                    print(f"Updated last_robot_position after song")
 
         except queue.Empty:
             pass
         time.sleep(0.001)
+
+def cleanup_and_reset():
+    """Send reset trajectory to robot before program exits."""
+    try:
+        global last_robot_position
+        
+        print("\n" + "="*60)
+        print("SHUTDOWN - Resetting robot to safe state")
+        print("="*60)
+        
+        # Generate smooth trajectory from current position to initial_point
+        print(f"Current robot position: {last_robot_position[:3]}...")
+        print(f"Target initial position: {tu.initial_point[:3]}...")
+        
+        num_transition_points = 200  # ~1.0 seconds
+        reset_trajectory = np.zeros((num_transition_points, 15))
+            
+        # Interpolate each motor
+        for motor in range(15):
+            q0 = last_robot_position[motor]
+            qf = tu.initial_point[motor]
+            motor_traj = GuitarBotParser.interp_with_blend(
+                q0, qf, num_transition_points, tu.TRAJECTORY_BLEND_PERCENT
+            )
+            reset_trajectory[:, motor] = motor_traj
+        
+        print(f"Sending reset trajectory ({reset_trajectory.shape[0]} points)...")
+        RobotController.main(reset_trajectory)
+        
+        print("Reset complete. Motors at safe initial positions.")
+        print("="*60 + "\n")
+        
+    except Exception as e:
+        print(f"Error during cleanup reset: {e}")
+        traceback.print_exc()
 
 if __name__ == "__main__":
     udp_thread = threading.Thread(target=udp_listener, daemon=True)
@@ -342,6 +451,9 @@ if __name__ == "__main__":
 
     fretting_thread = threading.Thread(target=fret_processor, daemon=True)
     fretting_thread.start()
+
+    reset_thread = threading.Thread(target=reset_processor, daemon=True)
+    reset_thread.start()
 
     robot_controller_thread = threading.Thread(target=robot_controller, daemon=True)
     robot_controller_thread.start()
@@ -363,9 +475,17 @@ if __name__ == "__main__":
     print("      /Fret 45 0.7            - Fret note 45 with 70% force, auto-pluck")
     print("      /Fret 45 0.7 100        - Fret note 45, 70% force, velocity 100")
     print("")
+    print("  /Reset - Return all motors to initial positions")
+    print("    Format:")
+    print("      /Reset                  - Resets all parser states and moves motors home")
+    print("")
+    print("NOTE: Robot will automatically reset to safe positions on program exit.")
+    print("")
 
     try:
         while True:
             time.sleep(0.1)
     except KeyboardInterrupt:
+        print("\nCtrl+C detected - shutting down...")
+        cleanup_and_reset()
         print("Program stopped.")

@@ -26,6 +26,7 @@ import pandas as pd
 from pathlib import Path
 from LeftHandParser import LeftHandParser
 from RightHandParser import RightHandParser
+from GuitarBotParser import GuitarBotParser
 import tune as tu
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
@@ -47,7 +48,7 @@ class BothHandsParser:
         print(f"Pluck delay: {self.pluck_delay_after_press:.3f}s after press")
         print(f"Settling time: {self.settling_time:.3f}s before pluck")
     
-    def parse_fret_with_pluck(self, midi_note, presser_force=None, pluck_velocity=None, timestamp=0.0, force_adjustment_only=False, unpress_after=True):
+    def parse_fret_with_pluck(self, midi_note, presser_force=None, pluck_velocity=None, timestamp=0.0, force_adjustment_only=False, unpress_after=False):
         """
         Parse /Fret message and generate coordinated fretting + plucking trajectory.
         
@@ -130,7 +131,7 @@ class BothHandsParser:
             
             # Scale factor: lower torque = more points (slower)
             # e.g., torque_ratio=1.0 → 1x points, torque_ratio=0.1 → 3x points
-            rest_scale_factor = 1.0 + (2.0 * (1.0 - torque_ratio))  # 1.0 to 3.0
+            rest_scale_factor = 4.0 + (3.0 * (1.0 - torque_ratio))  # 1.0 to 3.0
             
             rest_phase_points = int(tu.PRESSER_INTERPOLATION_POINTS * rest_scale_factor)
             rest_phase_duration = rest_phase_points * tu.TIME_STEP
@@ -173,7 +174,6 @@ class BothHandsParser:
         if unpress_after:
             # Generate REST trajectory for presser (current_torque → -650)
             # Uses scaled point count for slower release at lower torques
-            from GuitarBotParser import GuitarBotParser
             rest_points = GuitarBotParser.interp_with_blend(
                 current_presser_torque, 
                 tu.LH_PRESSER_UNPRESSED_POS,  # Return to unpressed (-650)
