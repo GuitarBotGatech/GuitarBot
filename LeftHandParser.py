@@ -592,10 +592,12 @@ class LeftHandParser:
         """
         # Check each string's MIDI range
         for string_id, (low_note, high_note, direction) in enumerate(tu.STRING_MIDI_RANGES):
+            if string_id is not 0:
+                string_id = string_id + 1 # TODO: lazy string ID fix
             if low_note <= midi_note <= high_note:
                 # Calculate fret number: fret = midi_note - open_string_note
                 fret_num = midi_note - low_note
-                if 0 <= fret_num <= 24:  # Valid fret range
+                if 0 <= fret_num <= 10:  # Valid fret range
                     return (string_id, fret_num)
         
         return None  # Note not playable on any string
