@@ -27,7 +27,7 @@ PRESSER_INTERPOLATION_POINTS = 10
 LH_SLIDER_MOTION_POINTS = 40
 
 # Number of interpolation points when the left hand is moving to a single note.
-LH_SINGLE_NOTE_MOTION_POINTS = 80
+LH_SINGLE_NOTE_MOTION_POINTS = 40
 
 # Number of interpolation points for a single pluck.
 PICKER_PLUCK_MOTION_POINTS = 11
