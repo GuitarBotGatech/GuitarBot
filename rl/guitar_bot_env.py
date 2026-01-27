@@ -32,6 +32,8 @@ from gymnasium import spaces
 from typing import Optional, Tuple, Dict, Any
 import sys
 from pathlib import Path
+import tempfile
+import os
 
 # Add parent directory to path for imports
 sys.path.insert(0, str(Path(__file__).parent.parent))
@@ -49,6 +51,11 @@ from rl.action_space import (
     SLIDER_MIN, SLIDER_MAX,
     TORQUE_MIN, TORQUE_MAX,
     MAX_FRET,
+    NUM_AUDIO_CLASSES,
+    AUDIO_CLASS_NAMES,
+    AUDIO_CLASS_HARMONIC,
+    AUDIO_CLASS_DEAD_NOTE,
+    AUDIO_CLASS_GENERAL_NOTE,
 )
 from rl.trajectory_generator import TrajectoryGenerator
 
@@ -131,6 +138,11 @@ class GuitarBotEnv(gym.Env):
         self._robot_controller = None
         self._audio_analyzer = None
         
+        # Audio classifier (lazily initialized)
+        self._audio_classifier = None
+        self._classifier_device = None
+        self._classifier_model_path = None
+        
         # Episode tracking
         self.step_count = 0
         self.max_steps = 100
@@ -162,6 +174,10 @@ class GuitarBotEnv(gym.Env):
             'spectral_flatness': np.array([0.5], dtype=np.float32),
             'fundamental_freq': np.array([0.0], dtype=np.float32),
             'onset_time': np.array([0.0], dtype=np.float32),
+            # Classifier outputs
+            'audio_class': 2,  # Default to general_note
+            'audio_class_probs': np.array([0.0, 0.0, 1.0], dtype=np.float32),
+            'audio_class_confidence': np.array([1.0], dtype=np.float32),
         }
         
     def _get_obs(self) -> Dict[str, np.ndarray]:
@@ -388,6 +404,26 @@ class GuitarBotEnv(gym.Env):
             self.audio_features['onset_time'] = np.array(
                 [0.05 + np.random.uniform(0, 0.02)], dtype=np.float32
             )
+            
+            # Simulate classification: pressed = general_note (90%), harmonic (10%)
+            if np.random.random() < 0.1:
+                # Rare harmonic
+                self.audio_features['audio_class'] = AUDIO_CLASS_HARMONIC
+                self.audio_features['audio_class_probs'] = np.array(
+                    [0.7, 0.1, 0.2], dtype=np.float32
+                )
+                self.audio_features['audio_class_confidence'] = np.array(
+                    [0.7], dtype=np.float32
+                )
+            else:
+                # Normal general note
+                self.audio_features['audio_class'] = AUDIO_CLASS_GENERAL_NOTE
+                self.audio_features['audio_class_probs'] = np.array(
+                    [0.1, 0.1, 0.8], dtype=np.float32
+                )
+                self.audio_features['audio_class_confidence'] = np.array(
+                    [0.8], dtype=np.float32
+                )
         else:
             # Muted/buzzy sound
             self.audio_features['peak_rms_db'] = np.array(
@@ -402,6 +438,24 @@ class GuitarBotEnv(gym.Env):
             self.audio_features['onset_time'] = np.array(
                 [0.1 + np.random.uniform(0, 0.1)], dtype=np.float32
             )
+            
+            # Simulate classification: unpressed = dead_note (70%), general (30%)
+            if np.random.random() < 0.7:
+                self.audio_features['audio_class'] = AUDIO_CLASS_DEAD_NOTE
+                self.audio_features['audio_class_probs'] = np.array(
+                    [0.1, 0.7, 0.2], dtype=np.float32
+                )
+                self.audio_features['audio_class_confidence'] = np.array(
+                    [0.7], dtype=np.float32
+                )
+            else:
+                self.audio_features['audio_class'] = AUDIO_CLASS_GENERAL_NOTE
+                self.audio_features['audio_class_probs'] = np.array(
+                    [0.15, 0.35, 0.5], dtype=np.float32
+                )
+                self.audio_features['audio_class_confidence'] = np.array(
+                    [0.5], dtype=np.float32
+                )
     
     def _hardware_step(self, motor_commands: Dict, pluck_triggered: bool):
         """
@@ -595,6 +649,208 @@ class GuitarBotEnv(gym.Env):
         except Exception as e:
             print(f"[GuitarBotEnv] Audio capture error: {e}")
     
+    def _init_classifier(self, model_path: Optional[str] = None):
+        """
+        Initialize the audio classifier model.
+        
+        Args:
+            model_path: Path to the trained model .pt file.
+                       If None, looks for default at ../HarmonicsClassifier/models/best_model.pt
+        """
+        try:
+            import torch
+            
+            # Add HarmonicsClassifier to path
+            classifier_path = Path(__file__).parent.parent.parent / "HarmonicsClassifier"
+            if classifier_path.exists():
+                sys.path.insert(0, str(classifier_path))
+            
+            from inference import HarmonicsCNN, load_model
+            
+            # Determine device
+            self._classifier_device = torch.device(
+                'cuda' if torch.cuda.is_available() else 'cpu'
+            )
+            
+            # Find model path
+            if model_path is None:
+                # Try default locations
+                default_paths = [
+                    classifier_path / "models" / "best_model.pt",
+                    Path(__file__).parent / "models" / "harmonics_classifier.pt",
+                ]
+                for p in default_paths:
+                    if p.exists():
+                        model_path = str(p)
+                        break
+            
+            if model_path is None or not Path(model_path).exists():
+                print(f"[GuitarBotEnv] Warning: Classifier model not found")
+                return
+            
+            self._classifier_model_path = model_path
+            self._audio_classifier, _ = load_model(model_path, self._classifier_device)
+            print(f"[GuitarBotEnv] Audio classifier loaded from {model_path}")
+            print(f"[GuitarBotEnv] Using device: {self._classifier_device}")
+            
+        except ImportError as e:
+            print(f"[GuitarBotEnv] Warning: Could not import classifier: {e}")
+            self._audio_classifier = None
+        except Exception as e:
+            print(f"[GuitarBotEnv] Warning: Classifier init error: {e}")
+            self._audio_classifier = None
+    
+    def classify_audio(
+        self, 
+        audio_path: Optional[str] = None,
+        audio_data: Optional[np.ndarray] = None,
+        sample_rate: int = 22050,
+        duration: float = 3.0,
+    ) -> Dict[str, Any]:
+        """
+        Classify audio using the harmonics classifier.
+        
+        Args:
+            audio_path: Path to audio file (wav, mp3, etc.)
+            audio_data: Raw audio samples as numpy array (alternative to audio_path)
+            sample_rate: Sample rate of audio_data (default 22050)
+            duration: Duration in seconds to analyze (default 3.0)
+            
+        Returns:
+            Dict with:
+                - 'class': Predicted class index (0=harmonic, 1=dead_note, 2=general_note)
+                - 'class_name': String name of predicted class
+                - 'confidence': Confidence of prediction (0.0-1.0)
+                - 'probabilities': Array of probabilities for each class
+        """
+        # Initialize classifier if needed
+        if self._audio_classifier is None:
+            self._init_classifier()
+        
+        if self._audio_classifier is None:
+            # Return default (general_note) if classifier unavailable
+            return {
+                'class': AUDIO_CLASS_GENERAL_NOTE,
+                'class_name': AUDIO_CLASS_NAMES[AUDIO_CLASS_GENERAL_NOTE],
+                'confidence': 0.0,
+                'probabilities': np.array([0.33, 0.33, 0.34], dtype=np.float32),
+            }
+        
+        try:
+            import torch
+            from inference import preprocess_audio, predict
+            
+            # Handle audio_data by saving to temp file if needed
+            temp_file = None
+            if audio_data is not None and audio_path is None:
+                import soundfile as sf
+                temp_file = tempfile.NamedTemporaryFile(
+                    suffix='.wav', delete=False
+                )
+                sf.write(temp_file.name, audio_data, sample_rate)
+                audio_path = temp_file.name
+            
+            if audio_path is None:
+                raise ValueError("Either audio_path or audio_data must be provided")
+            
+            # Preprocess and classify
+            audio_tensor = preprocess_audio(audio_path, duration=duration)
+            predicted_class, confidence, probabilities = predict(
+                self._audio_classifier, audio_tensor, self._classifier_device
+            )
+            
+            # Cleanup temp file
+            if temp_file is not None:
+                os.unlink(temp_file.name)
+            
+            # Update audio features with classification
+            self.audio_features['audio_class'] = predicted_class
+            self.audio_features['audio_class_probs'] = probabilities.astype(np.float32)
+            self.audio_features['audio_class_confidence'] = np.array(
+                [confidence], dtype=np.float32
+            )
+            
+            return {
+                'class': predicted_class,
+                'class_name': AUDIO_CLASS_NAMES[predicted_class],
+                'confidence': confidence,
+                'probabilities': probabilities,
+            }
+            
+        except Exception as e:
+            print(f"[GuitarBotEnv] Classification error: {e}")
+            return {
+                'class': AUDIO_CLASS_GENERAL_NOTE,
+                'class_name': AUDIO_CLASS_NAMES[AUDIO_CLASS_GENERAL_NOTE],
+                'confidence': 0.0,
+                'probabilities': np.array([0.33, 0.33, 0.34], dtype=np.float32),
+            }
+    
+    def classify_audio_from_capture(self, duration: float = 0.5) -> Dict[str, Any]:
+        """
+        Capture audio from the hardware and classify it.
+        
+        This is a convenience method that captures audio from the audio analyzer
+        and immediately classifies it.
+        
+        Args:
+            duration: Duration to capture in seconds
+            
+        Returns:
+            Classification result dict (see classify_audio)
+        """
+        if self._audio_analyzer is None:
+            print("[GuitarBotEnv] Warning: No audio analyzer initialized")
+            return self.classify_audio(audio_data=None)
+        
+        try:
+            # Capture audio
+            audio_data = self._audio_analyzer.capture(duration=duration)
+            sample_rate = getattr(self._audio_analyzer, 'sample_rate', 22050)
+            
+            # Classify
+            return self.classify_audio(
+                audio_data=audio_data,
+                sample_rate=sample_rate,
+                duration=duration
+            )
+        except Exception as e:
+            print(f"[GuitarBotEnv] Capture and classify error: {e}")
+            return self.classify_audio(audio_data=None)
+    
+    def get_audio_class_reward(self, target_class: int = AUDIO_CLASS_GENERAL_NOTE) -> float:
+        """
+        Compute reward based on audio classification.
+        
+        Args:
+            target_class: Target class index (0=harmonic, 1=dead_note, 2=general_note)
+            
+        Returns:
+            Reward value:
+                +1.0 if predicted class matches target
+                -0.5 if dead_note when target is general_note
+                +0.5 if harmonic when target is general_note (bonus for harmonics)
+                0.0 otherwise
+        """
+        predicted_class = self.audio_features.get('audio_class', AUDIO_CLASS_GENERAL_NOTE)
+        confidence = self.audio_features.get('audio_class_confidence', np.array([0.0]))[0]
+        
+        if predicted_class == target_class:
+            return 1.0 * confidence
+        
+        # Special cases
+        if target_class == AUDIO_CLASS_GENERAL_NOTE:
+            if predicted_class == AUDIO_CLASS_DEAD_NOTE:
+                return -0.5 * confidence  # Penalize dead notes
+            elif predicted_class == AUDIO_CLASS_HARMONIC:
+                return 0.5 * confidence  # Bonus for harmonics
+        
+        if target_class == AUDIO_CLASS_HARMONIC:
+            if predicted_class == AUDIO_CLASS_DEAD_NOTE:
+                return -1.0 * confidence  # Strong penalty
+        
+        return 0.0
+    
     def render(self):
         """Render current state."""
         if self.render_mode == "human":
@@ -612,6 +868,11 @@ class GuitarBotEnv(gym.Env):
         if self.include_audio:
             print(f"RMS: {self.audio_features['peak_rms_db'][0]:.1f} dB")
             print(f"Freq: {self.audio_features['fundamental_freq'][0]:.1f} Hz")
+            # Show classification
+            audio_class = self.audio_features.get('audio_class', 2)
+            confidence = self.audio_features.get('audio_class_confidence', np.array([0.0]))[0]
+            class_name = AUDIO_CLASS_NAMES[audio_class] if audio_class < len(AUDIO_CLASS_NAMES) else 'unknown'
+            print(f"Class: {class_name} ({confidence*100:.1f}% confidence)")
     
     def _render_image(self) -> np.ndarray:
         """Generate RGB image of state."""

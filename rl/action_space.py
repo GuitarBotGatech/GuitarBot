@@ -61,6 +61,13 @@ AUDIO_FREQ_MAX = 1000.0  # Hz (above high frets)
 AUDIO_ONSET_MIN = 0.0
 AUDIO_ONSET_MAX = 0.5   # seconds
 
+# Audio classifier classes (from HarmonicsClassifier)
+AUDIO_CLASS_NAMES = ['harmonic', 'dead_note', 'general_note']
+AUDIO_CLASS_HARMONIC = 0
+AUDIO_CLASS_DEAD_NOTE = 1
+AUDIO_CLASS_GENERAL_NOTE = 2
+NUM_AUDIO_CLASSES = 3
+
 
 # =============================================================================
 # Action Space Definitions
@@ -208,6 +215,16 @@ def create_observation_space(num_strings=1, include_audio=True):
             ),
             'onset_time': spaces.Box(
                 low=AUDIO_ONSET_MIN, high=AUDIO_ONSET_MAX,
+                shape=(1,), dtype=np.float32
+            ),
+            # Audio classifier outputs
+            'audio_class': spaces.Discrete(NUM_AUDIO_CLASSES),  # 0=harmonic, 1=dead_note, 2=general_note
+            'audio_class_probs': spaces.Box(
+                low=0.0, high=1.0,
+                shape=(NUM_AUDIO_CLASSES,), dtype=np.float32
+            ),
+            'audio_class_confidence': spaces.Box(
+                low=0.0, high=1.0,
                 shape=(1,), dtype=np.float32
             ),
         })
