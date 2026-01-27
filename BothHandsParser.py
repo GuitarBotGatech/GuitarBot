@@ -131,13 +131,13 @@ class BothHandsParser:
             
             # Scale factor: lower torque = more points (slower)
             # e.g., torque_ratio=1.0 → 1x points, torque_ratio=0.1 → 3x points
-            rest_scale_factor = 4.0 + (3.0 * (1.0 - torque_ratio))  # 1.0 to 3.0
+            rest_scale_factor = 1.0 + (3.0 * (1.0 - torque_ratio))  # 1.0 to 3.0
             
             rest_phase_points = int(tu.PRESSER_INTERPOLATION_POINTS * rest_scale_factor)
             rest_phase_duration = rest_phase_points * tu.TIME_STEP
         else:
-            rest_phase_points = 0
-            rest_phase_duration = 0
+            rest_phase_points = 100 #TODO: magic number alert
+            rest_phase_duration = rest_phase_points * tu.TIME_STEP
         
         total_duration = pluck_timestamp + pluck_motion_duration + rest_phase_duration + (50 * tu.TIME_STEP)
         

@@ -30,6 +30,7 @@ song_trajs_queue = queue.SimpleQueue()
 data_queue = queue.SimpleQueue()
 fret_queue = queue.SimpleQueue()
 reset_queue = queue.SimpleQueue()
+config_queue = queue.SimpleQueue()
 
 # Initialize parsers
 rh_parser = RightHandParser()  # For /Dyn messages (pluck only)
@@ -39,11 +40,15 @@ both_hands_parser = BothHandsParser()  # For /Fret messages (coordinated fret + 
 # Track the actual robot position (last trajectory endpoint sent to RobotController)
 last_robot_position = tu.initial_point.copy()  # Start at initial position
 
+# Runtime configuration flags (can be updated via /Config messages)
+unpress_after_flag = False  # Default: don't release presser after pluck
+force_adjustment_only_flag = False  # Default: normal fretting behavior
+
 def decode_osc_message(data):
     print("Message In")
     try:
         msg = OscMessage(data)
-        if msg.address in ["/Chords", "/Strum", "/Pluck", "/Dyn", "/Fret", "/Reset"]:
+        if msg.address in ["/Chords", "/Strum", "/Pluck", "/Dyn", "/Fret", "/Reset", "/Config"]:
             return msg.address[1:], msg.params  # Remove the leading '/'
     except osc_types.ParseError:
         print("Failed to parse OSC message")
@@ -83,6 +88,8 @@ def process_messages():
                     fret_queue.put(data)
                 elif message_type == "Reset":
                     reset_queue.put(data)
+                elif message_type == "Config":
+                    config_queue.put(data)
                 # print(f"Chords Queue Size1", chords_queue.qsize())
                 # print(f"Pluck Queue Size1", pluck_queue.qsize())
         except queue.Empty:
@@ -299,7 +306,9 @@ def fret_processor():
                     midi_note=midi_note,
                     presser_force=presser_force,
                     pluck_velocity=pluck_velocity,
-                    timestamp=0.0
+                    timestamp=0.0,
+                    force_adjustment_only=force_adjustment_only_flag,
+                    unpress_after=unpress_after_flag
                 )
                 
                 if trajectory_array.size == 0:
@@ -325,6 +334,132 @@ def fret_processor():
         
         time.sleep(0.001)
 
+def config_processor():
+    """
+    Process /Config messages to update runtime flags.
+    
+    Supported flags:
+    - graph: Enable/disable trajectory plotting (True/False)
+    - unpress_after: Release presser after pluck (True/False)
+    - force_adjustment_only: Skip unpress phase when adjusting force (True/False)
+    - blend_percent: Trajectory blend percentage (0.0-1.0)
+    - presser_points: Presser interpolation points (int)
+    - slider_points: Slider motion points (int)
+    - picker_points: Picker pluck motion points (int)
+    - lh_prep_time: Left hand prep time before pick (seconds, float)
+    
+    Message formats:
+    /Config "graph" True
+    /Config "unpress_after" False
+    /Config "blend_percent" 0.3
+    /Config "presser_points" 15
+    """
+    while True:
+        try:
+            while not config_queue.empty():
+                config_data = config_queue.get_nowait()
+                print(f"Processing /Config message: {config_data}")
+                
+                if len(config_data) < 2:
+                    print("Error: /Config requires [flag_name, value]")
+                    continue
+                
+                flag_name = config_data[0]
+                flag_value = config_data[1]
+                
+                # Boolean flags
+                if flag_name == "graph":
+                    tu.graph = bool(flag_value)
+                    print(f"  ✓ Set tu.graph = {tu.graph}")
+                    
+                elif flag_name == "unpress_after":
+                    # This is a parser-level flag, not in tune.py
+                    # We'll store it as a global that parsers can access
+                    global unpress_after_flag
+                    unpress_after_flag = bool(flag_value)
+                    print(f"  ✓ Set unpress_after = {unpress_after_flag}")
+                    print("    Note: This affects new /Fret messages only")
+                    
+                elif flag_name == "force_adjustment_only":
+                    # Parser-level flag for force testing
+                    global force_adjustment_only_flag
+                    force_adjustment_only_flag = bool(flag_value)
+                    print(f"  ✓ Set force_adjustment_only = {force_adjustment_only_flag}")
+                    print("    Note: This affects new /Fret messages only")
+                
+                # Numeric tuning parameters
+                elif flag_name == "blend_percent":
+                    try:
+                        value = float(flag_value)
+                        if 0.0 <= value <= 1.0:
+                            tu.TRAJECTORY_BLEND_PERCENT = value
+                            print(f"  ✓ Set tu.TRAJECTORY_BLEND_PERCENT = {value}")
+                        else:
+                            print(f"  ✗ Error: blend_percent must be 0.0-1.0 (got {value})")
+                    except ValueError:
+                        print(f"  ✗ Error: Invalid float value: {flag_value}")
+                        
+                elif flag_name == "presser_points":
+                    try:
+                        value = int(flag_value)
+                        if value > 0:
+                            tu.PRESSER_INTERPOLATION_POINTS = value
+                            print(f"  ✓ Set tu.PRESSER_INTERPOLATION_POINTS = {value}")
+                            print(f"    Duration: {value * tu.TIME_STEP * 1000:.1f}ms")
+                        else:
+                            print(f"  ✗ Error: presser_points must be > 0")
+                    except ValueError:
+                        print(f"  ✗ Error: Invalid int value: {flag_value}")
+                        
+                elif flag_name == "slider_points":
+                    try:
+                        value = int(flag_value)
+                        if value > 0:
+                            tu.LH_SLIDER_MOTION_POINTS = value
+                            print(f"  ✓ Set tu.LH_SLIDER_MOTION_POINTS = {value}")
+                            print(f"    Duration: {value * tu.TIME_STEP * 1000:.1f}ms")
+                        else:
+                            print(f"  ✗ Error: slider_points must be > 0")
+                    except ValueError:
+                        print(f"  ✗ Error: Invalid int value: {flag_value}")
+                        
+                elif flag_name == "picker_points":
+                    try:
+                        value = int(flag_value)
+                        if value > 0:
+                            tu.PICKER_PLUCK_MOTION_POINTS = value
+                            print(f"  ✓ Set tu.PICKER_PLUCK_MOTION_POINTS = {value}")
+                            print(f"    Duration: {value * tu.TIME_STEP * 1000:.1f}ms")
+                        else:
+                            print(f"  ✗ Error: picker_points must be > 0")
+                    except ValueError:
+                        print(f"  ✗ Error: Invalid int value: {flag_value}")
+                        
+                elif flag_name == "lh_prep_time":
+                    try:
+                        value = float(flag_value)
+                        if value >= 0.0:
+                            tu.LH_PREP_TIME_BEFORE_PICK = value
+                            print(f"  ✓ Set tu.LH_PREP_TIME_BEFORE_PICK = {value}s")
+                        else:
+                            print(f"  ✗ Error: lh_prep_time must be >= 0")
+                    except ValueError:
+                        print(f"  ✗ Error: Invalid float value: {flag_value}")
+                
+                else:
+                    print(f"  ✗ Unknown flag: {flag_name}")
+                    print("    Available flags: graph, unpress_after, force_adjustment_only,")
+                    print("                     blend_percent, presser_points, slider_points,")
+                    print("                     picker_points, lh_prep_time")
+                
+        except queue.Empty:
+            pass
+        except Exception as e:
+            print(f"Error in config_processor: {e}")
+            traceback.print_exc()
+        
+        time.sleep(0.001)
+
 def reset_processor():
     """Process /Reset messages to return motors to initial positions."""
     while True:
@@ -340,23 +475,52 @@ def reset_processor():
                 print(f"Current robot position (last endpoint): {last_robot_position}")
                 print(f"Target positions: {tu.initial_point}")
                 
-                # Create smooth interpolated trajectory from last known position to initial_point
-                num_transition_points = 200  # ~1.0 seconds at 5ms timesteps
-                reset_trajectory = np.zeros((num_transition_points, 15))
+                # PHASE 1: Safely unpress all pressers first (motors 6-11)
+                # This prevents string damage from moving sliders while pressed
+                unpress_points = 400  # ~2000ms to unpress #TODO: magic numbers
+                unpress_trajectory = np.zeros((unpress_points, 15))
                 
-                # Interpolate each motor independently
                 for motor in range(15):
                     q0 = last_robot_position[motor]
-                    qf = tu.initial_point[motor]
+                    
+                    if 6 <= motor <= 11:  # Pressers
+                        # Move to unpressed position
+                        qf = tu.LH_PRESSER_UNPRESSED_POS
+                    else:  # Sliders and pickers
+                        # Hold current position
+                        qf = q0
+                    
                     motor_traj = GuitarBotParser.interp_with_blend(
-                        q0, qf, num_transition_points, tu.TRAJECTORY_BLEND_PERCENT
+                        q0, qf, unpress_points, tu.TRAJECTORY_BLEND_PERCENT
                     )
-                    reset_trajectory[:, motor] = motor_traj
+                    unpress_trajectory[:, motor] = motor_traj
+                
+                print(f"  Phase 1: Unpressing pressers ({unpress_points} points, {unpress_points * 5}ms)...")
+                
+                # PHASE 2: Home sliders and pickers while keeping pressers unpressed
+                home_points = 200  # ~1.0 seconds for smooth homing
+                home_trajectory = np.zeros((home_points, 15))
+                
+                # Starting position is the end of phase 1
+                phase1_end = unpress_trajectory[-1, :]
+                
+                for motor in range(15):
+                    q0 = phase1_end[motor]
+                    qf = tu.initial_point[motor]
+                    
+                    motor_traj = GuitarBotParser.interp_with_blend(
+                        q0, qf, home_points, tu.TRAJECTORY_BLEND_PERCENT
+                    )
+                    home_trajectory[:, motor] = motor_traj
+                
+                print(f"  Phase 2: Homing sliders and pickers ({home_points} points, {home_points * 5}ms)...")
+                
+                # Combine both phases
+                reset_trajectory = np.vstack([unpress_trajectory, home_trajectory])
                 
                 print(f"Generated reset trajectory: {reset_trajectory.shape}")
-                print(f"  First point: {reset_trajectory[0, :3]}... (should match last position)")
-                print(f"  Last point: {reset_trajectory[-1, :3]}... (should match initial_point)")
-                print(f"Executing reset motion...")
+                print(f"  Total duration: {reset_trajectory.shape[0] * 5}ms")
+                print(f"Executing safe reset motion...")
                 
                 # Send reset trajectory to robot
                 RobotController.main(reset_trajectory)
@@ -414,19 +578,44 @@ def cleanup_and_reset():
         print(f"Current robot position: {last_robot_position[:3]}...")
         print(f"Target initial position: {tu.initial_point[:3]}...")
         
-        num_transition_points = 200  # ~1.0 seconds
-        reset_trajectory = np.zeros((num_transition_points, 15))
-            
-        # Interpolate each motor
+        # PHASE 1: Safely unpress all pressers first
+        unpress_points = 100  # ~500ms
+        unpress_trajectory = np.zeros((unpress_points, 15))
+        
         for motor in range(15):
             q0 = last_robot_position[motor]
+            
+            if 6 <= motor <= 11:  # Pressers
+                qf = tu.LH_PRESSER_UNPRESSED_POS
+            else:  # Sliders and pickers - hold position
+                qf = q0
+            
+            motor_traj = GuitarBotParser.interp_with_blend(
+                q0, qf, unpress_points, tu.TRAJECTORY_BLEND_PERCENT
+            )
+            unpress_trajectory[:, motor] = motor_traj
+        
+        print(f"Phase 1: Unpressing pressers ({unpress_points * 5}ms)...")
+        
+        # PHASE 2: Home sliders and pickers
+        home_points = 200  # ~1.0 seconds
+        home_trajectory = np.zeros((home_points, 15))
+        phase1_end = unpress_trajectory[-1, :]
+        
+        for motor in range(15):
+            q0 = phase1_end[motor]
             qf = tu.initial_point[motor]
             motor_traj = GuitarBotParser.interp_with_blend(
-                q0, qf, num_transition_points, tu.TRAJECTORY_BLEND_PERCENT
+                q0, qf, home_points, tu.TRAJECTORY_BLEND_PERCENT
             )
-            reset_trajectory[:, motor] = motor_traj
+            home_trajectory[:, motor] = motor_traj
         
-        print(f"Sending reset trajectory ({reset_trajectory.shape[0]} points)...")
+        print(f"Phase 2: Homing sliders and pickers ({home_points * 5}ms)...")
+        
+        # Combine phases
+        reset_trajectory = np.vstack([unpress_trajectory, home_trajectory])
+        
+        print(f"Sending safe reset trajectory ({reset_trajectory.shape[0]} points, {reset_trajectory.shape[0] * 5}ms total)...")
         RobotController.main(reset_trajectory)
         
         print("Reset complete. Motors at safe initial positions.")
@@ -455,6 +644,9 @@ if __name__ == "__main__":
     reset_thread = threading.Thread(target=reset_processor, daemon=True)
     reset_thread.start()
 
+    config_thread = threading.Thread(target=config_processor, daemon=True)
+    config_thread.start()
+
     robot_controller_thread = threading.Thread(target=robot_controller, daemon=True)
     robot_controller_thread.start()
 
@@ -478,6 +670,19 @@ if __name__ == "__main__":
     print("  /Reset - Return all motors to initial positions")
     print("    Format:")
     print("      /Reset                  - Resets all parser states and moves motors home")
+    print("")
+    print("  /Config - Update runtime configuration flags")
+    print("    Format:")
+    print("      /Config \"graph\" True       - Enable/disable trajectory plotting")
+    print("      /Config \"unpress_after\" True - Release presser after pluck")
+    print("      /Config \"blend_percent\" 0.3  - Set trajectory blend (0.0-1.0)")
+    print("      /Config \"presser_points\" 15   - Set presser motion points")
+    print("      /Config \"slider_points\" 50    - Set slider motion points")
+    print("      /Config \"picker_points\" 20    - Set picker pluck points")
+    print("      /Config \"lh_prep_time\" 0.5    - Set LH prep time (seconds)")
+    print("    Available flags: graph, unpress_after, force_adjustment_only,")
+    print("                     blend_percent, presser_points, slider_points,")
+    print("                     picker_points, lh_prep_time")
     print("")
     print("NOTE: Robot will automatically reset to safe positions on program exit.")
     print("")
