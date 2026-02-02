@@ -361,6 +361,68 @@ class RecordingTestSession:
                 print(f"Waiting {delay_between}s before next repetition...")
                 time.sleep(delay_between)
     
+    def test_rlfret_sweep(self, 
+                          string_indices=[0, 2, 4], 
+                          fret_range=(0, 12), 
+                          force_levels=[0.3, 0.5, 0.7, 0.9],
+                          delay_between=5.0):
+        """
+        Sweep through /RLFret messages to sample each fret on each string at different forces.
+        
+        Args:
+            string_indices: List of string indices to test (default: [0, 2, 4] for low E, D, B strings)
+            fret_range: Tuple of (min_fret, max_fret) inclusive (default: 0-12)
+            force_levels: List of force values to test (0.0-1.0) (default: [0.3, 0.5, 0.7, 0.9])
+            delay_between: Delay between tests in seconds (default: 5.0)
+        
+        Example:
+            # Test strings 0, 2, 4; frets 0-12; forces 0.3, 0.5, 0.7, 0.9
+            session.test_rlfret_sweep()
+            
+            # Custom configuration
+            session.test_rlfret_sweep(
+                string_indices=[0, 1, 2, 3, 4, 5],  # All 6 strings
+                fret_range=(0, 5),                  # Only first 5 frets
+                force_levels=[0.4, 0.6, 0.8],       # Three force levels
+                delay_between=4.0
+            )
+        """
+        min_fret, max_fret = fret_range
+        frets = list(range(min_fret, max_fret + 1))
+        
+        total_tests = len(string_indices) * len(frets) * len(force_levels)
+        
+        print(f"\n{'='*60}")
+        print(f"RL FRET SWEEP TEST")
+        print(f"String indices: {string_indices}")
+        print(f"Fret range: {min_fret}-{max_fret} ({len(frets)} frets)")
+        print(f"Force levels: {force_levels}")
+        print(f"Total tests: {total_tests}")
+        print(f"Estimated duration: {(total_tests * delay_between) / 60:.1f} minutes")
+        print(f"{'='*60}\n")
+        
+        test_num = 0
+        for string_idx in string_indices:
+            for fret in frets:
+                for force in force_levels:
+                    test_num += 1
+                    test_info = {
+                        'test_type': 'rlfret_sweep',
+                        'string_index': string_idx,
+                        'fret': fret,
+                        'force_level': force,
+                        'parameter': f'str{string_idx}_fret{fret}_force{force:.2f}',
+                        'sweep_progress': f'{test_num}/{total_tests}'
+                    }
+                    
+                    print(f"[{test_num}/{total_tests}] String {string_idx}, Fret {fret}, Force {force:.2f}")
+                    self.execute_test("/RLFret", [string_idx, fret, force], test_info)
+                    
+                    # Delay between tests (except for the last one)
+                    if test_num < total_tests:
+                        print(f"Waiting {delay_between}s before next test...")
+                        time.sleep(delay_between)
+    
     def export_session_summary(self):
         """Export session summary to CSV and JSON files."""
         # CSV export
@@ -557,6 +619,41 @@ def protocol_custom_test():
     session.close_session()
 
 
+def protocol_rlfret_sweep():
+    """Protocol: Sweep through /RLFret messages for RL training dataset."""
+    session = RecordingTestSession(session_name="rlfret_sweep")
+    
+    # Configurable parameters - adjust these as needed
+    string_indices = [0, 2, 4]  # Low E, D, B strings
+    fret_range = (0, 12)         # Frets 0-12
+    force_levels = [0.3, 0.5, 0.7, 0.9]  # Four force levels
+    delay_between = 5.0          # 5 seconds between tests
+    
+    session.test_rlfret_sweep(
+        string_indices=string_indices,
+        fret_range=fret_range,
+        force_levels=force_levels,
+        delay_between=delay_between
+    )
+    
+    session.close_session()
+
+
+def protocol_rlfret_quick_test():
+    """Protocol: Quick RLFret test with fewer samples (for testing setup)."""
+    session = RecordingTestSession(session_name="rlfret_quick_test")
+    
+    # Quick test: just 2 strings, 3 frets, 2 forces = 12 tests
+    session.test_rlfret_sweep(
+        string_indices=[0, 2],      # Just low E and D strings
+        fret_range=(0, 2),           # Just frets 0, 1, 2
+        force_levels=[0.5, 0.8],     # Just two force levels
+        delay_between=4.0
+    )
+    
+    session.close_session()
+
+
 # Main execution
 if __name__ == "__main__":
     import sys
@@ -573,13 +670,15 @@ if __name__ == "__main__":
     print("  2. Fretting Force Optimization")
     print("  3. Repeatability Test")
     print("  4. Custom Test (original pattern)")
-    print("  5. Quick Demo")
+    print("  5. RLFret Sweep (full dataset)")
+    print("  6. RLFret Quick Test (small sample)")
+    print("  7. Quick Demo")
     print()
     
     if len(sys.argv) > 1:
         protocol = sys.argv[1]
     else:
-        protocol = input("Select protocol (1-5) or press Enter for demo: ").strip()
+        protocol = input("Select protocol (1-7) or press Enter for demo: ").strip()
     
     if protocol == "1":
         protocol_dynamics_sweep()
@@ -589,6 +688,10 @@ if __name__ == "__main__":
         protocol_repeatability_test()
     elif protocol == "4":
         protocol_custom_test()
+    elif protocol == "5":
+        protocol_rlfret_sweep()
+    elif protocol == "6":
+        protocol_rlfret_quick_test()
     else:
         # Quick demo - just a few tests
         print("\n=== Running Quick Demo ===\n")

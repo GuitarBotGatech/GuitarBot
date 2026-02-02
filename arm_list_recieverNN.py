@@ -29,6 +29,7 @@ initial_point_queue = queue.SimpleQueue()
 song_trajs_queue = queue.SimpleQueue()
 data_queue = queue.SimpleQueue()
 fret_queue = queue.SimpleQueue()
+rlfret_queue = queue.SimpleQueue()  # Queue for RL low-level fret commands
 reset_queue = queue.SimpleQueue()
 config_queue = queue.SimpleQueue()
 
@@ -48,7 +49,7 @@ def decode_osc_message(data):
     print("Message In")
     try:
         msg = OscMessage(data)
-        if msg.address in ["/Chords", "/Strum", "/Pluck", "/Dyn", "/Fret", "/Reset", "/Config"]:
+        if msg.address in ["/Chords", "/Strum", "/Pluck", "/Dyn", "/Fret", "/RLFret", "/Reset", "/Config"]:
             return msg.address[1:], msg.params  # Remove the leading '/'
     except osc_types.ParseError:
         print("Failed to parse OSC message")
@@ -86,6 +87,8 @@ def process_messages():
                     dyn_queue.put(data)
                 elif message_type == "Fret":
                     fret_queue.put(data)
+                elif message_type == "RLFret":
+                    rlfret_queue.put(data)
                 elif message_type == "Reset":
                     reset_queue.put(data)
                 elif message_type == "Config":
@@ -333,6 +336,96 @@ def fret_processor():
             traceback.print_exc()
         
         time.sleep(0.001)
+
+
+def rlfret_processor():
+    """
+    Process /RLFret messages for RL low-level control.
+    
+    This is the primary interface for RL agents to control the robot.
+    Uses fractional frets and raw torque for fine-grained control.
+    
+    OSC Format: /RLFret <string_idx> <fret_position> <torque> [pluck_velocity]
+    
+    Parameters:
+        string_idx: String index (0, 2, or 4 - must have plucker)
+        fret_position: Fractional fret position (0.0 - 9.0)
+        torque: Fretting torque (0 - 1000, where 1000 = 100% motor rating)
+        pluck_velocity: Optional pluck velocity (0-127), defaults to state toggle
+    
+    Examples:
+        /RLFret 0 4.0 100      - String 0, fret 4 (harmonic), light touch
+        /RLFret 2 5.5 400      - String 2, between frets 5-6, normal press
+        /RLFret 4 7.0 150 80   - String 4, fret 7 (harmonic), light touch, velocity 80
+    """
+    while True:
+        try:
+            while not rlfret_queue.empty():
+                rlfret_data = rlfret_queue.get_nowait()
+                print(f"Processing /RLFret message: {rlfret_data}")
+                
+                # Parse /RLFret message data
+                # Expected formats:
+                # [string_idx, fret_position, torque] - basic
+                # [string_idx, fret_position, torque, pluck_velocity] - with velocity
+                
+                if len(rlfret_data) < 3:
+                    print("Error: /RLFret requires at least [string_idx, fret_position, torque]")
+                    continue
+                
+                string_idx = int(rlfret_data[0])
+                fret_position = float(rlfret_data[1])
+                torque = float(rlfret_data[2])
+                pluck_velocity = None
+                
+                if len(rlfret_data) >= 4:
+                    pluck_velocity = int(rlfret_data[3])
+                
+                # Validate string has a plucker
+                PLAYABLE_STRINGS = [0, 2, 4]
+                if string_idx not in PLAYABLE_STRINGS:
+                    print(f"Error: String {string_idx} has no plucker. Use strings {PLAYABLE_STRINGS}")
+                    continue
+                
+                # Clamp values to valid ranges
+                fret_position = max(0.0, min(9.0, fret_position))
+                torque = max(0.0, min(1000.0, torque))
+                
+                print(f"  String: {string_idx}, Fret: {fret_position:.2f}, Torque: {torque:.0f}, Velocity: {pluck_velocity}")
+                
+                # Generate coordinated trajectory using BothHandsParser
+                trajectory_array = both_hands_parser.parse_rlfret_with_pluck(
+                    string_idx=string_idx,
+                    fret_position=fret_position,
+                    torque=torque,
+                    pluck_velocity=pluck_velocity,
+                    timestamp=0.0,
+                    unpress_after=unpress_after_flag
+                )
+                
+                if trajectory_array.size == 0:
+                    print("Error: Failed to generate trajectory")
+                    continue
+                
+                print(f"Generated trajectory shape: {trajectory_array.shape}")
+                print(f"Executing RL fret + pluck")
+                
+                # Send to robot controller
+                RobotController.main(trajectory_array)
+                
+                # Update last robot position
+                global last_robot_position
+                last_robot_position = trajectory_array[-1, :].copy()
+                print(f"Updated last_robot_position after /RLFret")
+                
+        except queue.Empty:
+            pass
+        except Exception as e:
+            print(f"Error in rlfret_processor: {e}")
+            traceback.print_exc()
+        
+        time.sleep(0.001)
+
 
 def config_processor():
     """
@@ -641,6 +734,9 @@ if __name__ == "__main__":
     fretting_thread = threading.Thread(target=fret_processor, daemon=True)
     fretting_thread.start()
 
+    rlfret_thread = threading.Thread(target=rlfret_processor, daemon=True)
+    rlfret_thread.start()
+
     reset_thread = threading.Thread(target=reset_processor, daemon=True)
     reset_thread.start()
 
@@ -666,6 +762,17 @@ if __name__ == "__main__":
     print("      /Fret 45                - Fret note 45 with default force, auto-pluck")
     print("      /Fret 45 0.7            - Fret note 45 with 70% force, auto-pluck")
     print("      /Fret 45 0.7 100        - Fret note 45, 70% force, velocity 100")
+    print("")
+    print("  /RLFret - RL low-level fret + pluck (fractional frets, raw torque)")
+    print("    Format: /RLFret <string_idx> <fret_position> <torque> [pluck_velocity]")
+    print("      string_idx: 0, 2, or 4 (strings with pluckers)")
+    print("      fret_position: 0.0-9.0 (fractional fret, e.g., 4.0, 5.5, 7.0)")
+    print("      torque: 0-1000 (fretting pressure, 100=light, 400=normal)")
+    print("      pluck_velocity: 0-127 (optional, defaults to state toggle)")
+    print("    Examples:")
+    print("      /RLFret 0 4.0 100       - String 0, fret 4 harmonic, light touch")
+    print("      /RLFret 2 5.0 150       - String 2, fret 5 harmonic, light touch")
+    print("      /RLFret 4 7.0 100 80    - String 4, fret 7, light touch, velocity 80")
     print("")
     print("  /Reset - Return all motors to initial positions")
     print("    Format:")

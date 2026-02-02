@@ -22,7 +22,8 @@ def main():
     # pluck_message = gen.scale(duration=0.69,slide_toggle=True, true_dur=0.1)
     # chords_message = [['On', gen.final_dur]]
 
-    send_osc_message(client, "/Fret", [52, 1.0])
+    # send_osc_message(client, "/Fret", [52, 1.0])
+    # send_osc_message(client, "/RLFret", [0, 7.15, 50]) # -> this one made a harmonic yoooo
     # send_osc_message(client, "/Config", ["graph", False])
     # send_osc_message(client, "/Reset", [])
     # send_osc_message(client, "/Dyn", [[41, 40], [127, 0]])
