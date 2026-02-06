@@ -4,7 +4,7 @@
 // Modified for general send_msg + executeCommand by Shayahn Mirfendereski 10/30/24
 // Modified for executeEvent()
 // Modified by Derrick 11/14/2024 at 5:49pm
-//
+
 #include "src/strikerController.h"
 #include "src/logger.h"
 #include <SPI.h>
