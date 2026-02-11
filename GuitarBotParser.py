@@ -1,6 +1,7 @@
 import numpy as np
 import matplotlib.pyplot as plt
 import math
+# This is a custom module you will need in your environment.
 from parsing.chord_selector import find_lowest_cost_chord
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
@@ -168,9 +169,26 @@ class GuitarBotParser:
     def lh_interpolate(self, lh_motor_positions, lh_pick_pos, initial_point,
                               num_points=tu.PRESSER_INTERPOLATION_POINTS,
                               tb_cent=tu.TRAJECTORY_BLEND_PERCENT, plot=False):
-        initial_point_lh = initial_point[0:12]
+        motor_available_time = {i: 0.0 for i in range(6)}
 
-        # --- START: Robust max_timestamp calculation ---
+        # Calculate how long a single fretting motion takes
+        single_note_duration = self.get_lh_note_movement_duration()
+
+        filtered_lh_pick_pos = []
+        for motor_id, position, slide_toggle, timestamp in lh_pick_pos:
+            # Check if the motor is available at the required start time
+            if timestamp >= motor_available_time.get(motor_id, 0.0):
+                filtered_lh_pick_pos.append([motor_id, position, slide_toggle, timestamp])
+
+                # Update the time this motor will next be available
+                motor_available_time[motor_id] = timestamp + single_note_duration
+            else:
+                # This event is too close to the previous one for the same finger, so we skip it.
+                print(f"Skipping overlapping LH note event for motor {motor_id} at timestamp {timestamp}")
+
+        # Use the filtered list for the rest of the function
+        lh_pick_pos = filtered_lh_pick_pos
+        initial_point_lh = initial_point[0:12]
         all_events_for_sizing = []
         if lh_motor_positions:
             for _, timestamp in lh_motor_positions:
@@ -178,7 +196,6 @@ class GuitarBotParser:
 
         if lh_pick_pos:
             for _, _, _, timestamp in lh_pick_pos:
-                # Ensure timestamps are not negative, which can happen with LH_PREP_TIME
                 if timestamp >= 0:
                     all_events_for_sizing.append({'timestamp': timestamp, 'type': 'note'})
 
@@ -457,13 +474,34 @@ class GuitarBotParser:
         return lh_motor_positions
 
     def parsePickMIDI(self, picks):
+        """
+        Parses picking MIDI commands and converts them into motor positions.
+        Allows for optional manual string assignment for each pick.
+        Args:
+            picks (list of tuples): A list where each tuple represents a picking event.
+                The tuple format can be either:
+                (note, duration, speed, slide_toggle, timestamp) for automatic string assignment,
+                OR
+                (note, duration, speed, slide_toggle, timestamp, string) for manual assignment,
+                where 'string' is an integer from 1 to 6.
+        Returns:
+            tuple: A tuple containing:
+                - pick_motor_positions (list): A list of motor position events for the picking mechanism.
+                - slide_toggles (list): A list of boolean slide toggles corresponding to each pick.
+        """
         pick_events = []
         slide_toggles = []
         string_ranges_tuples = [(r[0], r[1]) for r in tu.STRING_MIDI_RANGES]
         active_pickers = [-.5] * len(string_ranges_tuples)
         last_notes = [None] * len(string_ranges_tuples)
 
-        for note, duration, speed, slide_toggle, timestamp in picks:
+        for pick_info in picks:
+            if len(pick_info) == 6:
+                note, duration, speed, slide_toggle, specified_string, timestamp = pick_info
+            else:
+                note, duration, speed, slide_toggle, timestamp = pick_info
+                specified_string = None
+
             slide_toggles.append(slide_toggle)
             assigned = False
             timestamp = round(timestamp * tu.TIMESTAMP_ROUNDING_FACTOR) / tu.TIMESTAMP_ROUNDING_FACTOR
@@ -471,15 +509,35 @@ class GuitarBotParser:
             if duration < tu.TREMOLO_DURATION_THRESHOLD:
                 duration = tu.SHORT_NOTE_DEFAULT_DURATION
 
-            for pickerID, (low, high) in enumerate(string_ranges_tuples):
-                if low <= note <= high:
-                    prep_time = (2 * tu.PRESSER_INTERPOLATION_POINTS + tu.LH_SINGLE_NOTE_MOTION_POINTS) * tu.TIME_STEP
-                    if last_notes[pickerID] == note or timestamp - prep_time >= active_pickers[pickerID]:
-                        pick_events.append(["pick", [pickerID, note, duration, speed, timestamp]])
-                        active_pickers[pickerID] = timestamp
-                        last_notes[pickerID] = note
-                        assigned = True
-                        break
+            prep_time = (2 * tu.PRESSER_INTERPOLATION_POINTS + tu.LH_SINGLE_NOTE_MOTION_POINTS) * tu.TIME_STEP
+
+            if specified_string is not None:
+                pickerID = specified_string - 1
+                if 0 <= pickerID < len(string_ranges_tuples):
+                    low, high = string_ranges_tuples[pickerID]
+                    if low <= note <= high:
+                        if last_notes[pickerID] == note or timestamp - prep_time >= active_pickers[pickerID]:
+                            pick_events.append(["pick", [pickerID, note, duration, speed, timestamp]])
+                            active_pickers[pickerID] = timestamp
+                            last_notes[pickerID] = note
+                            assigned = True
+                    else:
+                        print(f"Warning: Note {note} is not playable on specified string {specified_string}. Falling back to auto-assignment.")
+                else:
+                    print(f"Warning: Invalid string {specified_string} specified. Falling back to auto-assignment.")
+
+            # 2. Fallback to automatic assignment if no string was specified or if the specified one failed
+            if not assigned:
+                for pickerID, (low, high) in enumerate(string_ranges_tuples):
+                    if low <= note <= high:
+                        if last_notes[pickerID] == note or timestamp - prep_time >= active_pickers[pickerID]:
+                            pick_events.append(["pick", [pickerID, note, duration, speed, timestamp]])
+                            active_pickers[pickerID] = timestamp
+                            last_notes[pickerID] = note
+                            assigned = True
+                            break
+
+            # 3. If still not assigned after all attempts, print a warning
             if not assigned:
                 print(f"Warning: No available picker for note {note} at timestamp {timestamp}")
 
@@ -600,6 +658,11 @@ class GuitarBotParser:
             fill_array = np.full(int(period // tstep), tremoloArray[-1])
             tremoloArray.extend(fill_array)
         return tremoloArray
+
+    def get_lh_note_movement_duration(self):
+        # Calculates the time it takes for a finger to fret a single note
+        num_points = tu.PRESSER_INTERPOLATION_POINTS + tu.LH_SINGLE_NOTE_MOTION_POINTS + tu.PRESSER_INTERPOLATION_POINTS
+        return num_points * tu.TIME_STEP
 
     def scaleAmplitude(self, max_amplitude, min_amplitude, speed):
         low_speed, high_speed = 1, 10

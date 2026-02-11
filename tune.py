@@ -13,7 +13,7 @@ TIME_STEP = .005
 
 #Graphing
 # Controls graphing the functions used on each motor. False turns off, true turns on.
-graph = False
+graph = True
 
 # Blend percentage for trajectory interpolation (0.0 to 1.0).
 # A higher value creates a more gradual acceleration and deceleration.
@@ -27,7 +27,7 @@ PRESSER_INTERPOLATION_POINTS = 10
 LH_SLIDER_MOTION_POINTS = 40
 
 # Number of interpolation points when the left hand is moving to a single note.
-LH_SINGLE_NOTE_MOTION_POINTS = 80
+LH_SINGLE_NOTE_MOTION_POINTS = 40
 
 # Number of interpolation points for a single pluck.
 PICKER_PLUCK_MOTION_POINTS = 11
@@ -51,7 +51,7 @@ LH_PRESSER_SLIDE_PRESS_POS = 400
 # Time (in seconds) the left hand needs to prepare before a picker plucks a new note.
 # This ensures the fretting hand is in position before the string is struck.
 # Given in terms of seconds.
-LH_PREP_TIME_BEFORE_PICK = 0.400
+LH_PREP_TIME_BEFORE_PICK = 0.450
 
 # The time window (in seconds) to check for overlaps between left-hand and picker movements.
 # If a pick event occurs within this window of a left-hand event, it may be adjusted or ignored.
@@ -107,8 +107,12 @@ SLIDER_MOTOR_DIRECTION = [-1, 1, 1, -1, -1, 1]
 # Calibrate the mm positions for the desired picking depth and tone.
 # Key is the motor ID.
 PICKER_MOTOR_INFO = {
+    #0: {'down_pluck_mm': 4.6, 'up_pluck_mm': 7.8, 'resolution': 1024}, # E, New Picker, middle: 6.2
     0: {'down_pluck_mm': 4.3, 'up_pluck_mm': 7.5, 'resolution': 1024}, # E
+    #0: {'down_pluck_mm': 7.8, 'up_pluck_mm': 7.8, 'resolution': 1024}, # E, Middle
+    #1: {'down_pluck_mm': 2.0, 'up_pluck_mm': 5.0, 'resolution': 2048}, # D, New Picker
     1: {'down_pluck_mm': 2.1, 'up_pluck_mm': 5.4, 'resolution': 2048}, # D
+    #2: {'down_pluck_mm': 2.8, 'up_pluck_mm': 5.8, 'resolution': 2048} # B, New Picker
     2: {'down_pluck_mm': 2.8, 'up_pluck_mm': 5.8, 'resolution': 2048} # B
     # Add entries for other pickers if they exist, e.g., 3, 4, 5
 }
