@@ -91,6 +91,35 @@ class RightHandParser:
         
         return num_points
     
+    def velocity_to_position(self, picker_id, velocity):
+        """
+        Convert pluck velocity to target position (for velocity-based plucking).
+        Maps MIDI velocity (0-127) to position between up and down.
+        
+        Args:
+            picker_id: Picker motor ID
+            velocity: MIDI velocity or pluck velocity (0-127)
+            
+        Returns:
+            Target position in encoder ticks, or None if invalid picker
+        """
+        if picker_id not in self.motor_info:
+            return None
+        
+        # Get up and down positions
+        up_ticks = self.motor_info[picker_id]['up_ticks']
+        down_ticks = self.motor_info[picker_id]['down_ticks']
+        
+        # Map velocity to position
+        # velocity 0 → up position (no pluck)
+        # velocity 127 → down position (full pluck)
+        velocity_ratio = np.clip(velocity / 127.0, 0.0, 1.0)
+        
+        # Interpolate between up and down
+        target_ticks = up_ticks + velocity_ratio * (down_ticks - up_ticks)
+        
+        return target_ticks
+    
     def get_next_state_position(self, picker_id):
         """
         Get next position based on picker state toggle (mimics GuitarBotParser logic).
