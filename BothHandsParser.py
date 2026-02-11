@@ -202,10 +202,10 @@ class BothHandsParser:
             # No unpress - presser stays at target torque
             print(f"No unpress: Presser {presser_motor_id} stays at torque {current_presser_torque}")
         
-        # 10. Combine LH and RH trajectories into single 15-motor array
+        # 10. Combine LH and RH trajectories into 16-column array (15 motors + control flag)
         combined_trajectory = self._combine_trajectories(lh_trajectory, rh_trajectory)
         
-        print(f"\nGenerated combined trajectory: {combined_trajectory.shape[0]} timesteps × 15 motors")
+        print(f"\nGenerated combined trajectory: {combined_trajectory.shape[0]} timesteps × {combined_trajectory.shape[1]} cols")
         print(f"Duration: {combined_trajectory.shape[0] * tu.TIME_STEP:.3f}s")
         
         # 9. Plot if enabled
@@ -370,10 +370,10 @@ class BothHandsParser:
         else:
             print(f"No unpress: Presser stays at torque {target_torque}")
         
-        # Combine LH and RH trajectories
-        combined_trajectory = self._combine_trajectories(lh_trajectory, rh_trajectory)
+        # Combine LH and RH trajectories with force_torque_mode=True for RL control
+        combined_trajectory = self._combine_trajectories(lh_trajectory, rh_trajectory, force_torque_mode=True)
         
-        print(f"\nGenerated combined trajectory: {combined_trajectory.shape[0]} timesteps × 15 motors")
+        print(f"\nGenerated combined trajectory: {combined_trajectory.shape[0]} timesteps × {combined_trajectory.shape[1]} cols (force_torque_mode=True)")
         print(f"Duration: {combined_trajectory.shape[0] * tu.TIME_STEP:.3f}s")
         
         if tu.graph:
@@ -614,16 +614,21 @@ class BothHandsParser:
         
         return rh_trajectory
     
-    def _combine_trajectories(self, lh_trajectory, rh_trajectory):
+    def _combine_trajectories(self, lh_trajectory, rh_trajectory, force_torque_mode=False):
         """
-        Combine left hand (12 motors) and right hand (3 motors) into full 15-motor array.
+        Combine left hand (12 motors) and right hand (3 motors) into full 16-column array.
+        
+        The 16th column is a control flag sent to the microcontroller:
+          0 = normal behavior (presser position override when near zero)
+          1 = force torque mode for pressers (RL agent direct control)
         
         Args:
             lh_trajectory: [N x 12] array for LH motors
             rh_trajectory: [N x 3] array for RH motors, or None
+            force_torque_mode: If True, sets the control flag to 1 (skip position override)
             
         Returns:
-            [N x 15] combined trajectory array
+            [N x 16] combined trajectory array (15 motors + 1 control flag)
         """
         num_timesteps = lh_trajectory.shape[0]
         
@@ -643,8 +648,11 @@ class BothHandsParser:
                 # Truncate
                 rh_trajectory = rh_trajectory[:num_timesteps, :]
         
-        # Combine: [LH(12) | RH(3)] = 15 motors
-        combined = np.hstack([lh_trajectory, rh_trajectory])
+        # Control flag column: 1.0 = force torque mode, 0.0 = normal
+        flag_col = np.full((num_timesteps, 1), 1.0 if force_torque_mode else 0.0)
+        
+        # Combine: [LH(12) | RH(3) | FLAG(1)] = 16 columns
+        combined = np.hstack([lh_trajectory, rh_trajectory, flag_col])
         
         return combined
     
@@ -686,10 +694,11 @@ class BothHandsParser:
         num_timesteps = rh_trajectory.shape[0]
         lh_trajectory = np.tile(self.left_hand.current_positions, (num_timesteps, 1))
         
-        # Combine
-        combined_trajectory = np.hstack([lh_trajectory, rh_trajectory])
+        # Combine with control flag column (0 = normal mode for dynamics)
+        flag_col = np.zeros((num_timesteps, 1))
+        combined_trajectory = np.hstack([lh_trajectory, rh_trajectory, flag_col])
         
-        print(f"\nGenerated dynamics trajectory: {combined_trajectory.shape[0]} timesteps × 15 motors")
+        print(f"\nGenerated dynamics trajectory: {combined_trajectory.shape[0]} timesteps × {combined_trajectory.shape[1]} cols")
         print(f"Duration: {combined_trajectory.shape[0] * tu.TIME_STEP:.3f}s")
         
         # Plot if enabled
@@ -758,7 +767,7 @@ class BothHandsParser:
         
         print(f"\n{'='*60}")
         print(f"SEQUENCE COMPLETE")
-        print(f"Total trajectory: {combined.shape[0]} timesteps × 15 motors")
+        print(f"Total trajectory: {combined.shape[0]} timesteps × {combined.shape[1]} cols")
         print(f"Total duration: {combined.shape[0] * tu.TIME_STEP:.3f}s")
         print(f"{'='*60}")
         
@@ -791,7 +800,10 @@ class BothHandsParser:
             print("Insufficient trajectory data for plotting")
             return
         
-        num_timesteps = trajectory.shape[0]
+        # Support both 15-col and 16-col (with control flag) trajectories
+        motor_data = trajectory[:, :15]
+        
+        num_timesteps = motor_data.shape[0]
         timestamps = np.arange(num_timesteps) * tu.TIME_STEP
         
         fig = go.Figure()
@@ -804,7 +816,7 @@ class BothHandsParser:
             fig.add_trace(
                 go.Scatter(
                     x=timestamps,
-                    y=trajectory[:, motor],
+                    y=motor_data[:, motor],
                     mode='lines',
                     name=f'LH {motor_type} {string_id}'
                 )
@@ -817,7 +829,7 @@ class BothHandsParser:
             fig.add_trace(
                 go.Scatter(
                     x=timestamps,
-                    y=trajectory[:, motor],
+                    y=motor_data[:, motor],
                     mode='lines+markers',
                     name=f'RH Picker {picker_id}',
                     line=dict(width=3),

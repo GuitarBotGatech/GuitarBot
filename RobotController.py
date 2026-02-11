@@ -21,6 +21,12 @@ def main(song_trajs):
     # Each trajectory point represents a 5ms step.
     TIME_PER_POINT_S = 0.005
 
+    # Trajectory must be N x 16 (15 motors + 1 control flag).
+    # If N x 15 is passed (legacy), pad with 0 flag (normal mode).
+    if song_trajs.ndim == 2 and song_trajs.shape[1] == 15:
+        flag_col = np.zeros((song_trajs.shape[0], 1), dtype=song_trajs.dtype)
+        song_trajs = np.hstack([song_trajs, flag_col])
+
     # --- Socket Setup ---
     sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 

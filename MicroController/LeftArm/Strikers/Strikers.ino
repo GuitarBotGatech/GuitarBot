@@ -22,9 +22,11 @@ unsigned int localPort = 8888;
 char packetBuffer[2048]; // Buffer for one chunk (20 * 15 * 4 = 1200 bytes)
 
 // --- Two-Stage Queue System ---
-const int FLOATS_PER_POINT = 15; 
+const int FLOATS_PER_POINT = 16;  // 15 motors + 1 control flag
 
 // Define a simple structure to hold one trajectory point
+// values[0..14] = motor positions/torques
+// values[15]    = control flags (0 = normal, 1 = force torque mode for pressers)
 struct TrajectoryPoint {
   float values[FLOATS_PER_POINT];
 };
@@ -81,21 +83,34 @@ void ethernetEvent() {
     if (packetSize > 0) {
         udp.read(packetBuffer, packetSize);
         
-        const int BYTES_PER_POINT = FLOATS_PER_POINT * sizeof(float);
+        const int BYTES_PER_NEW_POINT = FLOATS_PER_POINT * sizeof(float);      // 16 floats = 64 bytes
+        const int BYTES_PER_LEGACY_POINT = 15 * sizeof(float);                  // 15 floats = 60 bytes
 
-        if (packetSize % BYTES_PER_POINT == 0) {
-            int numPoints = packetSize / BYTES_PER_POINT;
+        bool isNewFormat = (packetSize % BYTES_PER_NEW_POINT == 0);
+        bool isLegacyFormat = (!isNewFormat && packetSize % BYTES_PER_LEGACY_POINT == 0);
+
+        if (isNewFormat || isLegacyFormat) {
+            int bytesPerPoint = isNewFormat ? BYTES_PER_NEW_POINT : BYTES_PER_LEGACY_POINT;
+            int numPoints = packetSize / bytesPerPoint;
+
+            if (isLegacyFormat) {
+                LOG_LOG("Legacy 15-float packet detected. Padding flag to 0.");
+            }
             LOG_LOG("Received chunk with %d points. Adding to software buffer.", numPoints);
 
-            // Deserialize all points from the packet and push to the Stage 1 queue
             for (int i = 0; i < numPoints; i++) {
                 TrajectoryPoint tempPoint;
-                // Copy one point's worth of data from the main buffer into our struct
-                memcpy(tempPoint.values, packetBuffer + (i * BYTES_PER_POINT), BYTES_PER_POINT);
+                if (isLegacyFormat) {
+                    // Copy 15 motor values, set control flag to 0 (normal mode)
+                    memcpy(tempPoint.values, packetBuffer + (i * bytesPerPoint), bytesPerPoint);
+                    tempPoint.values[15] = 0.0f;
+                } else {
+                    memcpy(tempPoint.values, packetBuffer + (i * bytesPerPoint), bytesPerPoint);
+                }
                 g_softwareBufferQueue.enqueue(tempPoint);
             }
         } else {
-            LOG_ERROR("Received corrupted packet. Size %d is not divisible by point size %d.", packetSize, BYTES_PER_POINT);
+            LOG_ERROR("Received corrupted packet. Size %d is not divisible by point size %d or legacy size %d.", packetSize, BYTES_PER_NEW_POINT, BYTES_PER_LEGACY_POINT);
         }
     }
 }

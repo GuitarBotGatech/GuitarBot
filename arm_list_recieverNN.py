@@ -571,7 +571,7 @@ def reset_processor():
                 # PHASE 1: Safely unpress all pressers first (motors 6-11)
                 # This prevents string damage from moving sliders while pressed
                 unpress_points = 400  # ~2000ms to unpress #TODO: magic numbers
-                unpress_trajectory = np.zeros((unpress_points, 15))
+                unpress_trajectory = np.zeros((unpress_points, 16))
                 
                 for motor in range(15):
                     q0 = last_robot_position[motor]
@@ -592,7 +592,7 @@ def reset_processor():
                 
                 # PHASE 2: Home sliders and pickers while keeping pressers unpressed
                 home_points = 200  # ~1.0 seconds for smooth homing
-                home_trajectory = np.zeros((home_points, 15))
+                home_trajectory = np.zeros((home_points, 16))
                 
                 # Starting position is the end of phase 1
                 phase1_end = unpress_trajectory[-1, :]
@@ -673,7 +673,7 @@ def cleanup_and_reset():
         
         # PHASE 1: Safely unpress all pressers first
         unpress_points = 100  # ~500ms
-        unpress_trajectory = np.zeros((unpress_points, 15))
+        unpress_trajectory = np.zeros((unpress_points, 16))
         
         for motor in range(15):
             q0 = last_robot_position[motor]
@@ -692,7 +692,7 @@ def cleanup_and_reset():
         
         # PHASE 2: Home sliders and pickers
         home_points = 200  # ~1.0 seconds
-        home_trajectory = np.zeros((home_points, 15))
+        home_trajectory = np.zeros((home_points, 16))
         phase1_end = unpress_trajectory[-1, :]
         
         for motor in range(15):

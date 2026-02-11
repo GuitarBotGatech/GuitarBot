@@ -270,7 +270,7 @@ public:
         Output: Pushes point to the queue
     */
     void processTrajPoints(float *trajPoint) {
-        int packetSize = 15;
+        int packetSize = 16;  // 15 motors + 1 control flag
         int curr_pos;
         Serial.print("RECEIVED: ");
         for (int i = 0; i < packetSize; i++) {
@@ -279,31 +279,27 @@ public:
         }
         Serial.println();
 
+        // Control flag: trajPoint[15]
+        // 0 = normal behavior (position override when near zero)
+        // 1 = force torque mode for pressers (RL agent control)
+        bool forceTorqueMode = (trajPoint[15] > 0.5f);
+
         for (int x = 0; x < NUM_MOTORS; x++) {
             if (x < 17) {
                 if (x > 5 && x < 12) {
                     int curr_pos;
                     curr_pos = pInstance->m_striker[x + 1].getPosition_ticks();
-                    //Serial.print("Current pos at ");
-//                    Serial.print(x + 1);
-//                    Serial.print(" ");
-//                    Serial.print(curr_pos);
-                    if (curr_pos <= 15 && trajPoint[x] <= 0) {
+                    if (!forceTorqueMode && curr_pos <= 15 && trajPoint[x] <= 0) {
                         if (m_striker[x + 1].getPressState()) {
                             m_striker[x + 1].setModePOSITION();
-                            //Serial.print(", Setting Position since ");
                         }
-                        //Serial.println(", PRESS STATE FALSE");
                         all_Trajs[x][0] = 0;
                     } else {
                         if (!m_striker[x + 1].getPressState()) {
                             m_striker[x + 1].setModeTORQUE();
-                            //Serial.print(", Setting Torque since ");
                         }
-                        //Serial.print(", is already in Torque mode; ");
                     }
                     all_Trajs[x][0] = trajPoint[x];
-                    //Serial.println(", PRESS STATE TRUE");
                 } else {
                     all_Trajs[x][0] = trajPoint[x];
                 }
@@ -324,8 +320,8 @@ public:
     }
 
     void processTrajChunk(char* buffer, int size) {
-        // Each point consists of NUM_MOTORS floats.
-        const int floats_per_point = NUM_MOTORS;
+        // Each point consists of NUM_MOTORS + 1 floats (15 motors + 1 control flag).
+        const int floats_per_point = NUM_MOTORS + 1;
         const int bytes_per_point = floats_per_point * sizeof(float);
 
         // Check for corrupted data
