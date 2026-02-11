@@ -781,7 +781,7 @@ class BothHandsParser:
     
     def plot_combined_trajectory(self, trajectory, title="Combined Trajectory"):
         """
-        Plot complete 15-motor trajectory.
+        Plot complete 15-motor trajectory on a single plot.
         
         Args:
             trajectory: [N x 15] numpy array
@@ -794,12 +794,7 @@ class BothHandsParser:
         num_timesteps = trajectory.shape[0]
         timestamps = np.arange(num_timesteps) * tu.TIME_STEP
         
-        # Create subplots: LH and RH separate
-        fig = make_subplots(
-            rows=2, cols=1,
-            subplot_titles=('Left Hand Motors (0-11)', 'Right Hand Motors (12-14)'),
-            vertical_spacing=0.12
-        )
+        fig = go.Figure()
         
         # Plot LH motors (0-11)
         for motor in range(12):
@@ -811,10 +806,8 @@ class BothHandsParser:
                     x=timestamps,
                     y=trajectory[:, motor],
                     mode='lines',
-                    name=f'LH {motor_type} {string_id}',
-                    legendgroup='LH'
-                ),
-                row=1, col=1
+                    name=f'LH {motor_type} {string_id}'
+                )
             )
         
         # Plot RH motors (12-14)
@@ -828,22 +821,18 @@ class BothHandsParser:
                     mode='lines+markers',
                     name=f'RH Picker {picker_id}',
                     line=dict(width=3),
-                    marker=dict(size=4),
-                    legendgroup='RH'
-                ),
-                row=2, col=1
+                    marker=dict(size=4)
+                )
             )
         
         fig.update_layout(
             title=title,
             showlegend=True,
             height=800,
-            hovermode='x unified'
+            hovermode='x unified',
+            xaxis_title="Time (s)",
+            yaxis_title="Position (ticks)"
         )
-        
-        fig.update_xaxes(title_text="Time (s)", row=2, col=1)
-        fig.update_yaxes(title_text="Position (ticks)", row=1, col=1)
-        fig.update_yaxes(title_text="Position (ticks)", row=2, col=1)
         
         fig.show()
 
