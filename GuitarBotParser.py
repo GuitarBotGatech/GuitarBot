@@ -88,7 +88,7 @@ class GuitarBotParser:
                 yaxis_title='Motor Position',
                 legend_title='Motors'
             )
-            #fig.show()
+            fig.show()
 
         return combined_array
 
