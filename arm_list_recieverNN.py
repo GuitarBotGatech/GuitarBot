@@ -33,6 +33,13 @@ rlfret_queue = queue.SimpleQueue()  # Queue for RL low-level fret commands
 reset_queue = queue.SimpleQueue()
 config_queue = queue.SimpleQueue()
 
+# Mutual-exclusion lock for RobotController.main().
+# RobotController.main() sends a blocking UDP trajectory to the Arduino.
+# Calling it from multiple threads simultaneously corrupts the packet stream
+# and can cause violent motor behaviour (e.g. Reset interrupting an RLFret).
+# Every call to RobotController.main() MUST be preceded by acquiring this lock.
+robot_lock = threading.Lock()
+
 # Initialize parsers
 rh_parser = RightHandParser()  # For /Dyn messages (pluck only)
 lh_parser = LeftHandParser()   # For direct LH testing (if needed)
@@ -257,7 +264,8 @@ def dynamics_processor():
                 
                 print(f"Dynamics Trajs Shape: {np.array(trajectories_list).shape}")
                 print("Executing dynamics test")
-                RobotController.main(trajectories_list)
+                with robot_lock:
+                    RobotController.main(trajectories_list)
                 
                 # Update last robot position
                 global last_robot_position
@@ -322,7 +330,8 @@ def fret_processor():
                 print(f"Executing coordinated fret + pluck")
                 
                 # Send to robot controller
-                RobotController.main(trajectory_array)
+                with robot_lock:
+                    RobotController.main(trajectory_array)
                 
                 # Update last robot position
                 global last_robot_position
@@ -411,7 +420,8 @@ def rlfret_processor():
                 print(f"Executing RL fret + pluck")
                 
                 # Send to robot controller
-                RobotController.main(trajectory_array)
+                with robot_lock:
+                    RobotController.main(trajectory_array)
                 
                 # Update last robot position
                 global last_robot_position
@@ -613,10 +623,14 @@ def reset_processor():
                 
                 print(f"Generated reset trajectory: {reset_trajectory.shape}")
                 print(f"  Total duration: {reset_trajectory.shape[0] * 5}ms")
-                print(f"Executing safe reset motion...")
+                print(f"Waiting for active trajectory to finish before resetting...")
                 
-                # Send reset trajectory to robot
-                RobotController.main(reset_trajectory)
+                # Acquire lock to ensure no other trajectory is running.
+                # This blocks until any active /RLFret, /Fret, /Dyn, or song
+                # trajectory completes — preventing mid-trajectory interruption.
+                with robot_lock:
+                    print(f"Executing safe reset motion...")
+                    RobotController.main(reset_trajectory)
                 
                 # Update last robot position and reset parser states
                 last_robot_position = tu.initial_point.copy()
@@ -647,7 +661,8 @@ def robot_controller():
                     song_trajectories_list = np.vstack(all_trajs)
                     print("Total Song Trajs Shape: ", song_trajectories_list.shape)
                     print("Starting Song")
-                    RobotController.main(song_trajectories_list)
+                    with robot_lock:
+                        RobotController.main(song_trajectories_list)
                     
                     # Update last robot position
                     global last_robot_position
@@ -709,7 +724,9 @@ def cleanup_and_reset():
         reset_trajectory = np.vstack([unpress_trajectory, home_trajectory])
         
         print(f"Sending safe reset trajectory ({reset_trajectory.shape[0]} points, {reset_trajectory.shape[0] * 5}ms total)...")
-        RobotController.main(reset_trajectory)
+        print("Waiting for active trajectory to complete before shutdown reset...")
+        with robot_lock:
+            RobotController.main(reset_trajectory)
         
         print("Reset complete. Motors at safe initial positions.")
         print("="*60 + "\n")
