@@ -13,7 +13,7 @@ TIME_STEP = .005
 
 #Graphing
 # Controls graphing the functions used on each motor. False turns off, true turns on.
-graph = False
+graph = True
 
 # Blend percentage for trajectory interpolation (0.0 to 1.0).
 # A higher value creates a more gradual acceleration and deceleration.
@@ -21,10 +21,17 @@ TRAJECTORY_BLEND_PERCENT = 0.2
 
 # Number of interpolation points for presser movements (e.g., pressing/unpressing).
 # More points result in a slower movement.
-PRESSER_INTERPOLATION_POINTS = 10
+PRESSER_INTERPOLATION_POINTS = 100
+
+# Number of interpolation points for the "unpress after" REST phase.
+# This is intentionally much larger than PRESSER_INTERPOLATION_POINTS — the presser
+# needs to release slowly so the string has time to ring out and the motor
+# doesn't bounce back from the hard stop.
+# 60 pts × 5ms = 300ms release time (adjust up if the motor still snaps back).
+PRESSER_UNPRESS_AFTER_POINTS = 500
 
 # Number of interpolation points for the main sliding motion of the left hand.
-LH_SLIDER_MOTION_POINTS = 40
+LH_SLIDER_MOTION_POINTS = 120
 
 # Number of interpolation points when the left hand is moving to a single note.
 LH_SINGLE_NOTE_MOTION_POINTS = 40

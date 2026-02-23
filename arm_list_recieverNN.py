@@ -49,8 +49,9 @@ both_hands_parser = BothHandsParser()  # For /Fret messages (coordinated fret + 
 last_robot_position = tu.initial_point.copy()  # Start at initial position
 
 # Runtime configuration flags (can be updated via /Config messages)
-unpress_after_flag = False  # Default: don't release presser after pluck
+unpress_after_flag = True      # Default: release presser after pluck
 force_adjustment_only_flag = False  # Default: normal fretting behavior
+direct_press_flag = True       # Default: presser current→target direct (no -650 waypoint)
 
 def decode_osc_message(data):
     print("Message In")
@@ -409,7 +410,8 @@ def rlfret_processor():
                     torque=torque,
                     pluck_velocity=pluck_velocity,
                     timestamp=0.0,
-                    unpress_after=unpress_after_flag
+                    unpress_after=unpress_after_flag,
+                    direct_press=direct_press_flag
                 )
                 
                 if trajectory_array.size == 0:
@@ -489,7 +491,27 @@ def config_processor():
                     force_adjustment_only_flag = bool(flag_value)
                     print(f"  ✓ Set force_adjustment_only = {force_adjustment_only_flag}")
                     print("    Note: This affects new /Fret messages only")
-                
+
+                elif flag_name == "direct_press":
+                    # Skip the -650 unpress waypoint; presser goes current→target directly
+                    global direct_press_flag
+                    direct_press_flag = bool(flag_value)
+                    print(f"  ✓ Set direct_press = {direct_press_flag}")
+                    print("    True  → presser ramps current→target simultaneously with slider")
+                    print("    False → UNPRESS (→-650) then SLIDE then PRESS (default)")
+
+                elif flag_name == "unpress_after_points":
+                    try:
+                        value = int(flag_value)
+                        if value > 0:
+                            tu.PRESSER_UNPRESS_AFTER_POINTS = value
+                            print(f"  ✓ Set tu.PRESSER_UNPRESS_AFTER_POINTS = {value}")
+                            print(f"    Duration: {value * tu.TIME_STEP * 1000:.0f}ms")
+                        else:
+                            print(f"  ✗ Error: unpress_after_points must be > 0")
+                    except ValueError:
+                        print(f"  ✗ Error: Invalid int value: {flag_value}")
+
                 # Numeric tuning parameters
                 elif flag_name == "blend_percent":
                     try:
@@ -552,8 +574,9 @@ def config_processor():
                 else:
                     print(f"  ✗ Unknown flag: {flag_name}")
                     print("    Available flags: graph, unpress_after, force_adjustment_only,")
-                    print("                     blend_percent, presser_points, slider_points,")
-                    print("                     picker_points, lh_prep_time")
+                    print("                     direct_press, blend_percent, presser_points,")
+                    print("                     unpress_after_points, slider_points, picker_points,")
+                    print("                     lh_prep_time")
                 
         except queue.Empty:
             pass
@@ -797,16 +820,18 @@ if __name__ == "__main__":
     print("")
     print("  /Config - Update runtime configuration flags")
     print("    Format:")
-    print("      /Config \"graph\" True       - Enable/disable trajectory plotting")
-    print("      /Config \"unpress_after\" True - Release presser after pluck")
-    print("      /Config \"blend_percent\" 0.3  - Set trajectory blend (0.0-1.0)")
-    print("      /Config \"presser_points\" 15   - Set presser motion points")
-    print("      /Config \"slider_points\" 50    - Set slider motion points")
-    print("      /Config \"picker_points\" 20    - Set picker pluck points")
-    print("      /Config \"lh_prep_time\" 0.5    - Set LH prep time (seconds)")
+    print("      /Config \"graph\" True               - Enable/disable trajectory plotting")
+    print("      /Config \"unpress_after\" True       - Release presser after pluck")
+    print("      /Config \"direct_press\" True        - Skip -650 waypoint; presser current→target direct")
+    print("      /Config \"unpress_after_points\" 60  - Points for slow presser release (60=300ms)")
+    print("      /Config \"blend_percent\" 0.3        - Set trajectory blend (0.0-1.0)")
+    print("      /Config \"presser_points\" 15        - Set presser motion points")
+    print("      /Config \"slider_points\" 50         - Set slider motion points")
+    print("      /Config \"picker_points\" 20         - Set picker pluck points")
+    print("      /Config \"lh_prep_time\" 0.5         - Set LH prep time (seconds)")
     print("    Available flags: graph, unpress_after, force_adjustment_only,")
-    print("                     blend_percent, presser_points, slider_points,")
-    print("                     picker_points, lh_prep_time")
+    print("                     direct_press, unpress_after_points, blend_percent,")
+    print("                     presser_points, slider_points, picker_points, lh_prep_time")
     print("")
     print("NOTE: Robot will automatically reset to safe positions on program exit.")
     print("")
