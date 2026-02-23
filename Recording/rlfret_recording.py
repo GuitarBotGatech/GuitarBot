@@ -61,11 +61,9 @@ STRING_NAMES = {0: "Low-E (string 0)", 2: "A (string 2)", 4: "D (string 4)"}
 HARMONIC_FRETS = [4.0, 5.0, 7.0]
 
 # Default recording grid
-DEFAULT_FRET_POSITIONS = [0.0, 0.5, 1.0, 1.5, 2.0, 2.5, 3.0, 3.5,
-                          4.0, 4.5, 5.0, 5.5, 6.0, 6.5, 7.0, 7.5,
-                          8.0, 8.5, 9.0]
+DEFAULT_FRET_POSITIONS = [4.0, 4.1, 4.2, 5.0, 5.1, 5.2, 7.0, 7.1, 7.2, 9.0, 9.1, 9.2]
 
-DEFAULT_TORQUES = [50, 100, 150, 200, 300, 400, 500, 650]
+DEFAULT_TORQUES = [50, 60, 70, 80, 90, 100, 110, 120, 150, 300, 400, 500]
 
 # Torque constraints (must match action_space.py)
 TORQUE_SAFE_MIN = 16
@@ -288,7 +286,6 @@ class RLFretRecorder:
         builder.add_arg(int(string_idx))
         builder.add_arg(float(fret_position))
         builder.add_arg(float(torque))
-        builder.add_arg(int(pluck_velocity))
         msg = builder.build()
 
         self.osc_sock.sendto(msg.dgram, self.osc_target)
