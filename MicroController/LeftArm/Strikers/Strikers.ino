@@ -85,7 +85,7 @@ void ethernetEvent() {
 
         if (packetSize % BYTES_PER_POINT == 0) {
             int numPoints = packetSize / BYTES_PER_POINT;
-            LOG_LOG("Received chunk with %d points. Adding to software buffer.", numPoints);
+            // LOG_LOG("Received chunk with %d points. Adding to software buffer.", numPoints);
 
             // Deserialize all points from the packet and push to the Stage 1 queue
             for (int i = 0; i < numPoints; i++) {

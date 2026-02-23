@@ -39,8 +39,8 @@ class BothHandsParser:
         self.right_hand = RightHandParser()
         
         # Timing configuration for coordination
-        self.pluck_delay_after_press = tu.TIME_STEP * 5  # Delay pluck to allow fretter to settle
-        self.settling_time = tu.TIME_STEP * 5  # Additional settling time before pluck starts
+        self.pluck_delay_after_press = tu.TIME_STEP * 10  # Delay pluck to allow fretter to settle
+        self.settling_time = tu.TIME_STEP * 40  # Additional settling time before pluck starts
         
         print("=== BothHandsParser Initialized ===")
         print("Left Hand: 12 motors (sliders + pressers)")
@@ -48,7 +48,7 @@ class BothHandsParser:
         print(f"Pluck delay: {self.pluck_delay_after_press:.3f}s after press")
         print(f"Settling time: {self.settling_time:.3f}s before pluck")
     
-    def parse_fret_with_pluck(self, midi_note, presser_force=None, pluck_velocity=None, timestamp=0.0, force_adjustment_only=False, unpress_after=False):
+    def parse_fret_with_pluck(self, midi_note, presser_force=None, pluck_velocity=None, timestamp=0.0, force_adjustment_only=False, unpress_after=True):
         """
         Parse /Fret message and generate coordinated fretting + plucking trajectory.
         
@@ -122,23 +122,12 @@ class BothHandsParser:
         pluck_motion_duration = tu.PICKER_PLUCK_MOTION_POINTS * tu.TIME_STEP
         
         if unpress_after:
-            # Scale REST phase points based on torque level
-            # Lower torque needs more points (slower release) to avoid bouncing
-            # torque_ratio: 0.0 (low) → 1.0 (high torque 500)
-            max_torque = tu.LH_PRESSER_PRESSED_POS  # e.g., 500
-            torque_ratio = current_presser_torque / max_torque if max_torque > 0 else 1.0
-            torque_ratio = max(0.1, min(1.0, torque_ratio))  # Clamp to 0.1-1.0
-            
-            # Scale factor: lower torque = more points (slower)
-            # e.g., torque_ratio=1.0 → 1x points, torque_ratio=0.1 → 3x points
-            rest_scale_factor = 1.0 + (3.0 * (1.0 - torque_ratio))  # 1.0 to 3.0
-            
-            rest_phase_points = int(tu.PRESSER_INTERPOLATION_POINTS * rest_scale_factor)
+            rest_phase_points = tu.PRESSER_UNPRESS_AFTER_POINTS
             rest_phase_duration = rest_phase_points * tu.TIME_STEP
         else:
-            rest_phase_points = 100 #TODO: magic number alert
+            rest_phase_points = 100
             rest_phase_duration = rest_phase_points * tu.TIME_STEP
-        
+
         total_duration = pluck_timestamp + pluck_motion_duration + rest_phase_duration + (50 * tu.TIME_STEP)
         
         # 6. Extend LH trajectory to accommodate the pluck and REST phase
@@ -197,7 +186,6 @@ class BothHandsParser:
             rest_duration_ms = rest_phase_points * tu.TIME_STEP * 1000
             print(f"REST phase: Presser {presser_motor_id} returns to {tu.LH_PRESSER_UNPRESSED_POS} at t={rest_start_time:.3f}s")
             print(f"  Torque: {current_presser_torque}→{tu.LH_PRESSER_UNPRESSED_POS}, Duration: {rest_duration_ms:.0f}ms ({rest_phase_points} points)")
-            print(f"  Scale factor: {rest_scale_factor:.2f}x (lower torque = slower unpress to reduce bouncing)")
         else:
             # No unpress - presser stays at target torque
             print(f"No unpress: Presser {presser_motor_id} stays at torque {current_presser_torque}")
@@ -214,8 +202,9 @@ class BothHandsParser:
         
         return combined_trajectory
     
-    def parse_rlfret_with_pluck(self, string_idx, fret_position, torque, 
-                                 pluck_velocity=None, timestamp=0.0, unpress_after=False):
+    def parse_rlfret_with_pluck(self, string_idx, fret_position, torque,
+                                 pluck_velocity=None, timestamp=0.0, unpress_after=True,
+                                 direct_press=True):
         """
         Parse /RLFret message for RL low-level control with coordinated plucking.
         
@@ -227,11 +216,16 @@ class BothHandsParser:
         - Uses raw torque (0-1000) instead of force (0-1)
         - Direct slider position calculation (no MIDI mapping)
         
-        Trajectory sequence:
-        1. LH trajectory: UNPRESS → SLIDE → PRESS (ends at target torque)
+        Trajectory sequence (default, direct_press=False):
+        1. LH trajectory: UNPRESS (→ -650) → SLIDE → PRESS (→ target torque)
         2. Settling time (brief pause while string is pressed)
         3. RH pluck (pluck happens while string is still pressed)
         4. REST phase: presser returns to -650 (if unpress_after=True)
+
+        Trajectory sequence (direct_press=True):
+        1. LH trajectory: SLIDE + simultaneous presser ramp (current → target)
+           Skips the -650 waypoint entirely — shorter trajectory, no unpress dip.
+        2-4. Same as above.
         
         Args:
             string_idx: String index (0, 2, or 4 - must have plucker)
@@ -240,6 +234,9 @@ class BothHandsParser:
             pluck_velocity: Optional pluck velocity (0-127, None = state toggle)
             timestamp: When the note should start (seconds)
             unpress_after: If True, presser returns to -650 after pluck
+            direct_press: If True, presser goes current→target directly during the
+                          slide phase instead of detouring through -650.  Eliminates
+                          the UNPRESS and separate PRESS phases.
             
         Returns:
             2D numpy array [num_timesteps x 15] with complete motor trajectories
@@ -286,6 +283,7 @@ class BothHandsParser:
         
         print(f"  Slider: {current_slider_pos} → {target_slider_pos}")
         print(f"  Presser: {current_presser_torque} → {target_torque}")
+        print(f"  Mode: {'direct_press (no -650 waypoint)' if direct_press else 'UNPRESS→SLIDE→PRESS'}")
         
         # Generate LH trajectory directly (bypass MIDI mapping)
         lh_trajectory = self._generate_rlfret_trajectory(
@@ -296,7 +294,8 @@ class BothHandsParser:
             current_presser_torque=current_presser_torque,
             target_slider_pos=target_slider_pos,
             target_torque=target_torque,
-            timestamp=timestamp
+            timestamp=timestamp,
+            direct_press=direct_press
         )
         
         if lh_trajectory.size == 0:
@@ -315,16 +314,7 @@ class BothHandsParser:
         # Calculate total duration
         pluck_motion_duration = tu.PICKER_PLUCK_MOTION_POINTS * tu.TIME_STEP
         
-        if unpress_after:
-            # Scale REST phase based on torque
-            max_torque = tu.LH_PRESSER_PRESSED_POS
-            torque_ratio = target_torque / max_torque if max_torque > 0 else 1.0
-            torque_ratio = max(0.1, min(1.0, torque_ratio))
-            rest_scale_factor = 1.0 + (3.0 * (1.0 - torque_ratio))
-            rest_phase_points = int(tu.PRESSER_INTERPOLATION_POINTS * rest_scale_factor)
-        else:
-            rest_phase_points = 100
-        
+        rest_phase_points = tu.PRESSER_UNPRESS_AFTER_POINTS if unpress_after else 100
         rest_phase_duration = rest_phase_points * tu.TIME_STEP
         total_duration = pluck_timestamp + pluck_motion_duration + rest_phase_duration + (50 * tu.TIME_STEP)
         
@@ -351,22 +341,23 @@ class BothHandsParser:
         
         if unpress_after:
             rest_points = GuitarBotParser.interp_with_blend(
-                target_torque, 
+                target_torque,
                 tu.LH_PRESSER_UNPRESSED_POS,
-                rest_phase_points, 
+                rest_phase_points,
                 tu.TRAJECTORY_BLEND_PERCENT
             )
-            
+
             for i, tq in enumerate(rest_points):
                 if rest_start_idx + i < lh_trajectory.shape[0]:
                     lh_trajectory[rest_start_idx + i, presser_motor_id] = tq
-            
+
             rest_end_idx = min(rest_start_idx + len(rest_points), lh_trajectory.shape[0])
             if rest_end_idx < lh_trajectory.shape[0]:
                 lh_trajectory[rest_end_idx:, presser_motor_id] = tu.LH_PRESSER_UNPRESSED_POS
-            
+
             self.left_hand.current_positions[presser_motor_id] = tu.LH_PRESSER_UNPRESSED_POS
-            print(f"REST: Presser returns to {tu.LH_PRESSER_UNPRESSED_POS} at t={rest_start_time:.3f}s")
+            rest_ms = rest_phase_points * tu.TIME_STEP * 1000
+            print(f"REST: Presser returns to {tu.LH_PRESSER_UNPRESSED_POS} at t={rest_start_time:.3f}s ({rest_ms:.0f}ms, {rest_phase_points} pts)")
         else:
             print(f"No unpress: Presser stays at torque {target_torque}")
         
@@ -438,12 +429,23 @@ class BothHandsParser:
     
     def _generate_rlfret_trajectory(self, string_idx, slider_motor_id, presser_motor_id,
                                      current_slider_pos, current_presser_torque,
-                                     target_slider_pos, target_torque, timestamp):
+                                     target_slider_pos, target_torque, timestamp,
+                                     direct_press=False):
         """
         Generate LH trajectory for RL fretting (direct position/torque control).
-        
-        Sequence: UNPRESS → SLIDE → PRESS
-        
+
+        Two modes controlled by ``direct_press``:
+
+        Default (direct_press=False) — UNPRESS → SLIDE → PRESS:
+          Phase 1 (PRESSER_INTERPOLATION_POINTS): presser current → -650, slider holds.
+          Phase 2 (LH_SINGLE_NOTE_MOTION_POINTS): slider moves, presser holds at -650.
+          Phase 3 (PRESSER_INTERPOLATION_POINTS): presser -650 → target, slider holds.
+
+        Direct (direct_press=True) — simultaneous SLIDE + PRESS:
+          Single phase (LH_SINGLE_NOTE_MOTION_POINTS): slider and presser both
+          interpolate from their current values to their targets at the same time.
+          No detour through -650 — shorter trajectory, presser never releases.
+
         Args:
             string_idx: String index
             slider_motor_id: Motor ID for slider (0-5)
@@ -453,89 +455,114 @@ class BothHandsParser:
             target_slider_pos: Target slider encoder position
             target_torque: Target presser torque
             timestamp: Start time
-            
+            direct_press: Skip the -650 waypoint (see above).
+
         Returns:
             2D numpy array [N x 12] with LH motor trajectories
         """
-        # Trajectory phases
         num_points = tu.PRESSER_INTERPOLATION_POINTS
-        slider_points = tu.LH_SINGLE_NOTE_MOTION_POINTS
-        
-        # Total points: UNPRESS + SLIDE + PRESS
-        total_points = num_points + slider_points + num_points
+        slide_points = tu.LH_SINGLE_NOTE_MOTION_POINTS
         buffer_points = 100
         start_idx = int(timestamp / tu.TIME_STEP)
-        total_rows = start_idx + total_points + buffer_points
-        
-        # Initialize trajectory with NaN (forward-fill later)
-        trajectory = np.full((total_rows, 12), np.nan)
-        trajectory[0, :] = self.left_hand.current_positions
-        
-        # Phase 1: UNPRESS (current torque → -650)
-        unpress_traj = GuitarBotParser.interp_with_blend(
-            current_presser_torque,
-            tu.LH_PRESSER_UNPRESSED_POS,
-            num_points,
-            tu.TRAJECTORY_BLEND_PERCENT
-        )
-        
-        phase1_start = start_idx
-        phase1_end = phase1_start + num_points
-        
-        # Hold slider during unpress
-        slider_hold = GuitarBotParser.interp_with_blend(
-            current_slider_pos, current_slider_pos, num_points, tu.TRAJECTORY_BLEND_PERCENT
-        )
-        
-        for i in range(num_points):
-            idx = phase1_start + i
-            if idx < total_rows:
-                trajectory[idx, :] = trajectory[max(0, idx-1), :]
-                trajectory[idx, slider_motor_id] = slider_hold[i]
-                trajectory[idx, presser_motor_id] = unpress_traj[i]
-        
-        # Phase 2: SLIDE (move slider while unpressed)
-        slide_traj = GuitarBotParser.interp_with_blend(
-            current_slider_pos,
-            target_slider_pos,
-            slider_points,
-            tu.TRAJECTORY_BLEND_PERCENT
-        )
-        
-        phase2_start = phase1_end
-        phase2_end = phase2_start + slider_points
-        
-        for i in range(slider_points):
-            idx = phase2_start + i
-            if idx < total_rows:
-                trajectory[idx, :] = trajectory[max(0, idx-1), :]
-                trajectory[idx, slider_motor_id] = slide_traj[i]
-                trajectory[idx, presser_motor_id] = tu.LH_PRESSER_UNPRESSED_POS
-        
-        # Phase 3: PRESS (apply torque)
-        press_traj = GuitarBotParser.interp_with_blend(
-            tu.LH_PRESSER_UNPRESSED_POS,
-            target_torque,
-            num_points,
-            tu.TRAJECTORY_BLEND_PERCENT
-        )
-        
-        phase3_start = phase2_end
-        phase3_end = phase3_start + num_points
-        
-        for i in range(num_points):
-            idx = phase3_start + i
-            if idx < total_rows:
-                trajectory[idx, :] = trajectory[max(0, idx-1), :]
-                trajectory[idx, slider_motor_id] = target_slider_pos
-                trajectory[idx, presser_motor_id] = press_traj[i]
-        
-        # Hold at target for buffer
-        for idx in range(phase3_end, total_rows):
-            trajectory[idx, :] = trajectory[max(0, idx-1), :]
-            trajectory[idx, slider_motor_id] = target_slider_pos
-            trajectory[idx, presser_motor_id] = target_torque
-        
+
+        if direct_press:
+            # ── Direct mode: slide and press simultaneously ──────────────────
+            # Total = SLIDE phase only (presser ramps alongside slider)
+            total_points = slide_points
+            total_rows = start_idx + total_points + buffer_points
+
+            trajectory = np.full((total_rows, 12), np.nan)
+            trajectory[0, :] = self.left_hand.current_positions
+
+            slide_traj = GuitarBotParser.interp_with_blend(
+                current_slider_pos, target_slider_pos, slide_points,
+                tu.TRAJECTORY_BLEND_PERCENT
+            )
+            press_traj = GuitarBotParser.interp_with_blend(
+                current_presser_torque, target_torque, slide_points,
+                tu.TRAJECTORY_BLEND_PERCENT
+            )
+
+            phase_start = start_idx
+            phase_end   = phase_start + slide_points
+
+            for i in range(slide_points):
+                idx = phase_start + i
+                if idx < total_rows:
+                    trajectory[idx, :] = trajectory[max(0, idx - 1), :]
+                    trajectory[idx, slider_motor_id]  = slide_traj[i]
+                    trajectory[idx, presser_motor_id] = press_traj[i]
+
+            # Hold at target for buffer
+            for idx in range(phase_end, total_rows):
+                trajectory[idx, :] = trajectory[max(0, idx - 1), :]
+                trajectory[idx, slider_motor_id]  = target_slider_pos
+                trajectory[idx, presser_motor_id] = target_torque
+
+            print(f"  DIRECT: SLIDE+PRESS simultaneous over {slide_points} pts")
+
+        else:
+            # ── Default mode: UNPRESS → SLIDE → PRESS ───────────────────────
+            total_points = num_points + slide_points + num_points
+            total_rows = start_idx + total_points + buffer_points
+
+            trajectory = np.full((total_rows, 12), np.nan)
+            trajectory[0, :] = self.left_hand.current_positions
+
+            # Phase 1: UNPRESS (current torque → -650), slider holds
+            unpress_traj = GuitarBotParser.interp_with_blend(
+                current_presser_torque, tu.LH_PRESSER_UNPRESSED_POS,
+                num_points, tu.TRAJECTORY_BLEND_PERCENT
+            )
+            slider_hold = GuitarBotParser.interp_with_blend(
+                current_slider_pos, current_slider_pos,
+                num_points, tu.TRAJECTORY_BLEND_PERCENT
+            )
+            phase1_start = start_idx
+            phase1_end   = phase1_start + num_points
+            for i in range(num_points):
+                idx = phase1_start + i
+                if idx < total_rows:
+                    trajectory[idx, :] = trajectory[max(0, idx - 1), :]
+                    trajectory[idx, slider_motor_id]  = slider_hold[i]
+                    trajectory[idx, presser_motor_id] = unpress_traj[i]
+
+            # Phase 2: SLIDE (slider moves, presser holds at -650)
+            slide_traj = GuitarBotParser.interp_with_blend(
+                current_slider_pos, target_slider_pos,
+                slide_points, tu.TRAJECTORY_BLEND_PERCENT
+            )
+            phase2_start = phase1_end
+            phase2_end   = phase2_start + slide_points
+            for i in range(slide_points):
+                idx = phase2_start + i
+                if idx < total_rows:
+                    trajectory[idx, :] = trajectory[max(0, idx - 1), :]
+                    trajectory[idx, slider_motor_id]  = slide_traj[i]
+                    trajectory[idx, presser_motor_id] = tu.LH_PRESSER_UNPRESSED_POS
+
+            # Phase 3: PRESS (-650 → target torque), slider holds at target
+            press_traj = GuitarBotParser.interp_with_blend(
+                tu.LH_PRESSER_UNPRESSED_POS, target_torque,
+                num_points, tu.TRAJECTORY_BLEND_PERCENT
+            )
+            phase3_start = phase2_end
+            phase3_end   = phase3_start + num_points
+            for i in range(num_points):
+                idx = phase3_start + i
+                if idx < total_rows:
+                    trajectory[idx, :] = trajectory[max(0, idx - 1), :]
+                    trajectory[idx, slider_motor_id]  = target_slider_pos
+                    trajectory[idx, presser_motor_id] = press_traj[i]
+
+            # Hold at target for buffer
+            for idx in range(phase3_end, total_rows):
+                trajectory[idx, :] = trajectory[max(0, idx - 1), :]
+                trajectory[idx, slider_motor_id]  = target_slider_pos
+                trajectory[idx, presser_motor_id] = target_torque
+
+            print(f"  UNPRESS: {num_points} pts, SLIDE: {slide_points} pts, PRESS: {num_points} pts")
+
         # Forward-fill any remaining NaN
         for col in range(12):
             last_valid = trajectory[0, col]
@@ -544,14 +571,13 @@ class BothHandsParser:
                     trajectory[row, col] = last_valid
                 else:
                     last_valid = trajectory[row, col]
-        
+
         # Update left hand state
-        self.left_hand.current_positions[slider_motor_id] = target_slider_pos
+        self.left_hand.current_positions[slider_motor_id]  = target_slider_pos
         self.left_hand.current_positions[presser_motor_id] = target_torque
-        
-        print(f"  UNPRESS: {num_points} pts, SLIDE: {slider_points} pts, PRESS: {num_points} pts")
+
         print(f"  Total: {total_rows} pts ({total_rows * tu.TIME_STEP:.3f}s)")
-        
+
         return trajectory
 
     def _generate_synchronized_pluck(self, picker_id, pluck_timestamp, pluck_velocity, total_duration):
