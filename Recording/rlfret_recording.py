@@ -52,7 +52,7 @@ from pythonosc.osc_message_builder import OscMessageBuilder
 # ─── Constants ────────────────────────────────────────────────────────────────
 
 # Playable strings (strings that have pluckers)
-PLAYABLE_STRINGS = [0, 2, 4]
+PLAYABLE_STRINGS = [2, 4]
 
 # String names for display
 STRING_NAMES = {0: "Low-E (string 0)", 2: "A (string 2)", 4: "D (string 4)"}
