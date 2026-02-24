@@ -506,5 +506,5 @@ def polyrhythms_timestamps(rhythms_to_generate, base_notes, measures, bpm):
 # generateSong() # Random plucks in C Major
 # pluck_message = generate_scale_progression(12) # Play the C Major scale x times
 # pluck_message = sequential_Plucks(4)
-pluck_message = generate_polyrhythms()
-# generate_e_major_blues_progression()
+#pluck_message = generate_polyrhythms()
+generate_e_major_blues_progression()
