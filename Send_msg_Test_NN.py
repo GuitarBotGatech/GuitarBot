@@ -27,7 +27,7 @@ def main():
     # time.sleep(0.5)
     # send_osc_message(client, "/Config", ["graph", True])
     # for i in range(15):
-    #     send_osc_message(client, "/RLFret", [0, 7.1705023938526223, 100]) # -> this one made a harmonic yoooo
+    send_osc_message(client, "/RLFret", [2, 7.1705023938526223, 100]) # -> this one made a harmonic yoooo
     #     time.sleep(4)
 
     # send_osc_message(client, "/Reset", [])
