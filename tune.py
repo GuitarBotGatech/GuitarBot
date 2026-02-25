@@ -21,7 +21,7 @@ TRAJECTORY_BLEND_PERCENT = 0.2
 
 # Number of interpolation points for presser movements (e.g., pressing/unpressing).
 # More points result in a slower movement.
-PRESSER_INTERPOLATION_POINTS = 100
+PRESSER_INTERPOLATION_POINTS = 50
 
 # Number of interpolation points for the "unpress after" REST phase.
 # This is intentionally much larger than PRESSER_INTERPOLATION_POINTS — the presser

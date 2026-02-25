@@ -39,8 +39,8 @@ class BothHandsParser:
         self.right_hand = RightHandParser()
         
         # Timing configuration for coordination
-        self.pluck_delay_after_press = tu.TIME_STEP * 10  # Delay pluck to allow fretter to settle
-        self.settling_time = tu.TIME_STEP * 40  # Additional settling time before pluck starts
+        self.pluck_delay_after_press = tu.TIME_STEP * 20  # Delay pluck to allow fretter to settle
+        self.settling_time = tu.TIME_STEP * 50  # Additional settling time before pluck starts
         
         print("=== BothHandsParser Initialized ===")
         print("Left Hand: 12 motors (sliders + pressers)")
