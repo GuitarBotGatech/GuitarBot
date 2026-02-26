@@ -27,10 +27,10 @@ def main():
     # send_osc_message(client, "/Config", ["direct_press", True])
     # time.sleep(0.5)
     # send_osc_message(client, "/Config", ["graph", True])
-    send_osc_message(client, "/RLFret", [4, 7.1705023938526223, 100]) # -> this one made a harmonic yoooo
+    # send_osc_message(client, "/RLFret", [4, 7.1705023938526223, 100]) # -> this one made a harmonic yoooo
     #     time.sleep(5)
 
-    # send_osc_message(client, "/Reset", [])
+    send_osc_message(client, "/Reset", [])
     # send_osc_message(client, "/Dyn", [[41, 40], [127, 0]])
     # send_osc_message(client, "/Chords", chords_message)
     # send_osc_message(client, "/Strum", strum_message)
