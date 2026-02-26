@@ -461,6 +461,8 @@ pluck_message = [
     [45, 0.4, 3, 0, 36.5], [45, 0.4, 3, 0, 37.5], [45, 0.4, 3, 0, 38],
     [52, 0.4, 3, 0, 36.5], [52, 0.4, 3, 0, 37.5], [52, 0.4, 3, 0, 38],
     [59, 0.4, 3, 0, 36.5], [59, 0.4, 3, 0, 37.5], [59, 0.4, 3, 0, 38]
+
+    #IDEA from Shimon for Motif: Quick "Dun-Dun" sorta like in pheonix rising between the fast parts
 ]
 
 
