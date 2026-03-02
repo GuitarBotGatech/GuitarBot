@@ -11,7 +11,7 @@ import copy
 def midi_to_pluck_messages(midi_file_path: str, length: float, target_bpm: float = None):
     pluck_messages = []
     try:
-        mid = mido.MidiFile("Midi/" + midi_file_path)
+        mid = mido.MidiFile(midi_file_path)
     except Exception as e:
         print(f"Error opening or parsing MIDI file: {e}")
         return []
@@ -62,11 +62,19 @@ def midi_to_pluck_messages(midi_file_path: str, length: float, target_bpm: float
                 else:
                     duration = 0.49
 
-                pluck_message = [msg.note, duration, 1, 0, round(onset, 3)]
 
                 # Preserving original filtering logic
-                if round(onset, 3) <= length and 39 < msg.note < 70:
+                while msg.note < 39:
+                    msg.note = msg.note + 12
+                while msg.note > 70:
+                    msg.note = msg.note - 12
+
+                pluck_message = [msg.note, duration, 1, 0, round(onset, 3)]
+
+                if round(onset, 3) <= length:
                     pluck_messages.append(pluck_message)
+
+
 
     # Sort messages by timestamp to ensure they are in order
     pluck_messages.sort(key=lambda x: x[4])
@@ -97,7 +105,6 @@ def get_pluck_segment(messages, start_time, end_time):
 
     return segment
 
-
 def send_osc_message(client, address, data):
     print(f"Sending OSC message to {address}: {data}")
     client.send_message(address, data)
@@ -106,8 +113,13 @@ def main():
     # Create an OSC client
     client = SimpleUDPClient(UDP_IP, UDP_PORT)
 
-    
-
+    pluck_message = midi_to_pluck_messages("/home/guitarbot/Documents/Midi/Happy Birthday MIDI.mid", length=20.0, target_bpm=88)
+    #
+    client.send_message("/Pluck", pluck_message)
+    # client.send_message("/Chords", chord_message)
+    # time.sleep(30)
+    # client.send_message("/RLFret", [0, 6, 650])
+    # client.send_message("/Reset", [])
 
 
 if __name__ == "__main__":
