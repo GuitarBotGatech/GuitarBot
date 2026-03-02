@@ -9,11 +9,11 @@ import time
 
 
 # ============================================================================
-# Example 1: Replicate Original Send_msg_Test_NN.py with Recording
+# Example 1: Replicate Original OSC_Message_Receiver.py with Recording
 # ============================================================================
 
 def example_replicate_original():
-    """Exact replication of Send_msg_Test_NN.py but with audio recording."""
+    """Exact replication of OSC_Message_Receiver.py but with audio recording."""
     print("\n=== Example 1: Replicate Original Test ===\n")
     
     session = RecordingTestSession(session_name="replicate_original")
@@ -320,7 +320,7 @@ if __name__ == "__main__":
 """)
     
     examples = {
-        '1': ('Replicate Original Send_msg_Test_NN.py', example_replicate_original),
+        '1': ('Replicate Original OSC_Message_Receiver.py', example_replicate_original),
         '2': ('Single Note Quick Test', example_single_note),
         '3': ('Compare Multiple Strings', example_compare_strings),
         '4': ('Fretting Force Sweep', example_fretting_force_sweep),

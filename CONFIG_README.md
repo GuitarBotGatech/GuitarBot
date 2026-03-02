@@ -1,6 +1,6 @@
 # Runtime Configuration with /Config Messages
 
-The `/Config` OSC message allows you to dynamically update runtime flags and tuning parameters in `arm_list_recieverNN.py` without restarting the server. This is useful for:
+The `/Config` OSC message allows you to dynamically update runtime flags and tuning parameters in `OSC_Message_Receiver.py` without restarting the server. This is useful for:
 
 - **Testing different motion speeds** during development
 - **Enabling/disabling graphs** to speed up execution
@@ -155,7 +155,7 @@ disable_graphs()
 
 1. Start the receiver in one terminal:
    ```bash
-   python arm_list_recieverNN.py
+   python OSC_Message_Receiver.py
    ```
 
 2. Run a test script in another terminal:
@@ -176,7 +176,7 @@ disable_graphs()
 
 The `/Config` processor runs in a dedicated thread and updates:
 - Global variables in `tune.py` (e.g., `tu.graph`, `tu.TRAJECTORY_BLEND_PERCENT`)
-- Module-level flags in `arm_list_recieverNN.py` (e.g., `unpress_after_flag`)
+- Module-level flags in `OSC_Message_Receiver.py` (e.g., `unpress_after_flag`)
 
 Changes take effect **immediately** for new trajectories but don't affect trajectories already in progress.
 
@@ -209,6 +209,6 @@ client.send_message("/Config", ["presser_points", "not_a_number"])
 ## See Also
 
 - `tune.py` - Source of default parameter values
-- `arm_list_recieverNN.py` - Config processor implementation
+- `OSC_Message_Receiver.py` - Config processor implementation
 - `BothHandsParser.py` - Uses `unpress_after` flag
 - `LeftHandParser.py` - Uses `force_adjustment_only` flag

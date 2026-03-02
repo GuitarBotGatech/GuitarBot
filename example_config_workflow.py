@@ -160,7 +160,7 @@ if __name__ == "__main__":
     print("╔" + "="*68 + "╗")
     print("║" + " "*15 + "GuitarBot Config Workflow Examples" + " "*19 + "║")
     print("╚" + "="*68 + "╝")
-    print("\nMake sure arm_list_recieverNN.py is running before starting!\n")
+    print("\nMake sure OSC_Message_Receiver.py is running before starting!\n")
     
     # Uncomment the test you want to run:
     

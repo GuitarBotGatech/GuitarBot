@@ -594,7 +594,7 @@ def protocol_repeatability_test():
 
 
 def protocol_custom_test():
-    """Protocol: Custom test sequence (mimics Send_msg_Test_NN.py)."""
+    """Protocol: Custom test sequence (mimics OSC_Message_Receiver.py)."""
     session = RecordingTestSession(session_name="custom_test")
     
     # Replicate the original test pattern
