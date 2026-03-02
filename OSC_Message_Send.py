@@ -4,7 +4,7 @@ from pythonosc.udp_client import SimpleUDPClient
 UDP_IP = "127.0.0.1"
 UDP_PORT = 12000
 from MusicGeneration import RandomNoteGenerator
-from MusicGeneration.MidiFileParser import midi_to_pluck_messages, get_pluck_segment
+from MusicGeneration.MidiFileParser import midi_to_pluck_messages, get_pluck_segment, transpose
 import copy
 
 def send_osc_message(client, address, data):

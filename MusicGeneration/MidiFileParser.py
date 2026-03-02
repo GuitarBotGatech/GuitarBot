@@ -1,3 +1,5 @@
+import mido
+import copy
 
 def midi_to_pluck_messages(midi_file_path: str, length: float, target_bpm: float = None):
     pluck_messages = []
@@ -95,3 +97,14 @@ def get_pluck_segment(messages, start_time, end_time):
         msg[4] = round(msg[4] - offset, 3)
 
     return segment
+
+def transpose(messages, semitones):
+    """
+    Transposes the note values in the messages by a specified number of semitones.
+    """
+    transposed_messages = []
+    for msg in messages:
+        transposed_msg = copy.deepcopy(msg)
+        transposed_msg[0] += semitones  # Assuming the note value is at index 0
+        transposed_messages.append(transposed_msg)
+    return transposed_messages
