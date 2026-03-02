@@ -44,6 +44,7 @@ robot_lock = threading.Lock()
 rh_parser = RightHandParser()  # For /Dyn messages (pluck only)
 lh_parser = LeftHandParser()   # For direct LH testing (if needed)
 both_hands_parser = BothHandsParser()  # For /Fret messages (coordinated fret + pluck)
+guitarbot_parser = GuitarBotParser(initial_point=tu.initial_point.copy())  # For /Chords + /Pluck messages
 
 # Track the actual robot position (last trajectory endpoint sent to RobotController)
 last_robot_position = tu.initial_point.copy()  # Start at initial position
@@ -117,17 +118,24 @@ def process_messages():
 
 
 def song_creator():
-    # Instantiate the parser once with the robot's starting position.
-    # The parser will now manage its own state.
-    parser = GuitarBotParser(initial_point=tu.initial_point)
+    global guitarbot_parser
     last_activity_time = time.time()
     IDLE_TIMEOUT_SECONDS = 3.0
     last_queue_status_time = time.time()
     QUEUE_STATUS_INTERVAL = 5.0  # Log queue status every 5 seconds if waiting
+    PLUCK_ONLY_TIMEOUT = 0.5  # Wait 0.5s for chord before auto-generating
+    pluck_waiting_since = None
 
     while True:
         chords_count = chords_queue.qsize()
         pluck_count = pluck_queue.qsize()
+        
+        # Track when pluck-only messages start waiting
+        if pluck_count > 0 and chords_count == 0:
+            if pluck_waiting_since is None:
+                pluck_waiting_since = time.time()
+        else:
+            pluck_waiting_since = None
         
         # Log queue status periodically if waiting for messages
         if (chords_count > 0 or pluck_count > 0) and (chords_count == 0 or pluck_count == 0):
@@ -138,7 +146,43 @@ def song_creator():
                     print("  → Have /Chords but missing /Pluck message")
                 elif pluck_count > 0 and chords_count == 0:
                     print("  → Have /Pluck but missing /Chords message")
+                    print(f"  → Will auto-generate empty chord message after {PLUCK_ONLY_TIMEOUT}s timeout")
                 last_queue_status_time = current_time
+        
+        # Auto-generate chord message if only pluck exists after timeout
+        if pluck_count > 0 and chords_count == 0 and pluck_waiting_since is not None:
+            if time.time() - pluck_waiting_since > PLUCK_ONLY_TIMEOUT:
+                print(f"[song_creator] Auto-generating empty chord message for pluck-only song")
+                # Peek at pluck messages to find last timestamp
+                try:
+                    temp_pluck_list = []
+                    while not pluck_queue.empty():
+                        temp_pluck_list.append(pluck_queue.get_nowait())
+                    
+                    # Find the last timestamp in all pluck messages
+                    last_timestamp = 0.0
+                    for pluck_segment in temp_pluck_list:
+                        for pluck_event in pluck_segment:
+                            if len(pluck_event) >= 5:  # [note, duration, string, ?, timestamp]
+                                event_time = pluck_event[4]
+                                last_timestamp = max(last_timestamp, event_time)
+                    
+                    # Generate synthetic chord message
+                    synthetic_chord = [['On', last_timestamp + 1.0]]
+                    print(f"  → Generated chord: {synthetic_chord}")
+                    
+                    # Put everything back in queues
+                    for pluck_data in temp_pluck_list:
+                        pluck_queue.put(pluck_data)
+                    chords_queue.put(synthetic_chord)
+                    
+                    chords_count = chords_queue.qsize()
+                    pluck_count = pluck_queue.qsize()
+                    pluck_waiting_since = None
+                    
+                except Exception as e:
+                    print(f"✗ Error auto-generating chord message: {e}")
+                    traceback.print_exc()
         
         if chords_count > 0 and pluck_count > 0:
             try:
@@ -152,9 +196,8 @@ def song_creator():
 
                 print(f"Starting Parse - Chords: {chords}, Pluck: {pluck}")
 
-                # Call the method on the parser instance.
-                # It uses its internal state for the initial_point.
-                song_trajectories_array = parser.parseAllMIDI(chords, pluck)
+                # Use the global parser instance which maintains state across songs
+                song_trajectories_array = guitarbot_parser.parseAllMIDI(chords, pluck)
 
                 if song_trajectories_array.size > 0:
                     song_trajs_queue.put(song_trajectories_array)
@@ -686,11 +729,21 @@ def reset_processor():
                     RobotController.main(reset_trajectory)
                 
                 # Update last robot position and reset parser states
+                global guitarbot_parser
                 last_robot_position = tu.initial_point.copy()
-                rh_parser.reset_positions()
-                lh_parser.reset_positions()
-                both_hands_parser.reset_all()
-                print("Reset complete. Robot and parsers at initial positions.")
+                
+                # Reset all parser states to initial positions
+                if hasattr(rh_parser, 'reset_positions'):
+                    rh_parser.reset_positions()
+                if hasattr(lh_parser, 'reset_positions'):
+                    lh_parser.reset_positions()
+                if hasattr(both_hands_parser, 'reset_all'):
+                    both_hands_parser.reset_all()
+                
+                # Reset GuitarBotParser state
+                guitarbot_parser.initial_point = tu.initial_point.copy()
+                guitarbot_parser.current_fret_positions = [0, 0, 0, 0, 0, 0]
+                print("Reset complete. Robot and all parsers at initial positions.")
                 
                 print("Reset complete. All motors returned to initial positions.")
                 
@@ -718,9 +771,11 @@ def robot_controller():
                         RobotController.main(song_trajectories_list)
                     
                     # Update last robot position
-                    global last_robot_position
+                    global last_robot_position, guitarbot_parser
                     last_robot_position = song_trajectories_list[-1, :].copy()
-                    print(f"✓ Song complete, updated last_robot_position")
+                    # Sync GuitarBotParser state with actual robot position
+                    guitarbot_parser.initial_point = last_robot_position.tolist()
+                    print(f"✓ Song complete, updated last_robot_position and parser state")
 
         except queue.Empty:
             pass
@@ -732,7 +787,7 @@ def robot_controller():
 def cleanup_and_reset():
     """Send reset trajectory to robot before program exits."""
     try:
-        global last_robot_position
+        global last_robot_position, guitarbot_parser
         
         print("\n" + "="*60)
         print("SHUTDOWN - Resetting robot to safe state")
@@ -784,7 +839,11 @@ def cleanup_and_reset():
         with robot_lock:
             RobotController.main(reset_trajectory)
         
-        print("Reset complete. Motors at safe initial positions.")
+        # Reset all parser states
+        guitarbot_parser.initial_point = tu.initial_point.copy()
+        guitarbot_parser.current_fret_positions = [0, 0, 0, 0, 0, 0]
+        
+        print("Reset complete. Motors and parsers at safe initial positions.")
         print("="*60 + "\n")
         
     except Exception as e:
