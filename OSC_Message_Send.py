@@ -98,22 +98,6 @@ def get_pluck_segment(messages, start_time, end_time):
     return segment
 
 
-intro_segment = get_pluck_segment(pluck_message, 1.0, 18.5)
-chorus_segment = get_pluck_segment(pluck_message, 37.0, 80.0)
-transition_segment = get_pluck_segment(pluck_message, 30.0, 45.0)
-
-pluck_message = chorus_segment
-
-# Print a few notes of the chorus segment to verify it starts at 1.0
-print("First 3 notes of selected segment:")
-for msg in chorus_segment[:3]:
-    print(msg)
-
-
-chords_message = [["On",41]]
-
-
-
 def send_osc_message(client, address, data):
     print(f"Sending OSC message to {address}: {data}")
     client.send_message(address, data)
@@ -121,18 +105,8 @@ def send_osc_message(client, address, data):
 def main():
     # Create an OSC client
     client = SimpleUDPClient(UDP_IP, UDP_PORT)
-    # send_osc_message(client, "/Chords", chords_message)
-    #long_pluck_message_list = RandomNoteGenerator.generate_scale_progression(iterations=20)
 
-    # 2. Call the new batch sender function
-    # batch_send_pluck_messages(client, long_pluck_message_list, batch_size=60)
-    send_osc_message(client, "/Chords", chords_message)
-
-    # pluck_message = create_tremolo_message()
-    send_osc_message(client, "/Pluck", pluck_message)
-    time.sleep(1)
-
-    counter = 0
+    
 
 
 
