@@ -8,7 +8,8 @@ Project repo for GuitarBot.
 
 ---
 
-## Ryan's Branch - New Parsing Architecture
+This details changes made from 2025-2026 for Ryan Baker's work on improving GuitarBot as a platform for data-driven analysis and performance. 
+This branch also shared history with Marcus Parker's compositional work that explores GuitarBot's unique sonorities as a robotic musician.
 
 **Goal: Enable the GuitarBot platform to have highly specified control messages to be used for audio-based calibration and learning**
 
@@ -20,17 +21,18 @@ This branch introduces a major refactoring of the parsing system to support data
 - **Replaced** monolithic parsing approach with modular left/right hand separation
 - **Refactored** `DynamicsParser.py` → `RightHandParser.py` (enhanced with velocity mapping)
 - **Cleaned** `LeftHandParser.py` to focus purely on fretting (removed right-hand concerns)  
-- **Created** `Parser.py` as orchestrator for coordinated left/right hand trajectories
+- **Created** `BothHandsParser.py` as orchestrator for coordinated left/right hand trajectories
 
 #### **Enhanced Message Protocols**
-- **`/Fret` Messages**: MIDI note-based fretting with optional presser force control (0.0-1.0)
+- **`/Fret` Messages**: MIDI note-based fretting with optional presser force control (0.0-1.0) (expanded to /RLFret for GuitaRL paper)
 - **`/Dyn` Messages**: Right-hand dynamics testing with state-based or velocity-based plucking
-- **Coordinated Messages**: Combined fretting + plucking for complete note production
+- **Coordinated Messages**: Combined fretting + plucking for complete note production with a more overt code structure
 
 #### **Dataset Generation Focus**
 - **Fretting Optimization**: `/Fret` messages for calibrating optimal presser positions per fret
 - **Dynamics Range**: `/Dyn` messages for testing plucking motor dynamic response
 - **Clean Separation**: Robotics code separated from learning/dataset functionality
+- **Recording**: Programmatically capture data from the robot for automated annotated corpus creation
 
 ## Environment Setup (deprecated)
 1. Clone this repository.
@@ -44,16 +46,16 @@ This branch introduces a major refactoring of the parsing system to support data
 ![VSCode interpreter selection](environment/screenshots/python_interpreter_selection.png)
 ![VSCode conda configuration](environment/screenshots/conda_configuration.png)
 
-You're all set! Run the **UI/main.py** script to start the GuitarBot UI.
+Run strikers.io in Arduino IDE by uploading to the OpenCR board, turning on the robot, and opening the serial monitor.
 
-### New Parser Testing
-To test the new parsing architecture:
-```bash
-# Test individual parsers
-python LeftHandParser.py    # Test fretting trajectories
-python RightHandParser.py   # Test plucking trajectories  
-python Parser.py            # Test coordinated trajectories
-```
+You're all set! Start sending messages using the **OSC_Message_Send.py** and **OSC_Message_Receiver.py** scripts to start the GuitarBot UI.
+
+### New Parser
+**GuitarBotParser.py** still handles pluck messages for longer form song trajectories.
+
+**BothHandsParser.py** is designed for fine control of single-note events, i.e. for dataset generation and machine learning. 
+ - **RightHandParser.py** and **LeftHandParser.py** are mostly just copied from **GuitarBotParser.py**
+
 
 ### To Update Environment Configuration:
 1. Navigate to the **GuitarBot/environment** directory.
@@ -62,67 +64,9 @@ python Parser.py            # Test coordinated trajectories
 
 ---
 
-## New Parsing System Architecture
-
-### File Structure
-```
-GuitarBot/
-├── LeftHandParser.py      # Fretting trajectories (motors 0-11)
-├── RightHandParser.py     # Plucking trajectories (motors 12-14) 
-├── Parser.py              # Orchestrates both hands
-├── GuitarBotParser.py     # Original parser (still used for interp_with_blend)
-└── tune.py                # Calibration values and motor configurations
-```
-
-### Changes & Implementation Details
-
-#### **LeftHandParser.py Changes**
-- **Removed**: Right-hand plucking functionality (moved to RightHandParser)
-- **Enhanced**: MIDI note → string/fret mapping using `STRING_MIDI_RANGES`
-- **Maintained**: 3-phase fretting motion (unpress → slide → press)
-- **Added**: Presser force control with calibrated position mapping
-- **Simplified**: `/Fret` message parsing focuses purely on fretting
-
-#### **RightHandParser.py (formerly DynamicsParser.py)**
-- **Renamed**: DynamicsParser → RightHandParser for clarity
-- **Enhanced**: Added MIDI velocity → pluck depth mapping
-- **Maintained**: State-based plucking (alternates up/down positions) 
-- **Added**: Velocity-based plucking option for dynamic control
-- **Improved**: Better integration with `tune.py` PICKER_MOTOR_INFO
-- **Consistent**: Uses same `interp_with_blend` as GuitarBotParser
-
-#### **Parser.py Implementation**
-- **Coordinates**: Left and right hand timing with configurable prep time
-- **Supports**: Complete note production (fret + pluck), fret-only, dynamics-only
-- **Handles**: Chord sequences with multiple note coordination
-- **Maintains**: 15×N trajectory matrix format for system compatibility
-- **Provides**: Combined status reporting and position reset functionality
-
 ### Message Protocol Updates
 
-#### **Enhanced /Fret Messages**
-```python
-# Old format (string/fret based)
-parse_fret_message(string_id=0, fret_num=5, presser_force=0.8)
-
-# New format (MIDI note based)  
-parse_fret_message(midi_note_number=45, presser_force=0.8)
-```
-
-#### **Enhanced /Dyn Messages**
-```python
-# State-based plucking (like original)
-parse_dynamics_message([42, 55, 65], use_velocity_mapping=False)
-
-# Velocity-based plucking (new)
-parse_pluck_message(midi_note=45, velocity=127, use_velocity_mapping=True)
-```
-
-#### **New Coordinated Messages**
-```python
-# Complete note production
-parse_note_message(midi_note=45, presser_force=0.8, pluck_velocity=100)
-```
+The new message types are reported in the terminal by running **OSC_Message_Receiver.py**
 
 ### Technical Improvements
 
@@ -130,7 +74,7 @@ parse_note_message(midi_note=45, presser_force=0.8, pluck_velocity=100)
 - **Consistent**: All parsers use `GuitarBotParser.interp_with_blend` for smooth motion
 - **Robust**: Handle None returns from interpolation functions gracefully
 - **Calibrated**: Use `tune.py` values for motor directions, positions, and conversions
-- **Timed**: Proper coordination between left-hand prep and right-hand execution
+- **Timed**: Explicit and easier-to-read coordination between left-hand prep and right-hand execution
 
 #### **MIDI Integration** 
 - **Unified**: All parsers use `STRING_MIDI_RANGES` for consistent note mapping
@@ -140,5 +84,4 @@ parse_note_message(midi_note=45, presser_force=0.8, pluck_velocity=100)
 #### **System Compatibility**
 - **Format**: Maintains 15×N trajectory matrix (12 LH + 3 RH motors)
 - **Integration**: Compatible with existing `RobotController` and OSC receiver
-- **Plotting**: Enhanced visualization with separate left/right hand motor grouping
-- **Status**: Comprehensive status reporting for debugging and calibration
+- **Plotting**: Clearer motor labels ([Function] No. vs. Motor No.)
