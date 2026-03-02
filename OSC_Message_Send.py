@@ -4,7 +4,7 @@ from pythonosc.udp_client import SimpleUDPClient
 UDP_IP = "127.0.0.1"
 UDP_PORT = 12000
 from MusicGeneration import RandomNoteGenerator
-from MusicGeneration.MidiFileParser import midi_to_pluck_messages, get_pluck_segment, transpose
+from MusicGeneration.MidiFileParser import *
 import copy
 
 def send_osc_message(client, address, data):
@@ -15,8 +15,9 @@ def main():
     # Create an OSC client
     client = SimpleUDPClient(UDP_IP, UDP_PORT)
 
-    pluck_message = midi_to_pluck_messages("/home/guitarbot/Documents/Midi/Happy Birthday MIDI.mid", length=20.0, target_bpm=88)
-    #
+    hbd = midi_to_mido("/home/guitarbot/Documents/Midi/Happy Birthday MIDI.mid")
+    hbd = transpose(hbd, semitones= -24)
+    pluck_message = mido_to_pluck_messages(hbd, length=60.0, target_bpm=30)
     client.send_message("/Pluck", pluck_message)
     # client.send_message("/Chords", chord_message)
     # time.sleep(30)

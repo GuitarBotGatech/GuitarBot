@@ -55,14 +55,14 @@ def midi_to_pluck_messages(midi_file_path: str, length: float, target_bpm: float
                 else:
                     duration = 0.49
 
+                # Transpose note to valid range (39-70) for GuitarBot
+                note_value = msg.note
+                while note_value < 39:
+                    note_value += 12
+                while note_value > 70:
+                    note_value -= 12
 
-                # Preserving original filtering logic
-                while msg.note < 39:
-                    msg.note = msg.note + 12
-                while msg.note > 70:
-                    msg.note = msg.note - 12
-
-                pluck_message = [msg.note, duration, 1, 0, round(onset, 3)]
+                pluck_message = [note_value, duration, 1, 0, round(onset, 3)]
 
                 if round(onset, 3) <= length:
                     pluck_messages.append(pluck_message)
@@ -77,7 +77,61 @@ def midi_to_pluck_messages(midi_file_path: str, length: float, target_bpm: float
 
     return pluck_messages
 
+def mido_to_pluck_messages(mid, length: float, target_bpm: float = None):
+    pluck_messages = []
+    ticks_per_beat = mid.ticks_per_beat
+    current_tempo = 500000  # Default MIDI tempo (120 BPM)
+    absolute_ticks = 0
+    open_notes = {}
+    merged_track = mido.merge_tracks(mid.tracks)
 
+    if target_bpm is not None:
+        current_tempo = mido.bpm2tempo(target_bpm)
+        print(f"Using specified target BPM: {target_bpm}")
+
+    for msg in merged_track:
+        absolute_ticks += msg.time
+
+        if msg.is_meta and msg.type == 'set_tempo':
+            current_tempo = msg.tempo
+
+        absolute_time_seconds = mido.tick2second(absolute_ticks, ticks_per_beat, current_tempo)
+
+        if msg.type == 'note_on' and msg.velocity > 0:
+            note_key = (msg.channel, msg.note)
+            open_notes[note_key] = {'onset': absolute_time_seconds, 'velocity': msg.velocity}
+
+        elif msg.type == 'note_off' or (msg.type == 'note_on' and msg.velocity == 0):
+            note_key = (msg.channel, msg.note)
+            if note_key in open_notes:
+                note_on_info = open_notes.pop(note_key)
+                onset = note_on_info['onset']
+                velocity = note_on_info['velocity']
+
+                duration_seconds = absolute_time_seconds - onset
+                duration = round(duration_seconds - 0.01, 3) if duration_seconds > .5 else 0.49
+
+                # Transpose note to valid range (39-70) for GuitarBot
+                note_value = msg.note
+                while note_value < 39:
+                    note_value += 12
+                while note_value > 70:
+                    note_value -= 12
+
+                pluck_message = [note_value, duration, 1, 0, round(onset, 3)]
+                if round(onset, 3) <= length:
+                    pluck_messages.append(pluck_message)
+
+    pluck_messages.sort(key=lambda x: x[4])
+    return pluck_messages
+def midi_to_mido(midi_file_path: str):
+    try:
+        mid = mido.MidiFile(midi_file_path)
+        print(f"Successfully loaded MIDI file: {midi_file_path}")
+        return mid
+    except Exception as e:
+        print(f"Error opening or parsing MIDI file: {e}")
+        return None
 
 def get_pluck_segment(messages, start_time, end_time):
     """
@@ -98,13 +152,45 @@ def get_pluck_segment(messages, start_time, end_time):
 
     return segment
 
-def transpose(messages, semitones):
+def transpose(mid, semitones):
     """
-    Transposes the note values in the messages by a specified number of semitones.
+    Transposes all notes in a mido.MidiFile object by a specified number of semitones.
+    
+    Args:
+        mid: mido.MidiFile object to transpose
+        semitones: Number of semitones to transpose (positive = up, negative = down)
+    
+    Returns:
+        Transposed mido.MidiFile object (new copy)
+    """
+    transposed_mid = copy.deepcopy(mid)
+    
+    for track in transposed_mid.tracks:
+        for msg in track:
+            # Only transpose note messages (note_on, note_off)
+            # Skip meta messages and other message types
+            if hasattr(msg, 'note') and msg.type in ('note_on', 'note_off'):
+                # Transpose the note, clamping to valid MIDI range (0-127)
+                new_note = msg.note + semitones
+                msg.note = max(0, min(127, new_note))
+    
+    return transposed_mid
+
+def transpose_pluck_messages(pluck_messages, semitones):
+    """
+    Transposes the note values in pluck messages by a specified number of semitones.
+    
+    Args:
+        pluck_messages: List of pluck messages [note, duration, string, ?, timestamp]
+        semitones: Number of semitones to transpose
+    
+    Returns:
+        List of transposed pluck messages
     """
     transposed_messages = []
-    for msg in messages:
+    for msg in pluck_messages:
         transposed_msg = copy.deepcopy(msg)
-        transposed_msg[0] += semitones  # Assuming the note value is at index 0
+        # Note value is at index 0, clamp to MIDI range
+        transposed_msg[0] = max(0, min(127, transposed_msg[0] + semitones))
         transposed_messages.append(transposed_msg)
     return transposed_messages
