@@ -86,21 +86,29 @@ def process_messages():
         try:
             while not message_queue.empty():
                 message_type, data = message_queue.get_nowait()
-                print("DATA: ", data)
+                print(f"Processing message type: {message_type}")
+                print(f"  Data: {data}")
                 if message_type == "Chords":
                     chords_queue.put(data)
+                    print(f"  → Queued to chords_queue (size: {chords_queue.qsize()})")
                 elif message_type == "Pluck":
                     pluck_queue.put(data)
+                    print(f"  → Queued to pluck_queue (size: {pluck_queue.qsize()})")
                 elif message_type == "Dyn":
                     dyn_queue.put(data)
+                    print(f"  → Queued to dyn_queue (size: {dyn_queue.qsize()})")
                 elif message_type == "Fret":
                     fret_queue.put(data)
+                    print(f"  → Queued to fret_queue (size: {fret_queue.qsize()})")
                 elif message_type == "RLFret":
                     rlfret_queue.put(data)
+                    print(f"  → Queued to rlfret_queue (size: {rlfret_queue.qsize()})")
                 elif message_type == "Reset":
                     reset_queue.put(data)
+                    print(f"  → Queued to reset_queue (size: {reset_queue.qsize()})")
                 elif message_type == "Config":
                     config_queue.put(data)
+                    print(f"  → Queued to config_queue (size: {config_queue.qsize()})")
                 # print(f"Chords Queue Size1", chords_queue.qsize())
                 # print(f"Pluck Queue Size1", pluck_queue.qsize())
         except queue.Empty:
@@ -114,9 +122,25 @@ def song_creator():
     parser = GuitarBotParser(initial_point=tu.initial_point)
     last_activity_time = time.time()
     IDLE_TIMEOUT_SECONDS = 3.0
+    last_queue_status_time = time.time()
+    QUEUE_STATUS_INTERVAL = 5.0  # Log queue status every 5 seconds if waiting
 
     while True:
-        if chords_queue.qsize() > 0 and pluck_queue.qsize() > 0:
+        chords_count = chords_queue.qsize()
+        pluck_count = pluck_queue.qsize()
+        
+        # Log queue status periodically if waiting for messages
+        if (chords_count > 0 or pluck_count > 0) and (chords_count == 0 or pluck_count == 0):
+            current_time = time.time()
+            if current_time - last_queue_status_time > QUEUE_STATUS_INTERVAL:
+                print(f"[song_creator] Waiting for paired messages: chords={chords_count}, pluck={pluck_count}")
+                if chords_count > 0 and pluck_count == 0:
+                    print("  → Have /Chords but missing /Pluck message")
+                elif pluck_count > 0 and chords_count == 0:
+                    print("  → Have /Pluck but missing /Chords message")
+                last_queue_status_time = current_time
+        
+        if chords_count > 0 and pluck_count > 0:
             try:
                 chords = chords_queue.get_nowait()
                 pluck = pluck_queue.get_nowait()
@@ -126,7 +150,7 @@ def song_creator():
                 while not pluck_queue.empty():
                     pluck.extend(pluck_queue.get_nowait())
 
-                print("Starting Parse")
+                print(f"Starting Parse - Chords: {chords}, Pluck: {pluck}")
 
                 # Call the method on the parser instance.
                 # It uses its internal state for the initial_point.
@@ -134,7 +158,10 @@ def song_creator():
 
                 if song_trajectories_array.size > 0:
                     song_trajs_queue.put(song_trajectories_array)
-                    print("SONG TRAJS QUEUE HAS ITEM OF SHAPE: ", song_trajectories_array.shape)
+                    print(f"SONG TRAJS QUEUE HAS ITEM OF SHAPE: {song_trajectories_array.shape}")
+                    print(f"✓ /Chords + /Pluck parsed successfully, queued for robot_controller")
+                else:
+                    print(f"✗ Warning: parseAllMIDI returned empty array")
 
                 # No need to manually update initial_point here. The parser does it internally.
                 last_activity_time = time.time()
@@ -142,6 +169,9 @@ def song_creator():
 
             except queue.Empty:
                 pass
+            except Exception as e:
+                print(f"✗ Error in song_creator: {e}")
+                traceback.print_exc()
         else:
             if chords_queue.qsize() == 0 and pluck_queue.qsize() == 0:
                 if time.time() - last_activity_time > IDLE_TIMEOUT_SECONDS:
@@ -682,18 +712,21 @@ def robot_controller():
 
                 if all_trajs:
                     song_trajectories_list = np.vstack(all_trajs)
-                    print("Total Song Trajs Shape: ", song_trajectories_list.shape)
-                    print("Starting Song")
+                    print(f"Total Song Trajs Shape: {song_trajectories_list.shape}")
+                    print(f"Starting Song (sending to RobotController.main)")
                     with robot_lock:
                         RobotController.main(song_trajectories_list)
                     
                     # Update last robot position
                     global last_robot_position
                     last_robot_position = song_trajectories_list[-1, :].copy()
-                    print(f"Updated last_robot_position after song")
+                    print(f"✓ Song complete, updated last_robot_position")
 
         except queue.Empty:
             pass
+        except Exception as e:
+            print(f"✗ Error in robot_controller: {e}")
+            traceback.print_exc()
         time.sleep(0.001)
 
 def cleanup_and_reset():
