@@ -1,0 +1,14 @@
+# Additional requirements for RecordingTestSession.py
+# These are not in the main environment.yml but needed for audio recording
+
+# Core audio recording library (cross-platform)
+sounddevice>=0.4.6
+
+# Already included in main environment, but listed here for clarity:
+# scipy>=1.11.0  (for wavfile reading/writing)
+# numpy>=1.24.0  (for audio array manipulation)
+# python-osc>=1.8.0  (for OSC communication)
+
+# Optional but recommended for analysis:
+# pandas>=2.0.0  (for CSV/data analysis)
+# matplotlib>=3.7.0  (for audio visualization)

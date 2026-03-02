@@ -272,12 +272,12 @@ public:
     void processTrajPoints(float *trajPoint) {
         int packetSize = 15;
         int curr_pos;
-        Serial.print("RECEIVED: ");
-        for (int i = 0; i < packetSize; i++) {
-            Serial.print(trajPoint[i]);
-            Serial.print(" ");
-        }
-        Serial.println();
+        // Serial.print("RECEIVED: ");
+        // for (int i = 0; i < packetSize; i++) {
+        //     Serial.print(trajPoint[i]);
+        //     Serial.print(" ");
+        // }
+        // Serial.println();
 
         for (int x = 0; x < NUM_MOTORS; x++) {
             if (x < 17) {
