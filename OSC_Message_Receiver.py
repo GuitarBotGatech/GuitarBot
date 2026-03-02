@@ -165,7 +165,8 @@ def song_creator():
                         for pluck_event in pluck_segment:
                             if len(pluck_event) >= 5:  # [note, duration, string, ?, timestamp]
                                 event_time = pluck_event[4]
-                                last_timestamp = max(last_timestamp, event_time)
+                                event_dur  = pluck_event[1]
+                                last_timestamp = max(last_timestamp, event_time) + event_dur
                     
                     # Generate synthetic chord message
                     synthetic_chord = [['On', last_timestamp + 1.0]]
