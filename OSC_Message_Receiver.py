@@ -14,6 +14,8 @@ from BothHandsParser import BothHandsParser
 import numpy as np
 import tune as tu
 import traceback
+from sequence_player import SequencePlayer, TimedMessage
+from osc2midi.config import BridgeConfig
 
 # For External
 # UDP_IP = "192.168.1.1"
@@ -32,6 +34,76 @@ fret_queue = queue.SimpleQueue()
 rlfret_queue = queue.SimpleQueue()  # Queue for RL low-level fret commands
 reset_queue = queue.SimpleQueue()
 config_queue = queue.SimpleQueue()
+# Holds list[TimedMessage] sequences pending playback.
+# robot_controller pops one when a song starts (synchronised to t0).
+# midi_standalone_processor plays any that arrive without a paired song.
+midi_sequence_queue = queue.SimpleQueue()
+
+# ── MIDI player (lazy-initialised on first /Midi message) ─────────────────
+_midi_player: SequencePlayer | None = None
+_midi_player_lock = threading.Lock()
+
+MIDI_ROBOT_DELAY_S = 0.05  # seconds – tune to match pedal + robot latency
+
+
+def _get_midi_player() -> SequencePlayer:
+    """Return the module-level SequencePlayer, creating it on first call."""
+    global _midi_player
+    with _midi_player_lock:
+        if _midi_player is None:
+            config = BridgeConfig.from_dict({
+                "midi": {"port_name": None, "virtual": False},
+                "mappings": [
+                    {"osc_address": "/cc",      "midi_type": "control_change", "channel": 0},
+                    {"osc_address": "/note",    "midi_type": "note_on",        "channel": 0},
+                    {"osc_address": "/noteoff", "midi_type": "note_off",       "channel": 0},
+                    {"osc_address": "/program", "midi_type": "program_change", "channel": 0},
+                    {"osc_address": "/pitch",   "midi_type": "pitchwheel",     "channel": 0},
+                ],
+            })
+            _midi_player = SequencePlayer.from_config(
+                config, robot_delay=MIDI_ROBOT_DELAY_S
+            )
+            _midi_player.open()
+            print(f"[midi] SequencePlayer initialised (robot_delay={MIDI_ROBOT_DELAY_S}s)")
+    return _midi_player
+
+
+def parse_midi_sequence(data) -> list[TimedMessage]:
+    """
+    Parse a flat /Midi OSC payload into a sorted list of TimedMessage objects.
+
+    Wire format (flat OSC list, mixed str + float)::
+
+        ["/cc", 3.0, 30.0, 1.0,   "/cc", 3.0, 120.0, 3.0]
+          ^addr  ^ctrl ^val  ^t      ^addr  ^ctrl  ^val   ^t
+
+    Rules
+    -----
+    * A ``str`` element that starts with ``/`` begins a new event.
+    * All subsequent non-string elements up to the next ``/``-string are
+      that event's arguments; the *last* argument is the timestamp (seconds).
+    """
+    messages: list[TimedMessage] = []
+    i = 0
+    while i < len(data):
+        if isinstance(data[i], str) and data[i].startswith('/'):
+            address = data[i]
+            i += 1
+            args = []
+            while i < len(data) and not (isinstance(data[i], str) and data[i].startswith('/')):
+                args.append(data[i])
+                i += 1
+            if args:
+                try:
+                    messages.append(TimedMessage.from_osc_args(address, args))
+                except ValueError as e:
+                    print(f"[midi] Skipping malformed event: {e}")
+        else:
+            print(f"[midi] Unexpected token at index {i}: {data[i]!r} – skipping")
+            i += 1
+    messages.sort()
+    return messages
 
 # Mutual-exclusion lock for RobotController.main().
 # RobotController.main() sends a blocking UDP trajectory to the Arduino.
@@ -58,7 +130,7 @@ def decode_osc_message(data):
     print("Message In")
     try:
         msg = OscMessage(data)
-        if msg.address in ["/Chords", "/Strum", "/Pluck", "/Dyn", "/Fret", "/RLFret", "/Reset", "/Config"]:
+        if msg.address in ["/Chords", "/Strum", "/Pluck", "/Dyn", "/Fret", "/RLFret", "/Reset", "/Config", "/Midi"]:
             return msg.address[1:], msg.params  # Remove the leading '/'
     except osc_types.ParseError:
         print("Failed to parse OSC message")
@@ -110,6 +182,13 @@ def process_messages():
                 elif message_type == "Config":
                     config_queue.put(data)
                     print(f"  → Queued to config_queue (size: {config_queue.qsize()})")
+                elif message_type == "Midi":
+                    seq = parse_midi_sequence(data)
+                    if seq:
+                        midi_sequence_queue.put(seq)
+                        print(f"  → Parsed {len(seq)} MIDI event(s) into midi_sequence_queue")
+                    else:
+                        print("  → /Midi message contained no valid events – ignoring")
                 # print(f"Chords Queue Size1", chords_queue.qsize())
                 # print(f"Pluck Queue Size1", pluck_queue.qsize())
         except queue.Empty:
@@ -756,6 +835,44 @@ def reset_processor():
         
         time.sleep(0.001)
 
+def midi_standalone_processor():
+    """
+    Play /Midi sequences that arrive without a paired /Pluck song.
+
+    Watches midi_sequence_queue.  Any sequence still present after
+    STANDALONE_WAIT_S seconds (i.e. robot_controller never consumed it)
+    is played immediately from t0=now.
+    """
+    STANDALONE_WAIT_S = 0.3  # grace period: if no song starts in 300 ms, play now
+    pending: list[TimedMessage] | None = None
+    pending_since: float = 0.0
+
+    while True:
+        try:
+            # Pick up a new sequence if we don't already have one pending.
+            if pending is None and not midi_sequence_queue.empty():
+                pending = midi_sequence_queue.get_nowait()
+                pending_since = time.monotonic()
+
+            if pending is not None:
+                # If a song trajectory is queued, let robot_controller handle sync.
+                if not song_trajs_queue.empty():
+                    pending = None  # robot_controller will repop from midi_sequence_queue
+                elif time.monotonic() - pending_since >= STANDALONE_WAIT_S:
+                    # No song arrived in time – play standalone from now.
+                    print(f"[midi] Standalone playback: {len(pending)} event(s)")
+                    player = _get_midi_player()
+                    if player.is_playing:
+                        player.stop()
+                    player.load(pending)
+                    player.play_async()  # t0 = now
+                    pending = None
+        except Exception as e:
+            print(f"Error in midi_standalone_processor: {e}")
+            traceback.print_exc()
+        time.sleep(0.01)
+
+
 def robot_controller():
     while True:
         try:
@@ -768,9 +885,26 @@ def robot_controller():
                     song_trajectories_list = np.vstack(all_trajs)
                     print(f"Total Song Trajs Shape: {song_trajectories_list.shape}")
                     print(f"Starting Song (sending to RobotController.main)")
+
+                    # Grab any pending MIDI sequence and fire it at the same t0
+                    # as the robot trajectory so effects are synchronised.
+                    midi_seq: list[TimedMessage] | None = None
+                    if not midi_sequence_queue.empty():
+                        midi_seq = midi_sequence_queue.get_nowait()
+
+                    t0 = time.monotonic()
+
+                    if midi_seq:
+                        player = _get_midi_player()
+                        if player.is_playing:
+                            player.stop()
+                        player.load(midi_seq)
+                        player.play_async(start_time=t0)
+                        print(f"[midi] Fired {len(midi_seq)} event(s) synchronised to song t0")
+
                     with robot_lock:
                         RobotController.main(song_trajectories_list)
-                    
+
                     # Update last robot position
                     global last_robot_position, guitarbot_parser
                     last_robot_position = song_trajectories_list[-1, :].copy()
@@ -879,6 +1013,9 @@ if __name__ == "__main__":
     robot_controller_thread = threading.Thread(target=robot_controller, daemon=True)
     robot_controller_thread.start()
 
+    midi_standalone_thread = threading.Thread(target=midi_standalone_processor, daemon=True)
+    midi_standalone_thread.start()
+
     print("Main program running. Press Ctrl+C to stop.")
     print("Supports OSC messages:")
     print("  /Chords + /Pluck - Full song parsing with GuitarBotParser")
@@ -911,7 +1048,15 @@ if __name__ == "__main__":
     print("    Format:")
     print("      /Reset                  - Resets all parser states and moves motors home")
     print("")
-    print("  /Config - Update runtime configuration flags")
+    print("  /Midi - Timed MIDI effect sequence (synced to song or standalone)")
+    print("Format: flat list of [address, arg0, …, timestamp_s, address, …]")
+    print("  /Midi /cc 3.0 30.0 1.0 /cc 3.0 120.0 3.0")
+    print("Send before or alongside /Pluck to synchronise with the song.")
+    print("Send alone to play immediately (standalone mode).")
+    print("Timestamps are seconds from song start (robot_delay applied automatically).")
+    print("")
+
+    print("/Config - Update runtime configuration flags")
     print("    Format:")
     print("      /Config \"graph\" True               - Enable/disable trajectory plotting")
     print("      /Config \"unpress_after\" True       - Release presser after pluck")
