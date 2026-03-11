@@ -28,10 +28,18 @@ class GuitarBotParser:
         Outputs: Interpolated NumPy array for RobotController to send to bot
     '''
 
-    def parseAllMIDI(self, chords, pluck):
+    def parseAllMIDI(self, chords, pluck, midi_events=None):
         """
         Parses MIDI commands and generates a complete motor trajectory array.
         This is the main entry point for the parser instance.
+
+        Args:
+            chords: Raw chord OSC data.
+            pluck:  Raw pluck OSC data.
+            midi_events (list[TimedMessage] | None): Optional timed MIDI effect
+                events.  When provided and ``self.graph`` is True, they are
+                overlaid on the trajectory plot as vertical lines so the
+                composer can visually verify alignment with robot motion.
         """
         # 1. Get events + Timestamps
         lh_motor_positions = self.parseleftMIDI(chords)
@@ -104,9 +112,73 @@ class GuitarBotParser:
                     )
                 )
 
+            # ── MIDI event overlay ────────────────────────────────────────
+            if midi_events:
+                # Colour palette per MIDI type (cycles if more types present)
+                _MIDI_COLOURS = {
+                    '/cc':      '#e63946',   # red
+                    '/note':    '#2a9d8f',   # teal
+                    '/noteoff': '#457b9d',   # blue
+                    '/program': '#f4a261',   # orange
+                    '/pitch':   '#a8dadc',   # light blue
+                }
+                _DEFAULT_COLOUR = '#9b5de5'
+
+                y_range_min = float(np.min(combined_array))
+                y_range_max = float(np.max(combined_array))
+
+                # Invisible scatter used solely for the MIDI legend entries
+                seen_addresses = {}
+                for event in midi_events:
+                    colour = _MIDI_COLOURS.get(event.address, _DEFAULT_COLOUR)
+                    label = f'MIDI {event.address}'
+                    if label not in seen_addresses:
+                        seen_addresses[label] = colour
+                        fig.add_trace(
+                            go.Scatter(
+                                x=[None], y=[None],
+                                mode='lines',
+                                name=label,
+                                line=dict(color=colour, dash='dash', width=1.5),
+                                showlegend=True,
+                            )
+                        )
+
+                shapes = []
+                annotations = []
+                for event in midi_events:
+                    colour = _MIDI_COLOURS.get(event.address, _DEFAULT_COLOUR)
+                    t = event.timestamp
+                    # Vertical line spanning full y range
+                    shapes.append(dict(
+                        type='line',
+                        x0=t, x1=t,
+                        y0=y_range_min, y1=y_range_max,
+                        line=dict(color=colour, dash='dash', width=1.5),
+                    ))
+                    # Compact label: address + args (truncated if long)
+                    args_str = ', '.join(str(a) for a in event.args)
+                    short_label = f"{event.address}({args_str})"
+                    if len(short_label) > 30:
+                        short_label = short_label[:28] + '…'
+                    annotations.append(dict(
+                        x=t,
+                        y=y_range_max,
+                        xanchor='left',
+                        yanchor='top',
+                        text=short_label,
+                        showarrow=False,
+                        font=dict(size=9, color=colour),
+                        bgcolor='rgba(255,255,255,0.7)',
+                        bordercolor=colour,
+                        borderwidth=1,
+                    ))
+
+                fig.update_layout(shapes=shapes, annotations=annotations)
+
             # Update layout
             fig.update_layout(
-                title='Motor Positions Over Time',
+                title='Motor Positions Over Time' + (' + MIDI Events' if midi_events else ''),
                 xaxis_title='Time (s)',
                 yaxis_title='Motor Position',
                 legend_title='Motors'

@@ -54,8 +54,8 @@ def main():
         "/cc", 7.0, 60.0, 3.0,   # CC #3 = 120 at t = 3.0 s
     ]
     pluck_message = gen.scale()
-    client.send_message("/Pluck", pluck_message)
     client.send_message("/Midi", midi_message)
+    client.send_message("/Pluck", pluck_message)
     # client.send_message("/Chords", chord_message)
     # client.send_message("/RLFret", [0, 6, 650])
     # client.send_message("/Config", ["graph", True])

@@ -34,10 +34,13 @@ fret_queue = queue.SimpleQueue()
 rlfret_queue = queue.SimpleQueue()  # Queue for RL low-level fret commands
 reset_queue = queue.SimpleQueue()
 config_queue = queue.SimpleQueue()
-# Holds list[TimedMessage] sequences pending playback.
-# robot_controller pops one when a song starts (synchronised to t0).
-# midi_standalone_processor plays any that arrive without a paired song.
-midi_sequence_queue = queue.SimpleQueue()
+# Shared MIDI sequence state. Written by process_messages, read by
+# song_creator (graph), robot_controller (synced playback), and
+# midi_standalone_processor (standalone playback). All access must
+# hold _midi_seq_lock.  Cleared to None after the sequence is consumed.
+_pending_midi_seq: list[TimedMessage] | None = None
+_pending_midi_seq_arrived: float = 0.0   # time.monotonic() of last set
+_midi_seq_lock = threading.Lock()
 
 # ── MIDI player (lazy-initialised on first /Midi message) ─────────────────
 _midi_player: SequencePlayer | None = None
@@ -185,8 +188,11 @@ def process_messages():
                 elif message_type == "Midi":
                     seq = parse_midi_sequence(data)
                     if seq:
-                        midi_sequence_queue.put(seq)
-                        print(f"  → Parsed {len(seq)} MIDI event(s) into midi_sequence_queue")
+                        with _midi_seq_lock:
+                            global _pending_midi_seq, _pending_midi_seq_arrived
+                            _pending_midi_seq = seq
+                            _pending_midi_seq_arrived = time.monotonic()
+                        print(f"  → Parsed {len(seq)} MIDI event(s) into _pending_midi_seq")
                     else:
                         print("  → /Midi message contained no valid events – ignoring")
                 # print(f"Chords Queue Size1", chords_queue.qsize())
@@ -276,8 +282,13 @@ def song_creator():
 
                 print(f"Starting Parse - Chords: {chords}, Pluck: {pluck}")
 
+                # Read the pending MIDI sequence for graph overlay (non-consuming).
+                # robot_controller will consume + clear it when the song runs.
+                with _midi_seq_lock:
+                    pending_midi = _pending_midi_seq
+
                 # Use the global parser instance which maintains state across songs
-                song_trajectories_array = guitarbot_parser.parseAllMIDI(chords, pluck)
+                song_trajectories_array = guitarbot_parser.parseAllMIDI(chords, pluck, midi_events=pending_midi)
 
                 if song_trajectories_array.size > 0:
                     song_trajs_queue.put(song_trajectories_array)
@@ -839,34 +850,35 @@ def midi_standalone_processor():
     """
     Play /Midi sequences that arrive without a paired /Pluck song.
 
-    Watches midi_sequence_queue.  Any sequence still present after
-    STANDALONE_WAIT_S seconds (i.e. robot_controller never consumed it)
-    is played immediately from t0=now.
+    Checks _pending_midi_seq.  If the sequence is still present after
+    STANDALONE_WAIT_S seconds (i.e. robot_controller never consumed it
+    because no song was sent), play it immediately from t0=now.
     """
-    STANDALONE_WAIT_S = 0.3  # grace period: if no song starts in 300 ms, play now
-    pending: list[TimedMessage] | None = None
-    pending_since: float = 0.0
+    STANDALONE_WAIT_S = 0.6  # grace period: longer than PLUCK_ONLY_TIMEOUT (0.5s)
+    global _pending_midi_seq
 
     while True:
         try:
-            # Pick up a new sequence if we don't already have one pending.
-            if pending is None and not midi_sequence_queue.empty():
-                pending = midi_sequence_queue.get_nowait()
-                pending_since = time.monotonic()
+            with _midi_seq_lock:
+                seq = _pending_midi_seq
+                arrived = _pending_midi_seq_arrived
 
-            if pending is not None:
-                # If a song trajectory is queued, let robot_controller handle sync.
+            if seq is not None:
+                elapsed = time.monotonic() - arrived
+                # If song_trajs_queue has work, robot_controller will handle sync.
                 if not song_trajs_queue.empty():
-                    pending = None  # robot_controller will repop from midi_sequence_queue
-                elif time.monotonic() - pending_since >= STANDALONE_WAIT_S:
-                    # No song arrived in time – play standalone from now.
-                    print(f"[midi] Standalone playback: {len(pending)} event(s)")
+                    pass  # wait; robot_controller will consume _pending_midi_seq
+                elif elapsed >= STANDALONE_WAIT_S:
+                    # No song arrived in time – play standalone.
+                    with _midi_seq_lock:
+                        if _pending_midi_seq is seq:  # not already consumed
+                            _pending_midi_seq = None
+                    print(f"[midi] Standalone playback: {len(seq)} event(s)")
                     player = _get_midi_player()
                     if player.is_playing:
                         player.stop()
-                    player.load(pending)
+                    player.load(seq)
                     player.play_async()  # t0 = now
-                    pending = None
         except Exception as e:
             print(f"Error in midi_standalone_processor: {e}")
             traceback.print_exc()
@@ -886,11 +898,12 @@ def robot_controller():
                     print(f"Total Song Trajs Shape: {song_trajectories_list.shape}")
                     print(f"Starting Song (sending to RobotController.main)")
 
-                    # Grab any pending MIDI sequence and fire it at the same t0
-                    # as the robot trajectory so effects are synchronised.
-                    midi_seq: list[TimedMessage] | None = None
-                    if not midi_sequence_queue.empty():
-                        midi_seq = midi_sequence_queue.get_nowait()
+                    # Consume the pending MIDI sequence and fire it at the same
+                    # t0 as the robot trajectory so effects are synchronised.
+                    with _midi_seq_lock:
+                        global _pending_midi_seq
+                        midi_seq = _pending_midi_seq
+                        _pending_midi_seq = None  # consumed
 
                     t0 = time.monotonic()
 
