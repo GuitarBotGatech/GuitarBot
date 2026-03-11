@@ -76,16 +76,22 @@ def parse_midi_sequence(data) -> list[TimedMessage]:
     """
     Parse a flat /Midi OSC payload into a sorted list of TimedMessage objects.
 
-    Wire format (flat OSC list, mixed str + float)::
+    Wire format (flat OSC list, mixed str + float + optional int)::
 
         ["/cc", 3.0, 30.0, 1.0,   "/cc", 3.0, 120.0, 3.0]
-          ^addr  ^ctrl ^val  ^t      ^addr  ^ctrl  ^val   ^t
+          ^addr  ^ctrl ^val  ^t      ^addr  ^ctrl  ^val   ^t  (old, no interp flag)
+
+        ["/cc", 3.0, 30.0, 1, 1.0,  "/cc", 3.0, 120.0, 0, 3.0]
+          ^addr ^ctrl ^val ^flag ^t   ^addr ^ctrl  ^val ^flag ^t  (new, with interp)
 
     Rules
     -----
     * A ``str`` element that starts with ``/`` begins a new event.
     * All subsequent non-string elements up to the next ``/``-string are
-      that event's arguments; the *last* argument is the timestamp (seconds).
+      that event's arguments.
+    * An **integer** element immediately before the timestamp is treated as
+      the interpolation flag (0 = jump, 1 = interpolate to next same-key event).
+    * The *last* argument is always the timestamp (float, seconds).
     """
     messages: list[TimedMessage] = []
     i = 0

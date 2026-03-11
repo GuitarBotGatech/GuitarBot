@@ -17,14 +17,21 @@ Message format
 --------------
 Each OSC message in the sequence has the **timestamp as its last argument**::
 
-    /cc   <ctrl>  <value>   <timestamp_s>
-    /note <note>  <velocity> <timestamp_s>
+    /cc   <ctrl>  <value>  [<interp_flag>]  <timestamp_s>
+    /note <note>  <velocity> [<interp_flag>]  <timestamp_s>
+
+The optional ``interp_flag`` is an **OSC integer** (type tag ``i``).
+When set to ``1`` the receiver will linearly interpolate from this
+message to the next message sharing the same address and key parameter
+(e.g. same CC controller), inserting steps at
+:data:`tune.MIDI_INTERPOLATION_INTERVAL_S` (default 5 ms).
 
 Examples::
 
-    /cc    7   100   0.00    # CC #7 = 100 at t = 0.0 s
-    /cc    7    64   2.50    # CC #7 =  64 at t = 2.5 s
-    /note 60   100   5.00    # note_on note=60 vel=100 at t = 5.0 s
+    /cc    7   30   0.00    # CC #7 =  30 at t = 0.0 s  (no interp)
+    /cc    7   30  1 0.00   # CC #7 =  30 at t = 0.0 s, interpolate to next
+    /cc    7  127  0 5.00   # CC #7 = 127 at t = 5.0 s  (step target)
+    /note 60  100   5.00    # note_on note=60 vel=100 at t = 5.0 s
 
 Typical usage
 -------------
@@ -70,6 +77,8 @@ import time
 from dataclasses import dataclass, field
 from typing import Any, Sequence
 
+import tune as tu
+
 from osc2midi.config import BridgeConfig
 from osc2midi.mapper import OSCMIDIMapper
 from osc2midi.midi_output import MIDIOutput
@@ -94,6 +103,19 @@ class TimedMessage:
 
     args: tuple[Any, ...] = field(compare=False)
     """OSC arguments **without** the trailing timestamp."""
+
+    interpolate: bool = field(default=False, compare=False)
+    """
+    When ``True`` the player will linearly interpolate from this
+    message to the next message with the same address and key
+    parameter (see :func:`expand_interpolated`).
+
+    Set by passing an OSC **integer** flag (type tag ``i``) as the
+    second-to-last argument in the wire format::
+
+        /cc ctrl value  i:1  timestamp   # interpolate=True
+        /cc ctrl value  i:0  timestamp   # interpolate=False
+    """
 
     # ------------------------------------------------------------------ #
     # Construction helpers                                                 #
@@ -132,18 +154,126 @@ class TimedMessage:
                 f"got {args[-1]!r}"
             ) from exc
 
+        # Detect an optional interpolation flag immediately before the
+        # timestamp.  The flag is sent as an OSC integer (type tag ``i``);
+        # this distinguishes it from regular float arguments.
+        # Values: 0 = no interpolation (default), 1 = interpolate.
+        if len(args) >= 2 and isinstance(args[-2], int):
+            interpolate = bool(args[-2])
+            payload = tuple(args[:-2])
+        else:
+            interpolate = False
+            payload = tuple(args[:-1])
+
         return cls(
             timestamp=timestamp,
             address=address,
-            args=tuple(args[:-1]),
+            args=payload,
+            interpolate=interpolate,
         )
 
     def __repr__(self) -> str:
+        interp = " [interp]" if self.interpolate else ""
         return (
             f"TimedMessage(t={self.timestamp:.3f}s, "
-            f"address={self.address!r}, args={self.args!r})"
+            f"address={self.address!r}, args={self.args!r}{interp})"
         )
 
+
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Interpolation expansion
+# ─────────────────────────────────────────────────────────────────────────────
+
+
+def expand_interpolated(
+    messages: list[TimedMessage],
+    interval_s: float,
+) -> list[TimedMessage]:
+    """
+    Expand a message sequence by inserting linearly-interpolated steps
+    wherever a :class:`TimedMessage` has ``interpolate=True``.
+
+    For each such message *M*, the function finds the **next** message that
+    shares the same *key* (address + first arg, e.g. same CC controller).
+    It then generates intermediate messages spaced *interval_s* apart between
+    *M*.timestamp and the next message's timestamp, linearly interpolating
+    the **value** (last arg).
+
+    Key rule
+    --------
+    * Messages with ≥ 2 args: key = ``(address, args[0])`` – e.g. same channel + controller
+    * Messages with 1 arg:    key = ``(address,)``           – e.g. pitch-wheel
+
+    Parameters
+    ----------
+    messages:
+        Sorted list of :class:`TimedMessage` objects.
+    interval_s:
+        Step size in seconds between generated intermediate messages.
+        Sourced from :data:`tune.MIDI_INTERPOLATION_INTERVAL_S`.
+
+    Returns
+    -------
+    list[TimedMessage]
+        New sorted list that includes every original message plus the
+        generated interpolation steps.  Original messages are preserved
+        unchanged; generated messages have ``interpolate=False``.
+    """
+    if not messages:
+        return list(messages)
+
+    def _key(msg: TimedMessage) -> tuple:
+        if len(msg.args) >= 2:
+            return (msg.address, msg.args[0])
+        return (msg.address,)
+
+    result: list[TimedMessage] = list(messages)
+
+    for i, msg in enumerate(messages):
+        if not msg.interpolate:
+            continue
+
+        k = _key(msg)
+        next_msg: TimedMessage | None = None
+        for j in range(i + 1, len(messages)):
+            if _key(messages[j]) == k:
+                next_msg = messages[j]
+                break
+
+        if next_msg is None:
+            logger.warning(
+                "TimedMessage %r has interpolate=True but no following message "
+                "with key %r was found; flag ignored.", msg, k
+            )
+            continue
+
+        t_start = msg.timestamp
+        t_end = next_msg.timestamp
+        dt = t_end - t_start
+
+        if dt <= interval_s:
+            continue  # endpoints are already within one step
+
+        v_start = float(msg.args[-1])
+        v_end = float(next_msg.args[-1])
+        prefix_args = msg.args[:-1]  # everything except the interpolated value
+
+        t = t_start + interval_s
+        while t < t_end - interval_s / 2:
+            alpha = (t - t_start) / dt
+            value = v_start + alpha * (v_end - v_start)
+            result.append(TimedMessage(
+                timestamp=t,
+                address=msg.address,
+                args=prefix_args + (value,),
+                interpolate=False,
+            ))
+            t += interval_s
+
+    result.sort()
+    return result
 
 # ─────────────────────────────────────────────────────────────────────────────
 # Player
@@ -247,10 +377,21 @@ class SequencePlayer:
         """
         Replace the current sequence with *messages*, sorted by timestamp.
 
+        Any :class:`TimedMessage` with ``interpolate=True`` is automatically
+        expanded into a dense sequence of linearly-interpolated steps via
+        :func:`expand_interpolated`, using the step size defined by
+        :data:`tune.MIDI_INTERPOLATION_INTERVAL_S`.
+
         Safe to call between (or before) plays.
         """
-        self._sequence = sorted(messages)
-        logger.debug("Loaded %d timed messages.", len(self._sequence))
+        sorted_msgs = sorted(messages)
+        self._sequence = expand_interpolated(
+            sorted_msgs, tu.MIDI_INTERPOLATION_INTERVAL_S
+        )
+        logger.debug(
+            "Loaded %d timed messages (%d after interpolation expansion).",
+            len(sorted_msgs), len(self._sequence),
+        )
 
     def load_raw(self, raw: Sequence[tuple[str, Sequence[Any]]]) -> None:
         """

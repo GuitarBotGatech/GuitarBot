@@ -76,6 +76,12 @@ SHORT_NOTE_DEFAULT_DURATION = 0.025
 # Timestamp rounding factor. Formats the floats to be in terms of 5 ms.
 TIMESTAMP_ROUNDING_FACTOR = 200.0
 
+# Step size (in seconds) used when generating interpolated MIDI messages.
+# When a timed MIDI event has its interpolation flag set, intermediate messages
+# are inserted at this fixed interval regardless of how far apart the endpoints are.
+# 0.005 s = 5 ms → 200 interpolated steps per second.
+MIDI_INTERPOLATION_INTERVAL_S = 0.005
+
 # ----------------------------------------------------------------------------
 # 3. Left Hand (LH) Physical Parameters
 # ----------------------------------------------------------------------------
