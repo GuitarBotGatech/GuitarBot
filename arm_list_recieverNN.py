@@ -41,7 +41,7 @@ def udp_listener():
     print(f"UDP Server listening on {UDP_IP}:{UDP_PORT}")
 
     while True:
-        data, addr = sock.recvfrom(8192) # Controls how big a single "Song" can be
+        data, addr = sock.recvfrom(65535) # Controls how big a single "Song" can be
         data_queue.put(data)
         if not data_queue.empty():
             message_type, message_body = decode_osc_message(data_queue.get_nowait())
