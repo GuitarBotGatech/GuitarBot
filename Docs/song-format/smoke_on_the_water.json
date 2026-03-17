@@ -13,7 +13,7 @@
         "events": [
           {"note": 40, "duration": 0.2, "speed": 5, "slide": 0, "beat": "2.1"},
           {"note": 43, "duration": 0.2, "speed": 5, "slide": 1, "beat": "2.3"},
-          {"note": 45, "duration": 0.2, "speed": 5, "slide": 1, "beat": "3.1"},
+          {"note": 45, "duration": 0.2, "speed": 5, "slide": 1, "beat": "3.1"}
         ]
       }
     ]
