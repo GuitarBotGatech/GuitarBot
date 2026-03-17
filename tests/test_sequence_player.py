@@ -55,6 +55,17 @@ class TestTimedMessage:
         assert msg.args == (7, 100)
         assert msg.timestamp == pytest.approx(2.5)
 
+    def test_from_osc_args_cc_integer_value_is_not_interp_flag(self):
+        msg = TimedMessage.from_osc_args("/cc", (7, 100, 2.5))
+        assert msg.args == (7, 100)
+        assert msg.interpolate is False
+
+    def test_from_osc_args_explicit_interp_flag_still_supported(self):
+        msg = TimedMessage.from_osc_args("/cc", (7, 100, 1, 2.5))
+        assert msg.args == (7, 100)
+        assert msg.interpolate is True
+        assert msg.timestamp == pytest.approx(2.5)
+
     def test_from_osc_args_single_arg_is_timestamp(self):
         msg = TimedMessage.from_osc_args("/note", (5.0,))
         assert msg.args == ()

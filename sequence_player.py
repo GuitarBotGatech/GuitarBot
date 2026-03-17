@@ -155,10 +155,11 @@ class TimedMessage:
             ) from exc
 
         # Detect an optional interpolation flag immediately before the
-        # timestamp.  The flag is sent as an OSC integer (type tag ``i``);
-        # this distinguishes it from regular float arguments.
-        # Values: 0 = no interpolation (default), 1 = interpolate.
-        if len(args) >= 2 and isinstance(args[-2], int):
+        # timestamp.  To avoid ambiguity with regular integer payload values
+        # (e.g. /cc value=100), only treat it as a flag when the message has
+        # at least two payload args + flag + timestamp, and the candidate is
+        # exactly 0 or 1.
+        if len(args) >= 4 and isinstance(args[-2], int) and args[-2] in (0, 1):
             interpolate = bool(args[-2])
             payload = tuple(args[:-2])
         else:
