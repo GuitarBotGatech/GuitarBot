@@ -10,7 +10,7 @@ The **GuitarBot Sequencer** (`sequencer.html`) is a web-based timeline editor fo
    ```bash
    python -m http.server 8000
    ```
-2. Open your browser and navigate to: [http://localhost:8000/sequencer.html](http://localhost:8000/sequencer.html)
+2. Open your browser and navigate to: [http://localhost:8000/](http://localhost:8000/)
 
 3. You'll see a timeline with example notes, chords, and MIDI events pre-loaded.
 
