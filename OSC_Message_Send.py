@@ -18,9 +18,9 @@ def send_cc_example():
     """
     Minimal example: send two timed CC messages via /Midi.
 
-    Wire format – flat OSC list, alternating address strings and args:
+    Wire format – list of events (same shape as /Pluck, /Chords):
 
-        /cc  <ctrl>  <value>  [<interp_flag>]  <timestamp_s>
+        ["/cc", <ctrl>, <value>, [<interp_flag>], <timestamp_s>]
 
     * ctrl, value, timestamp  → OSC floats  (type tag 'f')
     * interp_flag (optional)  → OSC integer (type tag 'i')
@@ -28,26 +28,24 @@ def send_cc_example():
       1 = linearly interpolate to the NEXT message with the same controller,
           inserting steps every MIDI_INTERPOLATION_INTERVAL_S (tune.py, default 5 ms)
 
-    The last float in each group is always the timestamp in seconds.
+    The last float in each event is always the timestamp in seconds.
     If sent alongside /Pluck the receiver will synchronise both to the
     same t0.  Sent alone, the sequence plays immediately.
 
     Examples
     --------
     No interpolation (jump):
-        ["/cc", 7.0, 30.0, 0.0,   "/cc", 7.0, 120.0, 3.0]
-          addr  ctrl  val  time     addr  ctrl   val   time
+        [["/cc", 7.0, 30.0, 0.0], ["/cc", 7.0, 120.0, 3.0]]
 
     With interpolation from 30 → 120 over 3 s (steps every 5 ms):
-        ["/cc", 7.0, 30.0, 1, 0.0,   "/cc", 7.0, 120.0, 0, 3.0]
-          addr  ctrl  val  ^flag time   addr  ctrl   val   ^flag time
+        [["/cc", 7.0, 30.0, 1, 0.0], ["/cc", 7.0, 120.0, 0, 3.0]]
     """
     client = SimpleUDPClient(UDP_IP, UDP_PORT)
 
     # Interpolated: CC #7 sweeps from 30 → 120 over 3 seconds (5 ms steps)
     midi_payload = [
-        "/cc", 7.0,  30.0, 1, 0.0,   # CC #7 =  30 at t = 0.0 s, interp ON
-        "/cc", 7.0, 120.0, 0, 3.0,   # CC #7 = 120 at t = 3.0 s (step target)
+        ["/cc", 4.0,  30.0, 1, 0.0],   # CC #7 =  30 at t = 0.0 s, interp ON
+        ["/cc", 4.0, 120.0, 0, 3.0],   # CC #7 = 120 at t = 3.0 s (step target)
     ]
     print(f"Sending /Midi: {midi_payload}")
     client.send_message("/Midi", midi_payload)
@@ -64,13 +62,21 @@ def main():
     # client.send_message("/Pluck", pluck_message)
     # Interpolated volume sweep: CC #7 ramps 20 → 100 over 5 s, then drops to 40
     midi_message = [
-        "/cc", 7.0,  20.0, 1, 0.0,   # CC #7 =  20 at t = 0.0 s, interp ON → next
-        "/cc", 7.0, 100.0, 0, 5.0,   # CC #7 = 100 at t = 5.0 s (target, no interp)
-        "/cc", 7.0,  40.0, 0, 6.0,   # CC #7 =  40 at t = 6.0 s (jump, no interp)
+        ["/cc", 4.0,  0.0, 1, 0.0],
+        ["/cc", 4.0, 120.0, 0, 5.0],
+        ["/cc", 3.0, 0.0, 1, 5.0],
+        ["/cc", 3.0, 120.0, 1, 10.0],
+        ["/cc", 2.0, 0.0, 1, 10.0],
+        ["/cc", 2.0, 120.0, 1, 15.0],
+        ["/cc", 1.0, 0.0, 1, 15.0],
+        ["/cc", 1.0, 120.0, 1, 20.0],
     ]
-    pluck_message = gen.scale()
+    midi_message = [
+        ["/cc", 7.0, 0.0, 0, 0.0],
+    ]
+    # pluck_message = gen.scale()
     client.send_message("/Midi", midi_message)
-    client.send_message("/Pluck", pluck_message)
+    # client.send_message("/Pluck", pluck_message)
     # client.send_message("/Chords", chord_message)
     # client.send_message("/RLFret", [0, 6, 650])
     # client.send_message("/Config", ["graph", True])

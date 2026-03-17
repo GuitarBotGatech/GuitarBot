@@ -74,43 +74,63 @@ def _get_midi_player() -> SequencePlayer:
 
 def parse_midi_sequence(data) -> list[TimedMessage]:
     """
-    Parse a flat /Midi OSC payload into a sorted list of TimedMessage objects.
+    Parse /Midi OSC payload into a sorted list of TimedMessage objects.
 
-    Wire format (flat OSC list, mixed str + float + optional int)::
+    Preferred wire format (consistent with /Pluck, /Chords, etc.)::
 
-        ["/cc", 3.0, 30.0, 1.0,   "/cc", 3.0, 120.0, 3.0]
-          ^addr  ^ctrl ^val  ^t      ^addr  ^ctrl  ^val   ^t  (old, no interp flag)
+        [["/cc", 3.0, 30.0, 1, 1.0], ["/cc", 3.0, 120.0, 0, 3.0]]
+          [ addr  ctrl  val  flag t ]  [ addr  ctrl   val  flag t ]
 
-        ["/cc", 3.0, 30.0, 1, 1.0,  "/cc", 3.0, 120.0, 0, 3.0]
-          ^addr ^ctrl ^val ^flag ^t   ^addr ^ctrl  ^val ^flag ^t  (new, with interp)
+    Legacy flat format is still accepted for compatibility::
 
-    Rules
-    -----
-    * A ``str`` element that starts with ``/`` begins a new event.
-    * All subsequent non-string elements up to the next ``/``-string are
-      that event's arguments.
-    * An **integer** element immediately before the timestamp is treated as
-      the interpolation flag (0 = jump, 1 = interpolate to next same-key event).
-    * The *last* argument is always the timestamp (float, seconds).
+        ["/cc", 3.0, 30.0, 1, 1.0, "/cc", 3.0, 120.0, 0, 3.0]
     """
     messages: list[TimedMessage] = []
-    i = 0
-    while i < len(data):
-        if isinstance(data[i], str) and data[i].startswith('/'):
-            address = data[i]
-            i += 1
-            args = []
-            while i < len(data) and not (isinstance(data[i], str) and data[i].startswith('/')):
-                args.append(data[i])
+
+    def _append_event(event, event_index: int | None = None):
+        if not isinstance(event, (list, tuple)) or len(event) < 2:
+            idx = f" at index {event_index}" if event_index is not None else ""
+            print(f"[midi] Skipping malformed event{idx}: {event!r}")
+            return
+
+        address = event[0]
+        args = list(event[1:])
+
+        if not (isinstance(address, str) and address.startswith('/')):
+            idx = f" at index {event_index}" if event_index is not None else ""
+            print(f"[midi] Skipping event with invalid address{idx}: {address!r}")
+            return
+
+        try:
+            messages.append(TimedMessage.from_osc_args(address, args))
+        except ValueError as e:
+            idx = f" at index {event_index}" if event_index is not None else ""
+            print(f"[midi] Skipping malformed event{idx}: {e}")
+
+    if not isinstance(data, (list, tuple)):
+        print(f"[midi] Invalid /Midi payload type: {type(data).__name__}")
+        return messages
+
+    if len(data) > 0 and all(isinstance(event, (list, tuple)) for event in data):
+        for index, event in enumerate(data):
+            _append_event(event, index)
+    else:
+        print("[midi] Deprecated flat /Midi payload format received; use list-of-lists format")
+        i = 0
+        while i < len(data):
+            if isinstance(data[i], str) and data[i].startswith('/'):
+                address = data[i]
                 i += 1
-            if args:
-                try:
-                    messages.append(TimedMessage.from_osc_args(address, args))
-                except ValueError as e:
-                    print(f"[midi] Skipping malformed event: {e}")
-        else:
-            print(f"[midi] Unexpected token at index {i}: {data[i]!r} – skipping")
-            i += 1
+                args = []
+                while i < len(data) and not (isinstance(data[i], str) and data[i].startswith('/')):
+                    args.append(data[i])
+                    i += 1
+                if args:
+                    _append_event([address, *args])
+            else:
+                print(f"[midi] Unexpected token at index {i}: {data[i]!r} – skipping")
+                i += 1
+
     messages.sort()
     return messages
 
@@ -1068,8 +1088,8 @@ if __name__ == "__main__":
     print("      /Reset                  - Resets all parser states and moves motors home")
     print("")
     print("  /Midi - Timed MIDI effect sequence (synced to song or standalone)")
-    print("Format: flat list of [address, arg0, …, timestamp_s, address, …]")
-    print("  /Midi /cc 3.0 30.0 1.0 /cc 3.0 120.0 3.0")
+    print("Format: list of events [[address, arg0, …, timestamp_s], …]")
+    print("  /Midi [[\"/cc\", 3.0, 30.0, 1, 1.0], [\"/cc\", 3.0, 120.0, 0, 3.0]]")
     print("Send before or alongside /Pluck to synchronise with the song.")
     print("Send alone to play immediately (standalone mode).")
     print("Timestamps are seconds from song start (robot_delay applied automatically).")
