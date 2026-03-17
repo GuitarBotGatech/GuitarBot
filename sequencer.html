@@ -180,6 +180,8 @@ input[type=range]::-webkit-slider-thumb:hover{transform:scale(1.2)}
     <button class="tbtn" id="zoom-in" title="Zoom in">+</button>
   </div>
   <div class="tr">
+    <button class="tbtn act" id="btn-upload">⇪ Upload to Bot</button>
+    <button class="tbtn stop" id="btn-reset-bot">↺ Reset Bot</button>
     <button class="tbtn" id="btn-import">↑ Import</button>
     <button class="tbtn act" id="btn-export">↓ Export</button>
   </div>
@@ -298,6 +300,7 @@ const NOTE_H=14, LABEL_W=54, CHORD_H=30, MIDI_H=30;
 const ROLL_H = NOTE_COUNT * NOTE_H; // 406
 const CANVAS_H = CHORD_H + ROLL_H + MIDI_H; // 466
 const SUBDIV=4; // 16th notes per beat
+const IMPORT_KEY='guitarbot_startup_import_json';
 
 const STRINGS=[
   {min:40,max:49,name:"String 1",color:"#f59e0b",dim:"#3b200566"},
@@ -776,15 +779,82 @@ function delMidi(){
 // ═══════════════════════════════════════════════
 // TRANSPORT
 // ═══════════════════════════════════════════════
+const Synth={
+  ctx:null,
+  master:null,
+  active:new Set(),
+  async ensure(){
+    if(!this.ctx){
+      const AC=window.AudioContext||window.webkitAudioContext;
+      if(!AC)return false;
+      this.ctx=new AC();
+      this.master=this.ctx.createGain();
+      this.master.gain.value=0.22;
+      this.master.connect(this.ctx.destination);
+    }
+    if(this.ctx.state==='suspended'){
+      try{await this.ctx.resume();}catch(_e){}
+    }
+    return this.ctx.state==='running';
+  },
+  midiToFreq(m){return 440*Math.pow(2,(m-69)/12)},
+  trigger(note,durS=0.2,vel=90){
+    if(!this.ctx||!this.master)return;
+    const now=this.ctx.currentTime;
+    const d=Math.max(0.03,durS);
+    const rel=Math.min(0.12,Math.max(0.03,d*0.45));
+    const atk=0.005;
+    const amp=0.05+Math.min(1,Math.max(0,vel/127))*0.2;
+
+    const osc=this.ctx.createOscillator();
+    const g=this.ctx.createGain();
+    osc.type='triangle';
+    osc.frequency.setValueAtTime(this.midiToFreq(note),now);
+
+    g.gain.setValueAtTime(0.0001,now);
+    g.gain.exponentialRampToValueAtTime(amp,now+atk);
+    g.gain.setValueAtTime(amp,now+Math.max(atk,d-rel));
+    g.gain.exponentialRampToValueAtTime(0.0001,now+d);
+
+    osc.connect(g); g.connect(this.master);
+    osc.start(now);
+    osc.stop(now+d+0.01);
+
+    this.active.add(osc);
+    osc.onended=()=>{this.active.delete(osc)};
+  },
+  stopAll(){
+    for(const osc of this.active){
+      try{osc.stop();}catch(_e){}
+    }
+    this.active.clear();
+  }
+};
+
+function triggerPluckEventsBetween(prevBeat,nextBeat){
+  if(nextBeat<=prevBeat)return;
+  const bps=S.bpm/60;
+  for(const ev of S.pluck){
+    const eb=parseBeat(ev.beat);
+    if(eb>=prevBeat&&eb<nextBeat){
+      const durS=(ev.duration_b??0.5)/bps;
+      Synth.trigger(ev.note,durS,ev.speed??64);
+    }
+  }
+}
+
 let playIv=null, playT0=null, playB0=0;
 
 document.getElementById('btn-play').addEventListener('click',()=>{
   if(S.playing)return;
+  Synth.ensure();
   S.playing=true; playT0=performance.now(); playB0=S.playBeat;
   document.getElementById('btn-play').classList.add('on');
   playIv=setInterval(()=>{
+    const prevBeat=S.playBeat;
     const bps=S.bpm/60;
     S.playBeat=playB0+(performance.now()-playT0)/1000*bps;
+    triggerPluckEventsBetween(prevBeat,S.playBeat);
     if(S.playBeat>=totalBeats()){stopPlay()}
     else{
       const m=bpm(), bar=Math.floor(S.playBeat/m)+1, b=Math.floor(S.playBeat%m)+1;
@@ -797,6 +867,7 @@ document.getElementById('btn-play').addEventListener('click',()=>{
 document.getElementById('btn-stop').addEventListener('click',stopPlay);
 function stopPlay(){
   S.playing=false; clearInterval(playIv); playIv=null;
+  Synth.stopAll();
   S.playBeat=0; document.getElementById('btn-play').classList.remove('on');
   document.getElementById('pos').textContent='1.1'; render();
 }
@@ -876,6 +947,56 @@ document.getElementById('btn-export').addEventListener('click',()=>{
   a.click(); URL.revokeObjectURL(a.href);
 });
 
+document.getElementById('btn-upload').addEventListener('click',async()=>{
+  const btn=document.getElementById('btn-upload');
+  const original=btn.textContent;
+  btn.disabled=true;
+  btn.textContent='… Uploading';
+  try{
+    const res=await fetch('http://127.0.0.1:8765/upload',{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify(buildJSON())
+    });
+    const data=await res.json().catch(()=>({ok:false,error:'Invalid server response'}));
+    if(!res.ok||!data.ok)throw new Error(data.error||`HTTP ${res.status}`);
+    btn.textContent='✓ Uploaded';
+    setTimeout(()=>{btn.textContent=original;btn.disabled=false},900);
+  }catch(err){
+    alert(
+      'Upload failed. Start the local uploader first:\n\n'
+      +'python send_song_arrangement.py --serve\n\n'
+      +'Then try Upload to Bot again.\n\n'
+      +`Details: ${err.message}`
+    );
+    btn.textContent=original;
+    btn.disabled=false;
+  }
+});
+
+document.getElementById('btn-reset-bot').addEventListener('click',async()=>{
+  const btn=document.getElementById('btn-reset-bot');
+  const original=btn.textContent;
+  btn.disabled=true;
+  btn.textContent='… Resetting';
+  try{
+    const res=await fetch('http://127.0.0.1:8765/reset',{method:'POST'});
+    const data=await res.json().catch(()=>({ok:false,error:'Invalid server response'}));
+    if(!res.ok||!data.ok)throw new Error(data.error||`HTTP ${res.status}`);
+    btn.textContent='✓ Reset';
+    setTimeout(()=>{btn.textContent=original;btn.disabled=false},900);
+  }catch(err){
+    alert(
+      'Reset failed. Start the local uploader first:\n\n'
+      +'python send_song_arrangement.py --serve\n\n'
+      +'Then try Reset Bot again.\n\n'
+      +`Details: ${err.message}`
+    );
+    btn.textContent=original;
+    btn.disabled=false;
+  }
+});
+
 document.getElementById('btn-import').addEventListener('click',()=>document.getElementById('hidden-file').click());
 document.getElementById('hidden-file').addEventListener('change',e=>{
   const f=e.target.files[0]; if(!f)return;
@@ -948,9 +1069,36 @@ document.addEventListener('keydown',e=>{
 // alias
 const state=S;
 
-function init(){
-  resize();
-  window.addEventListener('resize',resize);
+function applyNewProject(){
+  S.songName='Untitled Song';
+  S.bpm=120;
+  S.keyRoot='E';
+  S.keyMode='minor';
+  S.timeSig='4/4';
+  S.measures=8;
+  S.playing=false;
+  S.playBeat=0;
+  S.scrollX=0;
+  S.pluck=[];
+  S.chord=[];
+  S.midi=[];
+  S.nextId=1;
+  S.selPluck=null;
+  S.selChord=null;
+  S.selMidi=null;
+  closeInsp();
+
+  document.getElementById('song-name').value=S.songName;
+  document.getElementById('bpm').value=S.bpm;
+  document.getElementById('key-root').value=S.keyRoot;
+  document.getElementById('key-mode').value=S.keyMode;
+  document.getElementById('time-sig').value=S.timeSig;
+  document.getElementById('measures').value=S.measures;
+  document.getElementById('pos').textContent='1.1';
+}
+
+function applyExampleProject(){
+  applyNewProject();
   S.pluck=[
     {id:S.nextId++,note:52,duration_b:0.5,speed:64,slide:0,beat:"1.2",string_index:null},
     {id:S.nextId++,note:55,duration_b:0.5,speed:80,slide:0,beat:"1.4",string_index:null},
@@ -969,7 +1117,37 @@ function init(){
     {id:S.nextId++,address:"/cc",args:[7,30],interp:1,beat:"1.1"},
     {id:S.nextId++,address:"/cc",args:[7,100],interp:0,beat:"3.1"},
   ];
+}
+
+function applyStartupMode(){
+  const mode=(new URLSearchParams(window.location.search).get('startup')||'example').toLowerCase();
+  if(mode==='new'){
+    applyNewProject();
+    return;
+  }
+  if(mode==='import'){
+    const raw=localStorage.getItem(IMPORT_KEY);
+    if(raw){
+      try{
+        loadJSON(JSON.parse(raw));
+        localStorage.removeItem(IMPORT_KEY);
+        return;
+      }catch(_e){
+        localStorage.removeItem(IMPORT_KEY);
+      }
+    }
+    applyNewProject();
+    return;
+  }
+  applyExampleProject();
+}
+
+function init(){
+  resize();
+  window.addEventListener('resize',resize);
+  applyStartupMode();
   render();
+  syncJSON();
 }
 init();
 </script>
