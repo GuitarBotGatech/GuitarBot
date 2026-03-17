@@ -34,15 +34,17 @@ This branch introduces a major refactoring of the parsing system to support data
 - **Clean Separation**: Robotics code separated from learning/dataset functionality
 - **Recording**: Programmatically capture data from the robot for automated annotated corpus creation
 
-## Environment Setup (deprecated)
+## Environment Setup
+**Prerequisites:** [Miniconda](https://conda.io/projects/conda/en/latest/user-guide/install/index.html) and the [osc2midi](../osc2midi) repo cloned as a sibling directory.
+
 1. Clone this repository.
-2. Install Python 3.9.18 [here](https://www.python.org/downloads/) (make sure to scroll down to the specific release version).
-3. Install Conda [here](https://conda.io/projects/conda/en/latest/user-guide/install/index.html). While **Miniconda** is recommended, either of the Miniconda or Anaconda distributions are fine. Conda is a virtual environment and package manager for Python.
-4. Once Conda is installed, open terminal in the cloned GuitarBot directory.
-5. Run `conda env create -f environment/environment.yml` to create a new Conda environment for the project. It will automatically be named *guitarbot_env*.
-6. To verify that the environment was installed correctly, run `conda env list`. You should see *guitarbot_env* as one of the options listed.
-7. Run `conda activate guitarbot_env` to activate the new environment.
-8. Note that if you're running the project from an IDE, you will need to select your new environment as the Python interpreter. See VSCode example below:
+2. Clone `osc2midi` into the same parent directory as GuitarBot (i.e. `../osc2midi`).
+3. From the GuitarBot directory, run:
+   ```
+   conda env create -f environment/environment.yml
+   conda activate guitarbot_env
+   ```
+4. Note that if you're running the project from an IDE, you will need to select your new environment as the Python interpreter. See VSCode example below:
 ![VSCode interpreter selection](environment/screenshots/python_interpreter_selection.png)
 ![VSCode conda configuration](environment/screenshots/conda_configuration.png)
 
