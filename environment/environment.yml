@@ -21,7 +21,7 @@ dependencies:
     - midi2audio
     - music21
     - watchdog>=4.0.0
-    - osc2midi @ file:///C:/Users/ryanb/OneDrive/Documents/MyProjects/MyPythonProjects/osc2midi
+    - midification @ file:///C:/Users/ryanb/OneDrive/Documents/MyProjects/MyPythonProjects/osc2midi
     - pydub
     - pyzmq
     - sounddevice>=0.4.0

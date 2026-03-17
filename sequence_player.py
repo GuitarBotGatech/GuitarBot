@@ -10,7 +10,7 @@ pre-firing each one by ``robot_delay`` seconds so the physical robot has
 enough time to react before the MIDI effect is needed.
 
 This file lives in the GuitarBot repo because it is GuitarBot-specific; it
-relies on ``osc2midi`` as a library dependency for the OSC→MIDI translation
+relies on ``midification`` as a library dependency for the OSC→MIDI translation
 pipeline (``OSCMIDIMapper``, ``MIDIOutput``, ``BridgeConfig``).
 
 Message format
@@ -38,7 +38,7 @@ Typical usage
 ::
 
     from sequence_player import SequencePlayer
-    from osc2midi.config import BridgeConfig
+    from midification.config import BridgeConfig
 
     config = BridgeConfig.from_yaml("my_config.yaml")
 
@@ -79,9 +79,9 @@ from typing import Any, Sequence
 
 import tune as tu
 
-from osc2midi.config import BridgeConfig
-from osc2midi.mapper import OSCMIDIMapper
-from osc2midi.midi_output import MIDIOutput
+from midification.config import BridgeConfig
+from midification.mapper import OSCMIDIMapper
+from midification.midi_output import MIDIOutput
 
 logger = logging.getLogger(__name__)
 
@@ -289,10 +289,10 @@ class SequencePlayer:
     Parameters
     ----------
     mapper:
-        :class:`~osc2midi.mapper.OSCMIDIMapper` used to translate OSC
+        :class:`~midification.mapper.OSCMIDIMapper` used to translate OSC
         address + args into ``mido.Message`` objects.
     midi_output:
-        A :class:`~osc2midi.midi_output.MIDIOutput` instance.  The player
+        A :class:`~midification.midi_output.MIDIOutput` instance.  The player
         opens and closes the port via :meth:`open` / :meth:`close`.
     robot_delay:
         Seconds to subtract from each message's timestamp so MIDI is sent
@@ -332,7 +332,7 @@ class SequencePlayer:
     ) -> "SequencePlayer":
         """
         Build a :class:`SequencePlayer` from an existing
-        :class:`~osc2midi.config.BridgeConfig`.
+        :class:`~midification.config.BridgeConfig`.
 
         The mapper is initialised from ``config.mappings``; the MIDI output
         uses ``config.midi``.

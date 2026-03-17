@@ -35,10 +35,10 @@ This branch introduces a major refactoring of the parsing system to support data
 - **Recording**: Programmatically capture data from the robot for automated annotated corpus creation
 
 ## Environment Setup
-**Prerequisites:** [Miniconda](https://conda.io/projects/conda/en/latest/user-guide/install/index.html) and the [osc2midi](../osc2midi) repo cloned as a sibling directory.
+**Prerequisites:** [Miniconda](https://conda.io/projects/conda/en/latest/user-guide/install/index.html) and the [midification](https://github.com/bakerbass/midification) repo cloned as a sibling directory (directory name remains `osc2midi`).
 
 1. Clone this repository.
-2. Clone `osc2midi` into the same parent directory as GuitarBot (i.e. `../osc2midi`).
+2. Clone `midification` into the same parent directory as GuitarBot (i.e. `../osc2midi` on disk).
 3. From the GuitarBot directory, run:
    ```
    conda env create -f environment/environment.yml

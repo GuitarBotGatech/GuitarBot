@@ -15,7 +15,7 @@ import numpy as np
 import tune as tu
 import traceback
 from sequence_player import SequencePlayer, TimedMessage
-from osc2midi.config import BridgeConfig
+from midification.config import BridgeConfig
 
 # For External
 # UDP_IP = "192.168.1.1"

@@ -33,7 +33,7 @@ from pythonosc.udp_client import SimpleUDPClient
 
 # Import from the GuitarBot repo's own sequence_player module.
 from sequence_player import SequencePlayer
-from osc2midi.config import BridgeConfig
+from midification.config import BridgeConfig
 
 # Add GuitarBot root to sys.path if running from a subdirectory.
 sys.path.insert(0, __file__.rsplit("/", 1)[0])
@@ -60,14 +60,14 @@ GUITARBOT_PORT = 12000
 ROBOT_DELAY_S = 0.05
 
 # ─────────────────────────────────────────────────────────────────────────────
-# osc2midi config: maps OSC address strings → MIDI messages
+# midification config: maps OSC address strings → MIDI messages
 # ─────────────────────────────────────────────────────────────────────────────
 
 config = BridgeConfig.from_dict(
     {
         "midi": {
             # Set this to your effects pedal's MIDI port name.
-            # Run `osc2midi list-ports` to see available ports.
+            # Run `midification list-ports` to see available ports.
             # Set dry_run=True below to test without a real MIDI device.
             "port_name": None,   # None = first available port
             "virtual": False,

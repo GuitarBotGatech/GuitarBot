@@ -13,9 +13,9 @@ import pytest
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
 from sequence_player import SequencePlayer, TimedMessage
-from osc2midi.mapper import OSCMIDIMapper
-from osc2midi.midi_output import MIDIOutput
-from osc2midi.config import BridgeConfig, MappingRule
+from midification.mapper import OSCMIDIMapper
+from midification.midi_output import MIDIOutput
+from midification.config import BridgeConfig, MappingRule
 
 
 # ─────────────────────────────────────────────────────────────────────────────
