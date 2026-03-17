@@ -931,6 +931,18 @@ document.addEventListener('pointerdown',e=>{
 });
 
 // ═══════════════════════════════════════════════
+// KEYBOARD DELETE
+// ═══════════════════════════════════════════════
+document.addEventListener('keydown',e=>{
+  if(e.key!=='Delete'&&e.key!=='Backspace')return;
+  const tag=document.activeElement?.tagName;
+  if(tag==='INPUT'||tag==='SELECT'||tag==='TEXTAREA')return;
+  if(S.selPluck!==null){delSelNote();render()}
+  else if(S.selChord!==null){delChord()}
+  else if(S.selMidi!==null){delMidi()}
+});
+
+// ═══════════════════════════════════════════════
 // INIT — load example song
 // ═══════════════════════════════════════════════
 // alias
