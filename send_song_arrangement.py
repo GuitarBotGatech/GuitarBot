@@ -25,5 +25,5 @@ def send_song_from_json(json_path: str | Path, ip: str = UDP_IP, port: int = UDP
 
 
 if __name__ == "__main__":
-    default_path = Path(__file__).resolve().parent / "Docs" / "Run Time Configuration" / "smoke_on_the_water.json"
+    default_path = Path(__file__).resolve().parent / "Docs" / "song-format" / "smoke_on_the_water.json"
     send_song_from_json(default_path)

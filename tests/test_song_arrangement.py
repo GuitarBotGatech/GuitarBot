@@ -17,7 +17,7 @@ from parsing.song_arrangement import SongArrangement, SongMeta
 
 
 def _example_path() -> Path:
-    return Path(__file__).resolve().parent.parent / "Docs" / "Run Time Configuration" / "song_arrangement_example.json"
+    return Path(__file__).resolve().parent.parent / "Docs" / "song-format" / "example.json"
 
 
 def test_load_example_song_arrangement():

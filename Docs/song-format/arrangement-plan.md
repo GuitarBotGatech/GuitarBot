@@ -3,7 +3,7 @@ Plan: JSON Arrangement Intermediary
 Define a canonical JSON “song arrangement” format as the user-facing layer, then map it to typed Python event objects and finally to OSC payloads. This keeps authoring tool-agnostic (Max/MSP, DAWs, generative systems), supports timeline editing (shift/copy/reverse/merge), and preserves current runtime compatibility. The JSON model bakes in musical context (`key`, `time_signature`, `bpm`) and separates time-based messages (`pluck`, `chord`, `midi`) from realtime control (`dyn`, `fret`, `rlfret`). Receiver-side compatibility stays intact while sender-side ergonomics improve immediately.
 
 Steps
-1. Specify a canonical JSON schema (`song`, `meta`, `tracks`, `clips`, `events`) under `Docs/Run Time Configuration`, with explicit event types for `pluck`, `chord`, `midi`.
+1. Specify a canonical JSON schema (`song`, `meta`, `tracks`, `clips`, `events`) under `Docs/song-format`, with explicit event types for `pluck`, `chord`, `midi`.
 2. Add typed Python dataclasses for arrangement + events in a new module under `parsing`, including validators for ranges/types and timestamp monotonicity per track.
 3. Implement timeline transforms on typed objects: `shift_time`, `copy_range`, `paste_at`, `reverse_range`, `quantize`, `scale_tempo`.
 4. Implement “track combinatrix” operations: horizontal composition (single-string lanes), vertical composition (cross-string stacks), deterministic merge/conflict rules.
