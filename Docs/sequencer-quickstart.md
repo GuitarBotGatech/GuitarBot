@@ -4,7 +4,7 @@ The **GuitarBot Sequencer** (`sequencer.html`) is a web-based timeline editor fo
 
 ## Opening the Sequencer
 
-### Start
+### Start GUI
 
 1. From the GuitarBot root directory, start a simple HTTP server:
    ```bash
@@ -14,7 +14,24 @@ The **GuitarBot Sequencer** (`sequencer.html`) is a web-based timeline editor fo
 
 3. You'll see a timeline with example notes, chords, and MIDI events pre-loaded.
 
-**Note:** Use a local server (not `file://`) to ensure proper asset loading and avoid CORS issues.
+### Start GUI → GuitarBot Bridge
+
+In a separate terminal, start the upload bridge that forwards arrangements from the sequencer to the robot via UDP/OSC:
+
+```bash
+python send_song_arrangement.py --serve
+```
+
+This starts an HTTP server on `localhost:8765`. The sequencer's **Send to Robot** button POSTs the current arrangement to this bridge, which converts it and sends OSC messages to the robot at `127.0.0.1:12000`.
+
+Optional flags:
+```bash
+# Use a different robot IP/port
+python send_song_arrangement.py --serve --ip [ip] --port 12000
+
+# Use a different bridge port
+python send_song_arrangement.py --serve --serve-port 9000
+```
 
 ## Interface Overview
 

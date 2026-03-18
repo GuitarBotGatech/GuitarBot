@@ -54,7 +54,7 @@ select{cursor:pointer;background-image:none}
 #app{display:flex;flex-direction:column;height:100vh}
 #main{flex:1;display:flex;overflow:hidden;position:relative}
 #seq{flex:1;display:flex;flex-direction:column;overflow:hidden;min-width:0}
-#roll-wrap{flex:1;overflow:hidden;position:relative;cursor:crosshair}
+#roll-wrap{flex:1;overflow:hidden;position:relative;cursor:default}
 canvas{display:block}
 
 /* ── INSPECTOR ── */
@@ -116,6 +116,28 @@ input[type=range]::-webkit-slider-thumb:hover{transform:scale(1.2)}
 #jp-bar:hover{background:var(--surface2)}
 #jp-lbl{color:var(--text-dim);font-size:9px;font-weight:600;text-transform:uppercase;letter-spacing:1px}
 #jp-chev{margin-left:auto;color:var(--text-dim);font-size:9px;transition:transform .2s}
+
+/* ── GRID CONTROL ── */
+#grid-ctrl{
+  position:absolute;bottom:12px;right:14px;
+  display:flex;align-items:center;gap:5px;
+  background:var(--surface);border:1px solid var(--border);
+  border-radius:5px;padding:5px 9px;z-index:10;
+  box-shadow:0 4px 14px rgba(0,0,0,.5)
+}
+#grid-ctrl-lbl{font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:1px;color:var(--text-muted);margin-right:3px}
+.gcbtn{
+  width:21px;height:21px;border:1px solid var(--border);background:var(--surface2);
+  color:var(--text-dim);border-radius:3px;cursor:pointer;font-size:15px;
+  display:flex;align-items:center;justify-content:center;transition:all .12s;
+  line-height:1;padding:0;font-family:'JetBrains Mono',monospace
+}
+.gcbtn:hover:not(:disabled){border-color:var(--purple);color:var(--purple);background:var(--surface3)}
+.gcbtn:disabled{opacity:.25;cursor:default}
+#grid-label{
+  font-family:'JetBrains Mono',monospace;font-size:13px;font-weight:600;
+  color:var(--purple);min-width:48px;text-align:center;letter-spacing:-0.3px
+}
 #jp{background:var(--surface);max-height:0;overflow:hidden;transition:max-height .3s ease}
 #jp.open{max-height:180px}
 #jp-content{height:180px;overflow-y:auto;padding:8px 12px;font-family:'JetBrains Mono',monospace;font-size:10.5px;line-height:1.55;color:#8888b0;white-space:pre}
@@ -199,10 +221,18 @@ input[type=range]::-webkit-slider-thumb:hover{transform:scale(1.2)}
 <!-- MAIN -->
 <div id="main">
   <div id="seq">
-    <div id="roll-wrap"><canvas id="roll"></canvas></div>
+    <div id="roll-wrap">
+      <canvas id="roll"></canvas>
+      <div id="grid-ctrl">
+        <span id="grid-ctrl-lbl">GRID</span>
+        <button class="gcbtn" id="grid-prev" title="Finer grid">‹</button>
+        <span id="grid-label">1/16</span>
+        <button class="gcbtn" id="grid-next" title="Coarser grid">›</button>
+      </div>
+    </div>
     <div id="jp-bar" onclick="toggleJP()">
-      <span id="jp-lbl">JSON Preview</span>
       <span id="jp-chev">▲</span>
+      <span id="jp-lbl">JSON Preview</span>
     </div>
     <div id="jp"><div id="jp-content"></div></div>
   </div>
@@ -308,7 +338,18 @@ const MIDI_MIN=40, MIDI_MAX=68, NOTE_COUNT=29;
 const NOTE_H=14, LABEL_W=54, CHORD_H=30, MIDI_H=30;
 const ROLL_H = NOTE_COUNT * NOTE_H; // 406
 const CANVAS_H = CHORD_H + ROLL_H + MIDI_H; // 466
-const SUBDIV=4; // 16th notes per beat
+const SUBDIV=4; // used by formatBeat/parseBeat for 3-part display only
+const GRID_STEPS=[
+  {label:'1/16t',beats:1/6},
+  {label:'1/16', beats:1/4},
+  {label:'1/8t', beats:1/3},
+  {label:'1/8',  beats:1/2},
+  {label:'1/4t', beats:2/3},
+  {label:'1/4',  beats:1  },
+  {label:'1/2t', beats:4/3},
+  {label:'1/2',  beats:2  },
+  {label:'1',    beats:4  },
+];
 const SPEED_MIN=1, SPEED_MAX=10, SPEED_DEFAULT=6;
 const IMPORT_KEY='guitarbot_startup_import_json';
 
@@ -333,6 +374,7 @@ let S={
   playing:false, playBeat:0,
   editMode:'draw',
   snapEnabled:true,
+  gridIdx:1,
   selPluckIds:new Set(),
   clipboardPluck:null,
   pasteAnchor:null,
@@ -345,12 +387,13 @@ const beatToX=b=>LABEL_W+b*S.zoom-S.scrollX;
 const xToBeat=x=>(x-LABEL_W+S.scrollX)/S.zoom;
 const noteToY=n=>CHORD_H+(MIDI_MAX-n)*NOTE_H;
 const yToNote=y=>MIDI_MAX-Math.floor((y-CHORD_H)/NOTE_H);
-const snap=b=>Math.round(b*SUBDIV)/SUBDIV;
+const gridStep=()=>GRID_STEPS[S.gridIdx].beats;
+const snap=b=>{const gs=gridStep();return Math.round(b/gs)*gs;};
 const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
 
 const trimBeatNumber=v=>parseFloat(Number(v).toFixed(4));
 const normalizeBeat=b=>S.snapEnabled?snap(b):trimBeatNumber(b);
-const minDurationBeats=()=>S.snapEnabled?(1/SUBDIV):0.02;
+const minDurationBeats=()=>S.snapEnabled?gridStep():0.02;
 const noteDurationSeconds=ev=>ev.duration_b*(60/Math.max(1,S.bpm));
 const hasTremolo=ev=>noteDurationSeconds(ev)>0.5;
 const clampSpeed=v=>clamp(parseInt(v)||SPEED_DEFAULT,SPEED_MIN,SPEED_MAX);
@@ -378,12 +421,15 @@ function beatLabel(b){
   if(isGrid){
     return `${bar}.${beatWhole}.${subRounded+1}`;
   }
-  const beatWithFraction=trimBeatNumber(inBar+1);
-  return `${bar}.${beatWithFraction}`;
+  // Non-SUBDIV position (e.g. triplets): store as raw beat with sentinel
+  // to avoid dot-collision in parseBeat (e.g. "1.1.1667" misread as 3-part)
+  return `~${trimBeatNumber(normalized)}`;
 }
 function parseBeat(s){
   if(!s)return 0;
-  const p=String(s).split('.');
+  const str=String(s);
+  if(str.startsWith('~'))return parseFloat(str.slice(1))||0;
+  const p=str.split('.');
   const bar=parseInt(p[0])||1;
   if(p.length>=3){
     const beat=parseInt(p[1])||1;
@@ -442,16 +488,18 @@ function drawBG(){
 
 function drawGrid(){
   const tb=totalBeats(), m=bpm();
-  for(let i=0;i<=tb*SUBDIV;i++){
-    const b=i/SUBDIV, x=beatToX(b);
+  const gs=gridStep(), eps=gs*0.05;
+  for(let b=0; b<=tb+eps; b+=gs){
+    const br=parseFloat(b.toFixed(9));
+    const x=beatToX(br);
     if(x<LABEL_W-1||x>CW+1)continue;
-    const isMeasure=(i%(m*SUBDIV))===0;
-    const isBeat=(i%SUBDIV)===0;
+    const remM=br%m, isMeasure=remM<eps||(m-remM)<eps;
+    const remB=br%1,  isBeat=remB<eps||(1-remB)<eps;
     ctx.strokeStyle=isMeasure?'#323250':isBeat?'#1e1e34':'#141428';
     ctx.lineWidth=1;
     ctx.beginPath(); ctx.moveTo(x,0); ctx.lineTo(x,CANVAS_H); ctx.stroke();
     if(isMeasure){
-      const bar=Math.round(b/m)+1;
+      const bar=Math.round(br/m)+1;
       ctx.fillStyle='#323250'; ctx.font='500 9px "JetBrains Mono"';
       ctx.textAlign='left'; ctx.fillText(bar,x+3,CHORD_H-5);
     }
@@ -740,7 +788,7 @@ canvas.addEventListener('pointermove',e=>{
 });
 
 canvas.addEventListener('pointerleave',()=>{
-  canvas.style.cursor=S.editMode==='draw'?'crosshair':'default';
+  canvas.style.cursor=S.editMode==='draw'?'default':'crosshair';
 });
 
 canvas.addEventListener('pointerup',()=>{
@@ -764,13 +812,8 @@ canvas.addEventListener('dblclick',e=>{
   const myY=CHORD_H+ROLL_H;
   if(cx<LABEL_W||cy<CHORD_H||cy>=myY)return;
 
-  const b=normalizeBeat(Math.max(0,xToBeat(cx)));
-  const n=clamp(yToNote(cy),MIDI_MIN,MIDI_MAX);
-  if(b>=totalBeats())return;
-
-  addNote(b,n);
-  S.pasteAnchor={beat:b,note:n};
-  render();
+  const hit=hitPluck(cx,cy);
+  if(hit){rmPluck(hit.id);render();}
 });
 
 function applySelectionBox(box){
@@ -843,7 +886,7 @@ function getPluckEdgeHit(cx,cy){
 function updateHoverCursor(cx,cy){
   const myY=CHORD_H+ROLL_H;
   if(cx<LABEL_W||cy<CHORD_H||cy>=myY){
-    canvas.style.cursor=S.editMode==='draw'?'crosshair':'default';
+    canvas.style.cursor=S.editMode==='draw'?'default':'crosshair';
     return;
   }
   const edgeHit=getPluckEdgeHit(cx,cy);
@@ -851,7 +894,7 @@ function updateHoverCursor(cx,cy){
     canvas.style.cursor='ew-resize';
     return;
   }
-  canvas.style.cursor=S.editMode==='draw'?'crosshair':'default';
+  canvas.style.cursor=S.editMode==='draw'?'default':'crosshair';
 }
 function hitChord(cx,cy){
   for(const ev of S.chord){
@@ -882,7 +925,7 @@ canvas.addEventListener('wheel',e=>{
 // CRUD
 // ═══════════════════════════════════════════════
 function addNote(b,n){
-  const ev={id:S.nextId++,note:n,duration_b:0.5,speed:SPEED_DEFAULT,slide:0,beat:beatLabel(b),string_index:null};
+  const ev={id:S.nextId++,note:n,duration_b:gridStep(),speed:SPEED_DEFAULT,slide:0,beat:beatLabel(b),string_index:null};
   S.pluck.push(ev); selPluck(ev.id); syncJSON(); return ev;
 }
 function rmPluck(id){
@@ -1154,14 +1197,30 @@ document.getElementById('btn-snap').addEventListener('click',()=>{
   btn.title=S.snapEnabled?'Snap to grid (on)':'Snap to grid (off)';
 });
 
+// ═══════════════════════════════════════════════
+// GRID CONTROL
+// ═══════════════════════════════════════════════
+function updateGridCtrl(){
+  document.getElementById('grid-label').textContent=GRID_STEPS[S.gridIdx].label;
+  document.getElementById('grid-prev').disabled=S.gridIdx<=0;
+  document.getElementById('grid-next').disabled=S.gridIdx>=GRID_STEPS.length-1;
+}
+document.getElementById('grid-prev').addEventListener('click',()=>{
+  if(S.gridIdx>0){S.gridIdx--;updateGridCtrl();render();}
+});
+document.getElementById('grid-next').addEventListener('click',()=>{
+  if(S.gridIdx<GRID_STEPS.length-1){S.gridIdx++;updateGridCtrl();render();}
+});
+updateGridCtrl();
+
 function setEditMode(mode){
   S.editMode=mode==='draw'?'draw':'select';
   const penBtn=document.getElementById('btn-mode-draw');
   const isDraw=S.editMode==='draw';
   penBtn.classList.toggle('on',isDraw);
   penBtn.title=isDraw?'Draw mode (pen on)':'Select mode (pen off)';
-  document.getElementById('roll-wrap').style.cursor=isDraw?'crosshair':'default';
-  canvas.style.cursor=isDraw?'crosshair':'default';
+  document.getElementById('roll-wrap').style.cursor=isDraw?'default':'crosshair';
+  canvas.style.cursor=isDraw?'default':'crosshair';
   if(!isDraw)closeInsp();
 }
 
@@ -1417,6 +1476,7 @@ document.addEventListener('keydown',e=>{
   if(tag==='INPUT'||tag==='SELECT'||tag==='TEXTAREA')return;
 
   const k=e.key.toLowerCase();
+  if(k==='b'){setEditMode(S.editMode==='draw'?'select':'draw');render();return;}
   if((e.ctrlKey||e.metaKey)&&k==='c'){
     if(copySelectedPluckEvents())e.preventDefault();
     return;
@@ -1451,6 +1511,7 @@ function applyNewProject(){
   S.scrollX=0;
   S.editMode='draw';
   S.snapEnabled=true;
+  S.gridIdx=1;
   S.pluck=[];
   S.chord=[];
   S.midi=[];
@@ -1473,6 +1534,7 @@ function applyNewProject(){
   document.getElementById('btn-snap').classList.add('on');
   document.getElementById('btn-snap').title='Snap to grid (on)';
   setEditMode('draw');
+  updateGridCtrl();
 }
 
 function applyExampleProject(){
