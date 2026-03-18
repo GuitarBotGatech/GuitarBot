@@ -27,7 +27,7 @@ COMPONENTS = [
     {
         "name": "web-ui",
         "label": "[WEB-UI  ]",
-        "cmd": [sys.executable, "-m", "http.server", "8000", "--directory", str(ROOT)],
+        "cmd": [sys.executable, "-m", "http.server", "8000", "--directory", str(ROOT / "web")],
         "color": "\033[32m",  # green
     },
 ]

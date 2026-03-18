@@ -1,0 +1,235 @@
+// ═══════════════════════════════════════════════
+// CRUD
+// ═══════════════════════════════════════════════
+function notesOverlap(startA,durA,noteA,startB,durB,noteB){
+  return noteA===noteB&&startA<startB+durB&&startA+durA>startB;
+}
+function hasCollision(beat,dur,note,excludeId){
+  for(const ev of S.pluck){
+    if(ev.id===excludeId)continue;
+    if(notesOverlap(beat,dur,note,parseBeat(ev.beat),ev.duration_b,ev.note))return true;
+  }
+  return false;
+}
+function clampDurationToNext(beat,note,maxDur,excludeId){
+  let clamped=maxDur;
+  for(const ev of S.pluck){
+    if(ev.id===excludeId)continue;
+    if(ev.note!==note)continue;
+    const s=parseBeat(ev.beat);
+    if(s>beat&&s<beat+clamped)clamped=s-beat;
+  }
+  return clamped;
+}
+function addNote(b,n){
+  const dur=clampDurationToNext(b,n,gridStep(),null);
+  if(hasCollision(b,dur,n,null))return null;
+  const ev={id:S.nextId++,note:n,duration_b:dur,speed:SPEED_DEFAULT,slide:0,beat:beatLabel(b),string_index:null};
+  S.pluck.push(ev); selPluck(ev.id); syncJSON(); return ev;
+}
+function rmPluck(id){
+  S.pluck=S.pluck.filter(e=>e.id!==id);
+  S.selPluckIds.delete(id);
+  if(S.selPluck===id){S.selPluck=null;closeInsp()}
+  syncJSON();
+}
+function addChord(b){
+  const ev={id:S.nextId++,chord:'Em',beat:beatLabel(b)};
+  S.chord.push(ev); selChord(ev.id); syncJSON(); return ev;
+}
+function addMidi(b){
+  const existing=findMidiCCCollision(b,7,null);
+  if(existing){
+    selMidi(existing.id);
+    return existing;
+  }
+  const ev={id:S.nextId++,address:'/cc',args:[7,64],interp:0,beat:beatLabel(b)};
+  S.midi.push(ev); selMidi(ev.id); syncJSON(); return ev;
+}
+
+// ═══════════════════════════════════════════════
+// SELECTION
+// ═══════════════════════════════════════════════
+function selPluck(id){
+  S.selPluckIds=new Set([id]);
+  S.selPluck=id; S.selChord=null; S.selMidi=null;
+  const ev=S.pluck.find(e=>e.id===id);
+  if(ev)openInsp(ev);
+}
+function selChord(id){S.selChord=id;S.selPluck=null;S.selMidi=null;closeInsp()}
+function selMidi(id){S.selMidi=id;S.selPluck=null;S.selChord=null;closeInsp()}
+function clearPluckSelection(){
+  S.selPluck=null;
+  S.selPluckIds.clear();
+  closeInsp();
+}
+function deselectAll(){S.selPluck=null;S.selPluckIds.clear();S.selChord=null;S.selMidi=null;closeInsp()}
+
+// ═══════════════════════════════════════════════
+// INSPECTOR
+// ═══════════════════════════════════════════════
+function openInsp(ev){
+  document.getElementById('insp').classList.add('open');
+  refreshInspNote(ev); refreshInspDur(ev);
+  document.getElementById('i-speed').value=ev.speed;
+  document.getElementById('i-sv').textContent=ev.speed;
+  document.getElementById('i-slide').checked=ev.slide===1;
+  document.getElementById('i-slide-lbl').textContent=ev.slide?'On':'Off';
+  document.getElementById('i-str-ov').value=ev.string_index!==null?ev.string_index:'';
+}
+function refreshInspNote(ev){
+  const s=strOf(ev.note);
+  document.getElementById('i-note').textContent=noteName(ev.note);
+  document.getElementById('i-note').style.color=s.color;
+  document.getElementById('i-midi').textContent=ev.note;
+  document.getElementById('i-str').textContent=s.name;
+  document.getElementById('i-str').style.color=s.color;
+}
+function refreshInspDur(ev){
+  document.getElementById('i-dur').value=ev.duration_b;
+  document.getElementById('i-trem').classList.toggle('on',hasTremolo(ev));
+}
+function closeInsp(){document.getElementById('insp').classList.remove('open')}
+
+function updSpeed(v){
+  const ev=S.pluck.find(e=>e.id===S.selPluck);if(!ev)return;
+  ev.speed=clampSpeed(v);
+  document.getElementById('i-speed').value=ev.speed;
+  document.getElementById('i-sv').textContent=ev.speed;
+  syncJSON(); render();
+}
+function updSlide(c){
+  const ev=S.pluck.find(e=>e.id===S.selPluck);if(!ev)return;
+  ev.slide=c?1:0;
+  document.getElementById('i-slide-lbl').textContent=c?'On':'Off';
+  syncJSON(); render();
+}
+function updDur(v){
+  const ev=S.pluck.find(e=>e.id===S.selPluck);if(!ev)return;
+  const raw=Math.max(0.0625,parseFloat(v)||0.5);
+  const beat=parseBeat(ev.beat);
+  ev.duration_b=clampDurationToNext(beat,ev.note,raw,ev.id);
+  document.getElementById('i-dur').value=ev.duration_b;
+  document.getElementById('i-trem').classList.toggle('on',hasTremolo(ev));
+  syncJSON(); render();
+}
+function updStrOv(v){
+  const ev=S.pluck.find(e=>e.id===S.selPluck);if(!ev)return;
+  ev.string_index=v===''?null:parseInt(v);
+  syncJSON();
+}
+function delSelNote(){if(S.selPluck!==null){rmPluck(S.selPluck);render()}}
+
+function delSelectedPluckEvents(){
+  const ids=S.selPluckIds.size?[...S.selPluckIds]:(S.selPluck!==null?[S.selPluck]:[]);
+  if(!ids.length)return false;
+  const idSet=new Set(ids);
+  S.pluck=S.pluck.filter(ev=>!idSet.has(ev.id));
+  S.selPluck=null;
+  S.selPluckIds.clear();
+  closeInsp();
+  syncJSON();
+  render();
+  return true;
+}
+
+// ═══════════════════════════════════════════════
+// CHORD POPUP
+// ═══════════════════════════════════════════════
+function showCPop(ev,px,py){
+  const p=document.getElementById('cpop');
+  p.style.left=px+'px'; p.style.top=py+'px'; p.classList.add('on');
+  document.getElementById('cp-chord').value=ev.chord;
+  document.getElementById('cp-beat').value=ev.beat;
+  setTimeout(()=>{
+    const r=p.getBoundingClientRect();
+    if(r.bottom>window.innerHeight)p.style.top=(py-r.height-8)+'px';
+    if(r.right>window.innerWidth)p.style.left=(px-r.width)+'px';
+  },0);
+}
+function closeCPop(){document.getElementById('cpop').classList.remove('on')}
+function updChord(k,v){
+  const ev=S.chord.find(e=>e.id===S.selChord);if(!ev)return;
+  ev[k]=v; syncJSON(); render();
+}
+function delChord(){
+  if(S.selChord===null)return;
+  S.chord=S.chord.filter(e=>e.id!==S.selChord);
+  S.selChord=null; closeCPop(); syncJSON(); render();
+}
+
+// ═══════════════════════════════════════════════
+// MIDI POPUP
+// ═══════════════════════════════════════════════
+function showMPop(ev,px,py){
+  const p=document.getElementById('mpop');
+  p.style.left=px+'px'; p.style.top=py+'px'; p.classList.add('on');
+  document.getElementById('mp-addr').value=ev.address;
+  document.getElementById('mp-args').value=ev.args.join(', ');
+  document.getElementById('mp-interp').checked=ev.interp===1;
+  setTimeout(()=>{
+    const r=p.getBoundingClientRect();
+    if(r.bottom>window.innerHeight)p.style.top=(py-r.height-8)+'px';
+    if(r.right>window.innerWidth)p.style.left=(px-r.width)+'px';
+  },0);
+}
+function closeMPop(){document.getElementById('mpop').classList.remove('on')}
+function updMidi(k,v){
+  const ev=S.midi.find(e=>e.id===S.selMidi);if(!ev)return;
+  if(k==='args'){ev.args=v.split(',').map(s=>{const n=parseFloat(s.trim());return isNaN(n)?0:n})}
+  else{ev[k]=v}
+  dedupeMidiCCCollisions(ev.id);
+  syncJSON(); render();
+}
+function delMidi(){
+  if(S.selMidi===null)return;
+  S.midi=S.midi.filter(e=>e.id!==S.selMidi);
+  S.selMidi=null; closeMPop(); syncJSON(); render();
+}
+
+function showMLPop(lane,px,py){
+  if(lane<0||lane>=MIDI_AUTOMATION_CCS.length)return;
+  S.midiLaneMenuLane=lane;
+  const cc=MIDI_AUTOMATION_CCS[lane];
+  const p=document.getElementById('mlpop');
+  p.style.left=px+'px';
+  p.style.top=py+'px';
+  p.classList.add('on');
+  document.getElementById('ml-label').textContent=`CC${cc} Automation`;
+  const muted=!!S.midiCurveMuted[String(cc)];
+  document.getElementById('ml-mute').textContent=muted?'Unmute Automation':'Mute Automation';
+  setTimeout(()=>{
+    const r=p.getBoundingClientRect();
+    if(r.bottom>window.innerHeight)p.style.top=(py-r.height-8)+'px';
+    if(r.right>window.innerWidth)p.style.left=(px-r.width)+'px';
+  },0);
+}
+
+function closeMLPop(){
+  document.getElementById('mlpop').classList.remove('on');
+}
+
+function clearSelectedMidiAutomationLane(){
+  if(!Number.isInteger(S.midiLaneMenuLane))return;
+  const lane=S.midiLaneMenuLane;
+  if(lane<0||lane>=MIDI_AUTOMATION_CCS.length)return;
+  const cc=MIDI_AUTOMATION_CCS[lane];
+  S.midiCurves[String(cc)]=[];
+  closeMLPop();
+  syncJSON();
+  render();
+}
+
+function toggleSelectedMidiAutomationMute(){
+  if(!Number.isInteger(S.midiLaneMenuLane))return;
+  const lane=S.midiLaneMenuLane;
+  if(lane<0||lane>=MIDI_AUTOMATION_CCS.length)return;
+  const cc=MIDI_AUTOMATION_CCS[lane];
+  const key=String(cc);
+  S.midiCurveMuted[key]=!S.midiCurveMuted[key];
+  const muted=!!S.midiCurveMuted[key];
+  document.getElementById('ml-mute').textContent=muted?'Unmute Automation':'Mute Automation';
+  closeMLPop();
+  syncJSON();
+  render();
+}
