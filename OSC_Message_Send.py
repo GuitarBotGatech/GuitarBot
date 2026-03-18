@@ -72,7 +72,7 @@ def main():
         ["/cc", 1.0, 120.0, 1, 20.0],
     ]
     midi_message = [
-        ["/cc", 7.0, 0.0, 0, 0.0],
+        ["/cc", 7.0, 0.0, 0, 1.0],
     ]
     # pluck_message = gen.scale()
     client.send_message("/Midi", midi_message)

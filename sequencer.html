@@ -346,8 +346,15 @@ input[type=range]::-webkit-slider-thumb:hover{transform:scale(1.2)}
 // ═══════════════════════════════════════════════
 const MIDI_MIN=40, MIDI_MAX=68, NOTE_COUNT=29;
 const noteH_DEFAULT=14, noteH_MIN=6, noteH_MAX=50;
-let noteH=noteH_MAX;
-const LABEL_W=54, CHORD_H=30, MIDI_H=30;
+let noteH=noteH_DEFAULT;
+const LABEL_W=54, CHORD_H=30;
+const MIDI_GENERAL_LANE_H=24;
+const MIDI_AUTOMATION_LANE_H=30;
+const MIDI_AUTOMATION_CCS=[1,2,3,4,7];
+const MIDI_LANE_COUNT=1+MIDI_AUTOMATION_CCS.length;
+const MIDI_AUTOMATION_TOTAL_H=MIDI_AUTOMATION_CCS.length*MIDI_AUTOMATION_LANE_H;
+const MIDI_GENERAL_LANE_INDEX=MIDI_AUTOMATION_CCS.length;
+const MIDI_H=MIDI_AUTOMATION_TOTAL_H+MIDI_GENERAL_LANE_H;
 const rollH=()=>NOTE_COUNT*noteH;
 const canvasH=()=>CHORD_H+rollH()+MIDI_H;
 const SUBDIV=4; // used by formatBeat/parseBeat for 3-part display only
@@ -374,6 +381,7 @@ const STRINGS=[
 const NOTE_NAMES=["C","C#","D","D#","E","F","F#","G","G#","A","A#","B"];
 const noteName=m=>NOTE_NAMES[m%12]+(Math.floor(m/12)-1);
 const strOf=m=>STRINGS.find(s=>m>=s.min&&m<=s.max)||STRINGS[0];
+const createEmptyMidiCurves=()=>Object.fromEntries(MIDI_AUTOMATION_CCS.map(cc=>[String(cc),[]]));
 
 // ═══════════════════════════════════════════════
 // STATE
@@ -382,6 +390,7 @@ let S={
   songName:"Untitled Song", bpm:120, keyRoot:"E", keyMode:"minor",
   timeSig:"4/4", measures:8,
   pluck:[], chord:[], midi:[],
+  midiCurves:createEmptyMidiCurves(),
   nextId:1, zoom:80, scrollX:0,
   playing:false, playBeat:0,
   cycleEnabled:false,
@@ -393,6 +402,7 @@ let S={
   selPluckIds:new Set(),
   clipboardPluck:null,
   pasteAnchor:null,
+  focusedCCLane:null,
   selPluck:null, selChord:null, selMidi:null,
 };
 
@@ -402,6 +412,31 @@ const beatToX=b=>LABEL_W+b*S.zoom-S.scrollX;
 const xToBeat=x=>(x-LABEL_W+S.scrollX)/S.zoom;
 const noteToY=n=>CHORD_H+(MIDI_MAX-n)*noteH;
 const yToNote=y=>MIDI_MAX-Math.floor((y-CHORD_H)/noteH);
+const midiTopY=()=>CHORD_H+rollH();
+const hasFocusedCCLane=()=>Number.isInteger(S.focusedCCLane)&&S.focusedCCLane>=0&&S.focusedCCLane<MIDI_AUTOMATION_CCS.length;
+const midiLaneVisible=index=>!hasFocusedCCLane()||index===S.focusedCCLane;
+const midiLaneTop=index=>{
+  if(hasFocusedCCLane())return midiTopY();
+  return index===MIDI_GENERAL_LANE_INDEX?midiTopY()+MIDI_AUTOMATION_TOTAL_H:midiTopY()+(index*MIDI_AUTOMATION_LANE_H);
+};
+const midiLaneHeight=index=>{
+  if(!midiLaneVisible(index))return 0;
+  if(hasFocusedCCLane())return MIDI_H;
+  return index===MIDI_GENERAL_LANE_INDEX?MIDI_GENERAL_LANE_H:MIDI_AUTOMATION_LANE_H;
+};
+function midiLaneAtY(cy){
+  const rel=cy-midiTopY();
+  if(rel<0||rel>=MIDI_H)return-1;
+  if(hasFocusedCCLane())return S.focusedCCLane;
+  if(rel<MIDI_AUTOMATION_TOTAL_H)return Math.min(MIDI_AUTOMATION_CCS.length-1,Math.floor(rel/MIDI_AUTOMATION_LANE_H));
+  return MIDI_GENERAL_LANE_INDEX;
+}
+const midiValueFromY=(cy,lane)=>Math.round((1-clamp((cy-midiLaneTop(lane))/Math.max(1,midiLaneHeight(lane)),0,1))*127);
+const midiYFromValue=(value,lane)=>midiLaneTop(lane)+(1-clamp((parseFloat(value)||0)/127,0,1))*midiLaneHeight(lane);
+const laneForCC=cc=>{
+  const index=MIDI_AUTOMATION_CCS.indexOf(parseInt(cc,10));
+  return index>=0?index:-1;
+};
 const gridStep=()=>GRID_STEPS[S.gridIdx].beats;
 const snap=b=>{const gs=gridStep();return Math.round(b/gs)*gs;};
 const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
@@ -527,6 +562,65 @@ function eventStringIndex(ev){
   return inferred>=0?inferred:0;
 }
 
+function normalizeMidiCurvePoints(points){
+  const sorted=[...points].sort((a,b)=>a.beat-b.beat);
+  const deduped=[];
+  for(const point of sorted){
+    const beat=trimBeatNumber(Math.max(0,parseFloat(point.beat)||0));
+    const value=clamp(Math.round(parseFloat(point.value)||0),0,127);
+    if(deduped.length&&Math.abs(deduped[deduped.length-1].beat-beat)<1e-4){
+      deduped[deduped.length-1]={beat,value};
+    }else{
+      deduped.push({beat,value});
+    }
+  }
+  return deduped;
+}
+
+function upsertMidiCurvePoint(cc,beat,value){
+  const key=String(cc);
+  const targetBeat=trimBeatNumber(Math.max(0,beat));
+  const targetValue=clamp(Math.round(value),0,127);
+  const points=S.midiCurves[key]||[];
+
+  const filtered=points.filter(point=>{
+    const pointBeat=trimBeatNumber(Math.max(0,parseFloat(point.beat)||0));
+    if(!S.snapEnabled)return Math.abs(pointBeat-targetBeat)>1e-4;
+    return Math.abs(snap(pointBeat)-targetBeat)>1e-4;
+  });
+  filtered.push({beat:targetBeat,value:targetValue});
+  S.midiCurves[key]=normalizeMidiCurvePoints(filtered);
+}
+
+function clearMidiCurveRange(cc,startBeat,endBeat){
+  const key=String(cc);
+  const lo=Math.min(startBeat,endBeat);
+  const hi=Math.max(startBeat,endBeat);
+  const eps=1e-4;
+  const points=S.midiCurves[key]||[];
+  S.midiCurves[key]=points.filter(point=>{
+    const pointBeat=trimBeatNumber(Math.max(0,parseFloat(point.beat)||0));
+    return !(pointBeat>lo+eps&&pointBeat<hi-eps);
+  });
+}
+
+function midiAutomationEvents(){
+  const events=[];
+  const interpDefault=1;
+  for(const cc of MIDI_AUTOMATION_CCS){
+    const points=normalizeMidiCurvePoints(S.midiCurves[String(cc)]||[]);
+    points.forEach((point,index)=>{
+      events.push({
+        address:'/cc',
+        args:[cc,point.value],
+        interp:index<points.length-1?interpDefault:0,
+        beat:beatLabel(point.beat),
+      });
+    });
+  }
+  return events;
+}
+
 function drawSlideLinks(){
   const byString=[[],[],[]];
   for(const ev of S.pluck){
@@ -599,8 +693,14 @@ function drawBG(){
     ctx.fillStyle='#14141e'; ctx.fillRect(LABEL_W,y+noteH-1,CW-LABEL_W,1);
   }
   // MIDI lane
-  const my=CHORD_H+rollH();
-  ctx.fillStyle='#0c0c14'; ctx.fillRect(0,my,CW,MIDI_H);
+  const my=midiTopY();
+  for(let lane=0;lane<MIDI_LANE_COUNT;lane++){
+    if(!midiLaneVisible(lane))continue;
+    const top=midiLaneTop(lane);
+    const height=midiLaneHeight(lane);
+    ctx.fillStyle=lane===0?'#0c0c14':(lane%2===0?'#0a0a12':'#0d0d16');
+    ctx.fillRect(LABEL_W,top,CW-LABEL_W,height);
+  }
   // Label column
   ctx.fillStyle='#0e0e16';
   ctx.fillRect(0,0,LABEL_W,canvasH());
@@ -609,7 +709,13 @@ function drawBG(){
   // Lane labels
   ctx.fillStyle='#383860'; ctx.font='500 9px "JetBrains Mono"'; ctx.textAlign='center';
   ctx.fillText('CHD',LABEL_W/2,CHORD_H/2+3);
-  ctx.fillText('FX',LABEL_W/2,my+MIDI_H/2+3);
+  for(let lane=0;lane<MIDI_LANE_COUNT;lane++){
+    if(!midiLaneVisible(lane))continue;
+    const top=midiLaneTop(lane);
+    const h=midiLaneHeight(lane);
+    const label=lane===MIDI_GENERAL_LANE_INDEX?'FX':`CC${MIDI_AUTOMATION_CCS[lane]}`;
+    ctx.fillText(label,LABEL_W/2,top+h/2+3);
+  }
 }
 
 function drawGrid(){
@@ -635,6 +741,12 @@ function drawGrid(){
   [[0,CHORD_H],[0,CHORD_H+rollH()]].forEach(([,y])=>{
     ctx.beginPath(); ctx.moveTo(0,y); ctx.lineTo(CW,y); ctx.stroke();
   });
+  for(let lane=0;lane<MIDI_LANE_COUNT;lane++){
+    if(!midiLaneVisible(lane))continue;
+    const y=midiLaneTop(lane);
+    ctx.beginPath(); ctx.moveTo(0,y); ctx.lineTo(CW,y); ctx.stroke();
+  }
+  ctx.beginPath(); ctx.moveTo(0,midiTopY()+MIDI_H); ctx.lineTo(CW,midiTopY()+MIDI_H); ctx.stroke();
   ctx.beginPath(); ctx.moveTo(LABEL_W,0); ctx.lineTo(LABEL_W,canvasH()); ctx.stroke();
 }
 
@@ -673,7 +785,8 @@ function drawChordLane(){
 }
 
 function drawMidiLane(){
-  const my=CHORD_H+rollH(), cy=my+MIDI_H/2;
+  if(midiLaneVisible(MIDI_GENERAL_LANE_INDEX)){
+  const cy=midiLaneTop(MIDI_GENERAL_LANE_INDEX)+midiLaneHeight(MIDI_GENERAL_LANE_INDEX)/2;
   S.midi.forEach(ev=>{
     const x=beatToX(parseBeat(ev.beat));
     if(x<LABEL_W-20||x>CW+20)return;
@@ -689,6 +802,39 @@ function drawMidiLane(){
     ctx.fillStyle=col; ctx.font='500 9px "JetBrains Mono"';
     ctx.textAlign='left'; ctx.fillText(ev.address,x+sz+3,cy+3);
   });
+  }
+
+  for(const cc of MIDI_AUTOMATION_CCS){
+    const lane=laneForCC(cc);
+    const points=[...(S.midiCurves[String(cc)]||[])].sort((a,b)=>a.beat-b.beat);
+    if(!points.length)continue;
+
+    const color=cc===7?'#22d3ee':'#a855f7';
+    ctx.strokeStyle=color;
+    ctx.lineWidth=1.8;
+    ctx.globalAlpha=0.9;
+    ctx.beginPath();
+    points.forEach((point,index)=>{
+      const x=beatToX(point.beat);
+      const y=midiYFromValue(point.value,lane);
+      if(index===0)ctx.moveTo(x,y); else ctx.lineTo(x,y);
+    });
+    ctx.stroke();
+    ctx.globalAlpha=1;
+
+    for(const point of points){
+      const x=beatToX(point.beat);
+      const y=midiYFromValue(point.value,lane);
+      if(x<LABEL_W-4||x>CW+4)continue;
+      ctx.beginPath();
+      ctx.arc(x,y,2.7,0,Math.PI*2);
+      ctx.fillStyle=color;
+      ctx.fill();
+      ctx.strokeStyle='#0b0b0f';
+      ctx.lineWidth=1;
+      ctx.stroke();
+    }
+  }
 }
 
 function drawNotes(){
@@ -875,6 +1021,17 @@ canvas.addEventListener('pointermove',e=>{
     updateHoverCursor(cx,cy);
     return;
   }
+  if(drag.type==='midi-curve'){
+    const beat=normalizeBeat(clamp(xToBeat(cx),0,totalBeats()));
+    const value=midiValueFromY(cy,drag.lane);
+    if(S.snapEnabled&&typeof drag.lastBeat==='number'&&Math.abs(beat-drag.lastBeat)>1e-4){
+      clearMidiCurveRange(drag.cc,drag.lastBeat,beat);
+    }
+    upsertMidiCurvePoint(drag.cc,beat,value);
+    drag.lastBeat=beat;
+    render();
+    return;
+  }
   if(drag.type==='cycle-move'){
     const m=bpm();
     const deltaBeats=xToBeat(cx)-drag.startBeat;
@@ -972,6 +1129,12 @@ canvas.addEventListener('pointerleave',()=>{
 
 canvas.addEventListener('pointerup',()=>{
   if(!drag)return;
+  if(drag.type==='midi-curve'){
+    syncJSON();
+    drag=null;
+    render();
+    return;
+  }
   if(drag.type==='cycle-move'){
     drag=null;
     render();
@@ -992,6 +1155,13 @@ canvas.addEventListener('dblclick',e=>{
   const r=canvas.getBoundingClientRect();
   const cx=e.clientX-r.left;
   const cy=e.clientY-r.top;
+
+  const lane=midiLaneAtY(cy);
+  if(cx<LABEL_W&&lane>=0&&lane!==MIDI_GENERAL_LANE_INDEX){
+    S.focusedCCLane=(S.focusedCCLane===lane)?null:lane;
+    render();
+    return;
+  }
 
   if(cx>=LABEL_W&&cy<CHORD_H){
     const b=normalizeBeat(Math.max(0,xToBeat(cx)));
@@ -1073,6 +1243,18 @@ function chordDown(cx,cy,e){
 }
 function midiDown(cx,cy,e){
   if(cx<LABEL_W)return;
+  const lane=midiLaneAtY(cy);
+  if(lane<0)return;
+  if(lane!==MIDI_GENERAL_LANE_INDEX){
+    const cc=MIDI_AUTOMATION_CCS[lane];
+    const beat=normalizeBeat(clamp(xToBeat(cx),0,totalBeats()));
+    const value=midiValueFromY(cy,lane);
+    upsertMidiCurvePoint(cc,beat,value);
+    drag={type:'midi-curve',cc,lane,lastBeat:beat};
+    render();
+    syncJSON();
+    return;
+  }
   const hit=hitMidi(cx,cy);
   if(hit){selMidi(hit.id);showMPop(hit,e.clientX,e.clientY)}
   else{const b=normalizeBeat(Math.max(0,xToBeat(cx)));if(b<totalBeats()){addMidi(b);render()}}
@@ -1096,7 +1278,7 @@ function getPluckEdgeHit(cx,cy){
 }
 
 function updateHoverCursor(cx,cy){
-  const myY=CHORD_H+rollH();
+  const myY=midiTopY();
   if(cx>=LABEL_W&&cy<CHORD_H){
     const cycle=getCycleRange();
     if(cycle){
@@ -1114,6 +1296,11 @@ function updateHoverCursor(cx,cy){
     return;
   }
   if(cx<LABEL_W||cy<CHORD_H||cy>=myY){
+    if(cy>=myY&&cy<myY+MIDI_H){
+      const lane=midiLaneAtY(cy);
+      canvas.style.cursor=lane>=0&&lane!==MIDI_GENERAL_LANE_INDEX?'crosshair':'default';
+      return;
+    }
     canvas.style.cursor=S.editMode==='draw'?'default':'crosshair';
     return;
   }
@@ -1131,7 +1318,8 @@ function hitChord(cx,cy){
   }return null;
 }
 function hitMidi(cx,cy){
-  const my=CHORD_H+rollH(), cy2=my+MIDI_H/2;
+  if(midiLaneAtY(cy)!==MIDI_GENERAL_LANE_INDEX)return null;
+  const cy2=midiLaneTop(MIDI_GENERAL_LANE_INDEX)+midiLaneHeight(MIDI_GENERAL_LANE_INDEX)/2;
   for(const ev of S.midi){
     const x=beatToX(parseBeat(ev.beat));
     if(Math.abs(cx-x)<10&&Math.abs(cy-cy2)<10)return ev;
@@ -1548,10 +1736,13 @@ function buildJSON(){
           return o;
         })});
   }
-  if(S.midi.length){
+  const combinedMidi=[
+    ...S.midi.map(e=>({address:e.address,args:e.args,interp:e.interp,beat:e.beat})),
+    ...midiAutomationEvents(),
+  ].sort((a,b)=>parseBeat(a.beat)-parseBeat(b.beat));
+  if(combinedMidi.length){
     tracks.push({name:"midi_fx",type:"midi",
-      events:[...S.midi].sort((a,b)=>parseBeat(a.beat)-parseBeat(b.beat))
-        .map(e=>({address:e.address,args:e.args,interp:e.interp,beat:e.beat}))});
+      events:combinedMidi});
   }
   return{song:{name:S.songName,meta:{key:`${S.keyRoot} ${S.keyMode}`,time_signature:S.timeSig,bpm:S.bpm,tempo_curve:[{time:0.0,bpm:S.bpm}]},tracks}};
 }
@@ -1715,7 +1906,7 @@ function loadJSON(data){
       document.getElementById('key-mode').value=S.keyMode}
     if(m.time_signature){S.timeSig=m.time_signature;document.getElementById('time-sig').value=S.timeSig}
   }
-  S.pluck=[]; S.chord=[]; S.midi=[]; S.nextId=1;
+  S.pluck=[]; S.chord=[]; S.midi=[]; S.midiCurves=createEmptyMidiCurves(); S.focusedCCLane=null; S.nextId=1;
   S.selPluck=null; S.selPluckIds.clear(); S.selChord=null; S.selMidi=null; closeInsp();
   let maxB=0;
   (song.tracks||[]).forEach(tr=>{
@@ -1738,7 +1929,15 @@ function loadJSON(data){
       } else if(tr.type==='chord'){
         S.chord.push({id:S.nextId++,chord:ev.chord||'Em',beat:hasBeat?ev.beat:beatLabel(b)});
       } else if(tr.type==='midi'){
-        S.midi.push({id:S.nextId++,address:ev.address||'/cc',args:ev.args||[],interp:ev.interp??0,beat:hasBeat?ev.beat:beatLabel(b)});
+        const address=ev.address||'/cc';
+        const args=Array.isArray(ev.args)?ev.args:[];
+        const cc=args.length?parseInt(args[0],10):NaN;
+        const value=args.length>1?parseFloat(args[1]):0;
+        if(address==='/cc'&&MIDI_AUTOMATION_CCS.includes(cc)){
+          upsertMidiCurvePoint(cc,b,clamp(Math.round(Number.isFinite(value)?value:0),0,127));
+        } else {
+          S.midi.push({id:S.nextId++,address,args,interp:ev.interp??0,beat:hasBeat?ev.beat:beatLabel(b)});
+        }
       }
     });
   });
@@ -1831,6 +2030,11 @@ document.addEventListener('keydown',e=>{
   if(tag==='INPUT'||tag==='SELECT'||tag==='TEXTAREA')return;
 
   const k=e.key.toLowerCase();
+  if(e.key==='Escape'&&hasFocusedCCLane()){
+    S.focusedCCLane=null;
+    render();
+    return;
+  }
   if(k==='b'){setEditMode(S.editMode==='draw'?'select':'draw');render();return;}
   if((e.ctrlKey||e.metaKey)&&k==='a'){
     e.preventDefault();
@@ -1878,13 +2082,15 @@ function applyNewProject(){
   S.cycleStartBar=1;
   S.cycleEndBar=2;
   S.scrollX=0;
-  noteH=noteH_MAX;
+  noteH=noteH_DEFAULT;
   S.editMode='select';
   S.snapEnabled=true;
   S.gridIdx=1;
   S.pluck=[];
   S.chord=[];
   S.midi=[];
+  S.midiCurves=createEmptyMidiCurves();
+  S.focusedCCLane=null;
   S.nextId=1;
   S.selPluckIds.clear();
   S.clipboardPluck=null;

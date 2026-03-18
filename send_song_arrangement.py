@@ -59,7 +59,9 @@ def send_song_from_arrangement(arrangement: SongArrangement, ip: str = UDP_IP, p
 
     client = SimpleUDPClient(ip, port)
 
-    for address in ("/Chords", "/Pluck", "/Midi"):
+    # Send /Midi first so the receiver has the full MIDI sequence buffered
+    # before /Chords+/Pluck triggers song playback synchronisation.
+    for address in ("/Midi", "/Chords", "/Pluck"):
         payload = payloads.get(address, [])
         if payload:
             _send_event_payload(client, address, payload)

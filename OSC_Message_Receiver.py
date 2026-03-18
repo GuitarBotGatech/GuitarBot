@@ -41,6 +41,7 @@ config_queue = queue.SimpleQueue()
 _pending_midi_seq: list[TimedMessage] | None = None
 _pending_midi_seq_arrived: float = 0.0   # time.monotonic() of last set
 _midi_seq_lock = threading.Lock()
+MIDI_CHUNK_MERGE_WINDOW_S = 0.75
 
 # ── MIDI player (lazy-initialised on first /Midi message) ─────────────────
 _midi_player: SequencePlayer | None = None
@@ -216,9 +217,23 @@ def process_messages():
                     if seq:
                         with _midi_seq_lock:
                             global _pending_midi_seq, _pending_midi_seq_arrived
-                            _pending_midi_seq = seq
-                            _pending_midi_seq_arrived = time.monotonic()
-                        print(f"  → Parsed {len(seq)} MIDI event(s) into _pending_midi_seq")
+                            now = time.monotonic()
+                            should_merge = (
+                                _pending_midi_seq is not None
+                                and (now - _pending_midi_seq_arrived) <= MIDI_CHUNK_MERGE_WINDOW_S
+                            )
+                            if should_merge:
+                                _pending_midi_seq.extend(seq)
+                                _pending_midi_seq.sort()
+                                merged_count = len(_pending_midi_seq)
+                            else:
+                                _pending_midi_seq = seq
+                                merged_count = len(seq)
+                            _pending_midi_seq_arrived = now
+                        print(
+                            f"  → Parsed {len(seq)} MIDI event(s); "
+                            f"pending MIDI sequence now has {merged_count} event(s)"
+                        )
                     else:
                         print("  → /Midi message contained no valid events – ignoring")
                 # print(f"Chords Queue Size1", chords_queue.qsize())
