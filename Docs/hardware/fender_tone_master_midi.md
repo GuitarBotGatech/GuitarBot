@@ -1,4 +1,21 @@
-# Fender Tone Master MIDI CC Mapping
+# Automating The Fender Tone Master Pro
+
+The Fender Tone Master Pro (TMP) is a powerful effects processor, with many input/output (I/O) possibilities.
+
+The TMP has MIDI I/O via 5-pin DIN cables. To interface with a computer, use a MIDI interface or an audio interface with MIDI DIN I/O.
+
+The Presonus AudioBox 96 is one such audio interface. Connect the MIDI output on the AudioBox to the MIDI input on the TMP.
+
+Then, using QJackCTL's graph view, route the output of ```MIDI Through``` to the ```AudioBox USB 96```. 
+
+When running midification either through ```OSC_Message_Receiver.py``` or standalone, an instance of [RtMidi](https://caml.music.mcgill.ca/~gary/rtmidi/) will route to ```MIDI Through``` automatically. 
+![QJackQTL Graph window](jack_config.png)
+
+By routing the persistent ```MIDI Through``` device to the hardware, this connection will work so long as QJackCTL is open and the hardware is connected.
+
+You should now be ready to send MIDI to the TMP via OSC. See the mapping table below for further details.
+
+## Fender Tone Master MIDI CC Mapping
 
 | MIDI CC# | VALUE | FUNCTION |
 |----------|-------|----------|
