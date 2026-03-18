@@ -159,6 +159,8 @@ input[type=range]::-webkit-slider-thumb:hover{transform:scale(1.2)}
 .popup select,.popup input{width:100%}
 .pdel{display:block;width:100%;margin-top:8px;padding:4px 8px;background:transparent;border:1px solid var(--red);color:var(--red);border-radius:3px;cursor:pointer;font-size:10px;font-family:'JetBrains Mono',monospace;text-transform:uppercase;transition:all .1s}
 .pdel:hover{background:var(--red);color:#fff}
+.mlbtn{display:block;width:100%;margin-top:6px;padding:6px 8px;background:transparent;border:1px solid var(--border);color:var(--text);border-radius:3px;cursor:pointer;font-size:10px;font-family:'JetBrains Mono',monospace;text-transform:uppercase;transition:all .1s}
+.mlbtn:hover{border-color:var(--purple);color:var(--purple);background:var(--surface3)}
 
 ::-webkit-scrollbar{width:5px;height:5px}
 ::-webkit-scrollbar-track{background:var(--surface)}
@@ -338,6 +340,14 @@ input[type=range]::-webkit-slider-thumb:hover{transform:scale(1.2)}
   <button class="pdel" onclick="delMidi()">Delete</button>
 </div>
 
+<!-- MIDI LANE POPUP -->
+<div class="popup" id="mlpop">
+  <div class="ph">MIDI Lane <span class="pc" onclick="closeMLPop()">×</span></div>
+  <div class="pr"><div class="pl" id="ml-label">CC</div></div>
+  <button class="mlbtn" id="ml-clear" onclick="clearSelectedMidiAutomationLane()">Delete Automation</button>
+  <button class="mlbtn" id="ml-mute" onclick="toggleSelectedMidiAutomationMute()">Mute Automation</button>
+</div>
+
 <input type="file" id="hidden-file" accept=".json">
 
 <script>
@@ -382,6 +392,7 @@ const NOTE_NAMES=["C","C#","D","D#","E","F","F#","G","G#","A","A#","B"];
 const noteName=m=>NOTE_NAMES[m%12]+(Math.floor(m/12)-1);
 const strOf=m=>STRINGS.find(s=>m>=s.min&&m<=s.max)||STRINGS[0];
 const createEmptyMidiCurves=()=>Object.fromEntries(MIDI_AUTOMATION_CCS.map(cc=>[String(cc),[]]));
+const createEmptyMidiCurveMuteState=()=>Object.fromEntries(MIDI_AUTOMATION_CCS.map(cc=>[String(cc),false]));
 
 // ═══════════════════════════════════════════════
 // STATE
@@ -391,6 +402,7 @@ let S={
   timeSig:"4/4", measures:8,
   pluck:[], chord:[], midi:[],
   midiCurves:createEmptyMidiCurves(),
+  midiCurveMuted:createEmptyMidiCurveMuteState(),
   nextId:1, zoom:80, scrollX:0,
   playing:false, playBeat:0,
   cycleEnabled:false,
@@ -402,6 +414,7 @@ let S={
   selPluckIds:new Set(),
   clipboardPluck:null,
   pasteAnchor:null,
+  midiLaneMenuLane:null,
   focusedCCLane:null,
   selPluck:null, selChord:null, selMidi:null,
 };
@@ -608,6 +621,7 @@ function midiAutomationEvents(){
   const events=[];
   const interpDefault=1;
   for(const cc of MIDI_AUTOMATION_CCS){
+    if(S.midiCurveMuted[String(cc)])continue;
     const points=normalizeMidiCurvePoints(S.midiCurves[String(cc)]||[]);
     points.forEach((point,index)=>{
       events.push({
@@ -713,7 +727,9 @@ function drawBG(){
     if(!midiLaneVisible(lane))continue;
     const top=midiLaneTop(lane);
     const h=midiLaneHeight(lane);
-    const label=lane===MIDI_GENERAL_LANE_INDEX?'FX':`CC${MIDI_AUTOMATION_CCS[lane]}`;
+    const label=lane===MIDI_GENERAL_LANE_INDEX
+      ?'FX'
+      :`CC${MIDI_AUTOMATION_CCS[lane]}${S.midiCurveMuted[String(MIDI_AUTOMATION_CCS[lane])]?' (M)':''}`;
     ctx.fillText(label,LABEL_W/2,top+h/2+3);
   }
 }
@@ -808,11 +824,12 @@ function drawMidiLane(){
     const lane=laneForCC(cc);
     const points=[...(S.midiCurves[String(cc)]||[])].sort((a,b)=>a.beat-b.beat);
     if(!points.length)continue;
+    const muted=!!S.midiCurveMuted[String(cc)];
 
     const color=cc===7?'#22d3ee':'#a855f7';
     ctx.strokeStyle=color;
     ctx.lineWidth=1.8;
-    ctx.globalAlpha=0.9;
+    ctx.globalAlpha=muted?0.28:0.9;
     ctx.beginPath();
     points.forEach((point,index)=>{
       const x=beatToX(point.beat);
@@ -829,10 +846,12 @@ function drawMidiLane(){
       ctx.beginPath();
       ctx.arc(x,y,2.7,0,Math.PI*2);
       ctx.fillStyle=color;
+      ctx.globalAlpha=muted?0.35:1;
       ctx.fill();
       ctx.strokeStyle='#0b0b0f';
       ctx.lineWidth=1;
       ctx.stroke();
+      ctx.globalAlpha=1;
     }
   }
 }
@@ -924,7 +943,18 @@ let drag=null;
 canvas.addEventListener('contextmenu',e=>{
   e.preventDefault();
   const r=canvas.getBoundingClientRect();
-  const hit=hitPluck(e.clientX-r.left,e.clientY-r.top);
+  const cx=e.clientX-r.left, cy=e.clientY-r.top;
+  const myY=midiTopY();
+  if(cx<LABEL_W&&cy>=myY&&cy<myY+MIDI_H){
+    const lane=midiLaneAtY(cy);
+    if(lane>=0&&lane!==MIDI_GENERAL_LANE_INDEX){
+      showMLPop(lane,e.clientX,e.clientY);
+      return;
+    }
+  }
+
+  closeMLPop();
+  const hit=hitPluck(cx,cy);
   if(hit){rmPluck(hit.id);closeInsp();render();syncJSON()}
 });
 
@@ -933,7 +963,7 @@ canvas.addEventListener('pointerdown',e=>{
   canvas.setPointerCapture(e.pointerId);
   const r=canvas.getBoundingClientRect();
   const cx=e.clientX-r.left, cy=e.clientY-r.top;
-  closeCPop(); closeMPop();
+  closeCPop(); closeMPop(); closeMLPop();
   const myY=CHORD_H+rollH();
 
   if(cy<CHORD_H){chordDown(cx,cy,e);return}
@@ -1557,6 +1587,53 @@ function delMidi(){
   S.selMidi=null; closeMPop(); syncJSON(); render();
 }
 
+function showMLPop(lane,px,py){
+  if(lane<0||lane>=MIDI_AUTOMATION_CCS.length)return;
+  S.midiLaneMenuLane=lane;
+  const cc=MIDI_AUTOMATION_CCS[lane];
+  const p=document.getElementById('mlpop');
+  p.style.left=px+'px';
+  p.style.top=py+'px';
+  p.classList.add('on');
+  document.getElementById('ml-label').textContent=`CC${cc} Automation`;
+  const muted=!!S.midiCurveMuted[String(cc)];
+  document.getElementById('ml-mute').textContent=muted?'Unmute Automation':'Mute Automation';
+  setTimeout(()=>{
+    const r=p.getBoundingClientRect();
+    if(r.bottom>window.innerHeight)p.style.top=(py-r.height-8)+'px';
+    if(r.right>window.innerWidth)p.style.left=(px-r.width)+'px';
+  },0);
+}
+
+function closeMLPop(){
+  document.getElementById('mlpop').classList.remove('on');
+}
+
+function clearSelectedMidiAutomationLane(){
+  if(!Number.isInteger(S.midiLaneMenuLane))return;
+  const lane=S.midiLaneMenuLane;
+  if(lane<0||lane>=MIDI_AUTOMATION_CCS.length)return;
+  const cc=MIDI_AUTOMATION_CCS[lane];
+  S.midiCurves[String(cc)]=[];
+  closeMLPop();
+  syncJSON();
+  render();
+}
+
+function toggleSelectedMidiAutomationMute(){
+  if(!Number.isInteger(S.midiLaneMenuLane))return;
+  const lane=S.midiLaneMenuLane;
+  if(lane<0||lane>=MIDI_AUTOMATION_CCS.length)return;
+  const cc=MIDI_AUTOMATION_CCS[lane];
+  const key=String(cc);
+  S.midiCurveMuted[key]=!S.midiCurveMuted[key];
+  const muted=!!S.midiCurveMuted[key];
+  document.getElementById('ml-mute').textContent=muted?'Unmute Automation':'Mute Automation';
+  closeMLPop();
+  syncJSON();
+  render();
+}
+
 // ═══════════════════════════════════════════════
 // TRANSPORT
 // ═══════════════════════════════════════════════
@@ -1943,7 +2020,7 @@ function loadJSON(data){
       document.getElementById('key-mode').value=S.keyMode}
     if(m.time_signature){S.timeSig=m.time_signature;document.getElementById('time-sig').value=S.timeSig}
   }
-  S.pluck=[]; S.chord=[]; S.midi=[]; S.midiCurves=createEmptyMidiCurves(); S.focusedCCLane=null; S.nextId=1;
+  S.pluck=[]; S.chord=[]; S.midi=[]; S.midiCurves=createEmptyMidiCurves(); S.midiCurveMuted=createEmptyMidiCurveMuteState(); S.midiLaneMenuLane=null; S.focusedCCLane=null; S.nextId=1;
   S.selPluck=null; S.selPluckIds.clear(); S.selChord=null; S.selMidi=null; closeInsp();
   let maxB=0;
   (song.tracks||[]).forEach(tr=>{
@@ -2067,6 +2144,7 @@ function pastePluckEvents(){
 document.addEventListener('pointerdown',e=>{
   if(!document.getElementById('cpop').contains(e.target)&&e.target!==canvas)closeCPop();
   if(!document.getElementById('mpop').contains(e.target)&&e.target!==canvas)closeMPop();
+  if(!document.getElementById('mlpop').contains(e.target)&&e.target!==canvas)closeMLPop();
 });
 
 // ═══════════════════════════════════════════════
@@ -2137,6 +2215,8 @@ function applyNewProject(){
   S.chord=[];
   S.midi=[];
   S.midiCurves=createEmptyMidiCurves();
+  S.midiCurveMuted=createEmptyMidiCurveMuteState();
+  S.midiLaneMenuLane=null;
   S.focusedCCLane=null;
   S.nextId=1;
   S.selPluckIds.clear();
