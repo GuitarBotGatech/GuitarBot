@@ -47,6 +47,8 @@ select{cursor:pointer;background-image:none}
 .tbtn.pen.on{background:var(--cyan);color:#000}
 .tbtn.snap{border-color:var(--purple);color:var(--purple)}
 .tbtn.snap.on{background:var(--purple);color:#000}
+.tbtn.cycle{border-color:var(--purple);color:var(--purple)}
+.tbtn.cycle.on{background:var(--purple);color:#000}
 .pos-disp{font-family:'JetBrains Mono',monospace;font-size:12px;font-weight:600;color:var(--cyan);min-width:44px;text-align:center}
 .tr{margin-left:auto;display:flex;align-items:center;gap:6px;flex-shrink:0}
 
@@ -199,6 +201,14 @@ input[type=range]::-webkit-slider-thumb:hover{transform:scale(1.2)}
     <button class="tbtn stop" id="btn-stop" title="Stop">■</button>
     <button class="tbtn play" id="btn-play" title="Play">▶</button>
     <div class="pos-disp" id="pos">1.1</div>
+  </div>
+  <div class="sep"></div>
+  <div class="tg">
+    <button class="tbtn cycle" id="btn-cycle" title="Cycle bar (off)">CYCLE</button>
+    <span class="tl">Bars</span>
+    <input type="number" id="cycle-start" value="1" min="1" max="64" step="1" style="width:48px;text-align:center">
+    <span class="tl">→</span>
+    <input type="number" id="cycle-end" value="2" min="1" max="64" step="1" style="width:48px;text-align:center">
   </div>
   <div class="sep"></div>
   <div class="tg">
@@ -374,7 +384,10 @@ let S={
   pluck:[], chord:[], midi:[],
   nextId:1, zoom:80, scrollX:0,
   playing:false, playBeat:0,
-  editMode:'draw',
+  cycleEnabled:false,
+  cycleStartBar:1,
+  cycleEndBar:2,
+  editMode:'select',
   snapEnabled:true,
   gridIdx:1,
   selPluckIds:new Set(),
@@ -397,6 +410,15 @@ const trimBeatNumber=v=>parseFloat(Number(v).toFixed(4));
 const normalizeBeat=b=>S.snapEnabled?snap(b):trimBeatNumber(b);
 const minDurationBeats=()=>S.snapEnabled?gridStep():0.02;
 const noteDurationSeconds=ev=>ev.duration_b*(60/Math.max(1,S.bpm));
+const secondsPerBeat=()=>{
+  const parts=String(S.timeSig||'4/4').split('/');
+  const denominator=parseFloat(parts[1]);
+  const beatUnit=Number.isFinite(denominator)&&denominator>0?denominator:4;
+  return (60/Math.max(1,S.bpm))*(4/beatUnit);
+};
+const secondsToBeat=t=>trimBeatNumber(Math.max(0,parseFloat(t)||0)/secondsPerBeat());
+const secondsToDurationBeats=t=>Math.max(0.02,trimBeatNumber((parseFloat(t)||0)/secondsPerBeat()));
+const beatsToSeconds=b=>Math.max(0,parseFloat(b)||0)*secondsPerBeat();
 const hasTremolo=ev=>noteDurationSeconds(ev)>0.5;
 const clampSpeed=v=>clamp(parseInt(v)||SPEED_DEFAULT,SPEED_MIN,SPEED_MAX);
 const speedToVelocity=s=>Math.round(((clampSpeed(s)-SPEED_MIN)/(SPEED_MAX-SPEED_MIN))*127);
@@ -442,6 +464,37 @@ function parseBeat(s){
   return (bar-1)*bpm()+(beat-1);
 }
 
+function getCycleRange(){
+  if(!S.cycleEnabled)return null;
+  const m=bpm();
+  const startBar=clamp(parseInt(S.cycleStartBar)||1,1,S.measures);
+  const endBar=clamp(parseInt(S.cycleEndBar)||startBar,startBar,S.measures);
+  const startBeat=(startBar-1)*m;
+  const endBeat=endBar*m;
+  if(endBeat<=startBeat)return null;
+  return {startBar,endBar,startBeat,endBeat};
+}
+
+function syncCycleControls(){
+  const maxBars=Math.max(1,S.measures);
+  S.cycleStartBar=clamp(parseInt(S.cycleStartBar)||1,1,maxBars);
+  S.cycleEndBar=clamp(parseInt(S.cycleEndBar)||S.cycleStartBar,S.cycleStartBar,maxBars);
+
+  const btn=document.getElementById('btn-cycle');
+  const inStart=document.getElementById('cycle-start');
+  const inEnd=document.getElementById('cycle-end');
+  if(!btn||!inStart||!inEnd)return;
+
+  btn.classList.toggle('on',S.cycleEnabled);
+  btn.title=S.cycleEnabled?'Cycle bar (on)':'Cycle bar (off)';
+  inStart.disabled=!S.cycleEnabled;
+  inEnd.disabled=!S.cycleEnabled;
+  inStart.max=maxBars;
+  inEnd.max=maxBars;
+  inStart.value=S.cycleStartBar;
+  inEnd.value=S.cycleEndBar;
+}
+
 // ═══════════════════════════════════════════════
 // CANVAS
 // ═══════════════════════════════════════════════
@@ -462,7 +515,78 @@ function render(){
   if(!ctx)return;
   ctx.clearRect(0,0,CW,canvasH());
   drawBG(); drawGrid(); drawLabels();
-  drawChordLane(); drawMidiLane(); drawNotes(); drawPlayhead(); drawSelectionBox();
+  drawCycleBar(); drawChordLane(); drawMidiLane(); drawSlideLinks(); drawNotes(); drawPlayhead(); drawSelectionBox();
+}
+
+function eventStringIndex(ev){
+  if(ev&&ev.string_index!==null&&ev.string_index!==undefined){
+    const explicit=parseInt(ev.string_index,10);
+    if(Number.isFinite(explicit)&&explicit>=0&&explicit<STRINGS.length)return explicit;
+  }
+  const inferred=STRINGS.findIndex(s=>ev.note>=s.min&&ev.note<=s.max);
+  return inferred>=0?inferred:0;
+}
+
+function drawSlideLinks(){
+  const byString=[[],[],[]];
+  for(const ev of S.pluck){
+    byString[eventStringIndex(ev)].push(ev);
+  }
+
+  for(const events of byString){
+    events.sort((a,b)=>parseBeat(a.beat)-parseBeat(b.beat)||a.id-b.id);
+    for(let index=0;index<events.length-1;index++){
+      const from=events[index];
+      if(!from.slide)continue;
+      const to=events[index+1];
+
+      const fromBeat=parseBeat(from.beat);
+      const toBeat=parseBeat(to.beat);
+      const fromX=beatToX(fromBeat)+Math.max(8,from.duration_b*S.zoom);
+      const toX=beatToX(toBeat);
+      const fromY=noteToY(from.note)+(noteH/2);
+      const toY=noteToY(to.note)+(noteH/2);
+
+      if(toX<LABEL_W||fromX>CW)continue;
+
+      const color=strOf(from.note).color;
+      ctx.strokeStyle=color;
+      ctx.lineWidth=1.3;
+      ctx.globalAlpha=0.85;
+      ctx.beginPath();
+      ctx.moveTo(fromX,fromY);
+      ctx.lineTo(toX,toY);
+      ctx.stroke();
+
+      const angle=Math.atan2(toY-fromY,toX-fromX);
+      const head=5;
+      ctx.beginPath();
+      ctx.moveTo(toX,toY);
+      ctx.lineTo(toX-head*Math.cos(angle-Math.PI/6),toY-head*Math.sin(angle-Math.PI/6));
+      ctx.lineTo(toX-head*Math.cos(angle+Math.PI/6),toY-head*Math.sin(angle+Math.PI/6));
+      ctx.closePath();
+      ctx.fillStyle=color;
+      ctx.fill();
+      ctx.globalAlpha=1;
+    }
+  }
+}
+
+function drawCycleBar(){
+  const range=getCycleRange();
+  if(!range)return;
+  const x1=Math.max(LABEL_W,beatToX(range.startBeat));
+  const x2=Math.min(CW,beatToX(range.endBeat));
+  if(x2<=x1)return;
+
+  ctx.fillStyle='rgba(168,85,247,0.14)';
+  ctx.fillRect(x1,0,x2-x1,canvasH());
+  ctx.fillStyle='rgba(168,85,247,0.2)';
+  ctx.fillRect(x1,0,x2-x1,CHORD_H);
+  ctx.strokeStyle='#a855f7';
+  ctx.lineWidth=1;
+  ctx.beginPath(); ctx.moveTo(x1,0); ctx.lineTo(x1,canvasH()); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(x2,0); ctx.lineTo(x2,canvasH()); ctx.stroke();
 }
 
 function drawBG(){
@@ -751,6 +875,19 @@ canvas.addEventListener('pointermove',e=>{
     updateHoverCursor(cx,cy);
     return;
   }
+  if(drag.type==='cycle-move'){
+    const m=bpm();
+    const deltaBeats=xToBeat(cx)-drag.startBeat;
+    const deltaBars=Math.round(deltaBeats/m);
+    const spanBars=drag.endBar-drag.startBar+1;
+    let newStart=drag.startBar+deltaBars;
+    newStart=clamp(newStart,1,Math.max(1,S.measures-spanBars+1));
+    S.cycleStartBar=newStart;
+    S.cycleEndBar=newStart+spanBars-1;
+    syncCycleControls();
+    render();
+    return;
+  }
   if(drag.type==='vzoom'){
     const dy=e.clientY-drag.sy;
     noteH=clamp(Math.round(drag.startNoteH+dy*0.3),noteH_MIN,noteH_MAX);
@@ -835,6 +972,11 @@ canvas.addEventListener('pointerleave',()=>{
 
 canvas.addEventListener('pointerup',()=>{
   if(!drag)return;
+  if(drag.type==='cycle-move'){
+    drag=null;
+    render();
+    return;
+  }
   if(drag.type==='select-box'){
     if(!drag.moved&&typeof drag.clickBeat==='number')setPlayheadBeat(drag.clickBeat);
     applySelectionBox(drag);
@@ -847,10 +989,20 @@ canvas.addEventListener('pointerup',()=>{
 });
 
 canvas.addEventListener('dblclick',e=>{
-  if(S.editMode==='draw')return;
   const r=canvas.getBoundingClientRect();
   const cx=e.clientX-r.left;
   const cy=e.clientY-r.top;
+
+  if(cx>=LABEL_W&&cy<CHORD_H){
+    const b=normalizeBeat(Math.max(0,xToBeat(cx)));
+    if(b<totalBeats()){
+      addChord(b);
+      render();
+    }
+    return;
+  }
+
+  if(S.editMode==='draw')return;
   const myY=CHORD_H+rollH();
   if(cx<LABEL_W||cy<CHORD_H||cy>=myY)return;
 
@@ -898,8 +1050,26 @@ function applySelectionBox(box){
 function chordDown(cx,cy,e){
   if(cx<LABEL_W)return;
   const hit=hitChord(cx,cy);
-  if(hit){selChord(hit.id);showCPop(hit,e.clientX,e.clientY)}
-  else{const b=normalizeBeat(Math.max(0,xToBeat(cx)));if(b<totalBeats()){addChord(b);render()}}
+  if(hit){
+    selChord(hit.id);
+    showCPop(hit,e.clientX,e.clientY);
+    return;
+  }
+
+  const cycle=getCycleRange();
+  if(cycle){
+    const beat=Math.max(0,xToBeat(cx));
+    if(beat>=cycle.startBeat&&beat<cycle.endBeat){
+      drag={
+        type:'cycle-move',
+        startBeat:beat,
+        startBar:cycle.startBar,
+        endBar:cycle.endBar,
+      };
+      render();
+      return;
+    }
+  }
 }
 function midiDown(cx,cy,e){
   if(cx<LABEL_W)return;
@@ -927,6 +1097,18 @@ function getPluckEdgeHit(cx,cy){
 
 function updateHoverCursor(cx,cy){
   const myY=CHORD_H+rollH();
+  if(cx>=LABEL_W&&cy<CHORD_H){
+    const cycle=getCycleRange();
+    if(cycle){
+      const beat=Math.max(0,xToBeat(cx));
+      if(beat>=cycle.startBeat&&beat<cycle.endBeat){
+        canvas.style.cursor=drag&&drag.type==='cycle-move'?'grabbing':'grab';
+        return;
+      }
+    }
+    canvas.style.cursor='default';
+    return;
+  }
   if(cx<LABEL_W&&cy>=CHORD_H&&cy<myY){
     canvas.style.cursor='ns-resize';
     return;
@@ -1232,19 +1414,40 @@ function setPlayheadBeat(beat){
 document.getElementById('btn-play').addEventListener('click',()=>{
   if(S.playing)return;
   Synth.ensure();
+  const cycleRange=getCycleRange();
+  if(cycleRange&&(S.playBeat<cycleRange.startBeat||S.playBeat>=cycleRange.endBeat)){
+    setPlayheadBeat(cycleRange.startBeat);
+  }
   S.playing=true; playT0=performance.now(); playB0=S.playBeat;
   document.getElementById('btn-play').classList.add('on');
   playIv=setInterval(()=>{
     const prevBeat=S.playBeat;
     const bps=S.bpm/60;
-    S.playBeat=playB0+(performance.now()-playT0)/1000*bps;
-    triggerPluckEventsBetween(prevBeat,S.playBeat);
-    if(S.playBeat>=totalBeats()){stopPlay()}
-    else{
+    const elapsed=(performance.now()-playT0)/1000*bps;
+    const cycle=getCycleRange();
+    if(cycle){
+      const len=cycle.endBeat-cycle.startBeat;
+      const absoluteBeat=playB0+elapsed;
+      const wrapped=cycle.startBeat+((((absoluteBeat-cycle.startBeat)%len)+len)%len);
+      if(wrapped<prevBeat){
+        triggerPluckEventsBetween(prevBeat,cycle.endBeat);
+        triggerPluckEventsBetween(cycle.startBeat,wrapped);
+      }else{
+        triggerPluckEventsBetween(prevBeat,wrapped);
+      }
+      S.playBeat=wrapped;
       const m=bpm(), bar=Math.floor(S.playBeat/m)+1, b=Math.floor(S.playBeat%m)+1;
       document.getElementById('pos').textContent=`${bar}.${b}`;
       render();
+      return;
     }
+
+    S.playBeat=playB0+elapsed;
+    triggerPluckEventsBetween(prevBeat,S.playBeat);
+    if(S.playBeat>=totalBeats()){stopPlay();return;}
+    const m=bpm(), bar=Math.floor(S.playBeat/m)+1, b=Math.floor(S.playBeat%m)+1;
+    document.getElementById('pos').textContent=`${bar}.${b}`;
+    render();
   },16);
 });
 
@@ -1266,6 +1469,22 @@ document.getElementById('btn-snap').addEventListener('click',()=>{
   const btn=document.getElementById('btn-snap');
   btn.classList.toggle('on',S.snapEnabled);
   btn.title=S.snapEnabled?'Snap to grid (on)':'Snap to grid (off)';
+});
+document.getElementById('btn-cycle').addEventListener('click',()=>{
+  S.cycleEnabled=!S.cycleEnabled;
+  syncCycleControls();
+  render();
+});
+document.getElementById('cycle-start').addEventListener('input',e=>{
+  S.cycleStartBar=clamp(parseInt(e.target.value)||1,1,S.measures);
+  if(S.cycleEndBar<S.cycleStartBar)S.cycleEndBar=S.cycleStartBar;
+  syncCycleControls();
+  render();
+});
+document.getElementById('cycle-end').addEventListener('input',e=>{
+  S.cycleEndBar=clamp(parseInt(e.target.value)||S.cycleStartBar,S.cycleStartBar,S.measures);
+  syncCycleControls();
+  render();
 });
 
 // ═══════════════════════════════════════════════
@@ -1308,7 +1527,7 @@ document.getElementById('bpm').addEventListener('input',e=>{S.bpm=Math.max(1,par
 document.getElementById('key-root').addEventListener('change',e=>{S.keyRoot=e.target.value;syncJSON()});
 document.getElementById('key-mode').addEventListener('change',e=>{S.keyMode=e.target.value;syncJSON()});
 document.getElementById('time-sig').addEventListener('change',e=>{S.timeSig=e.target.value;render();syncJSON()});
-document.getElementById('measures').addEventListener('input',e=>{S.measures=clamp(parseInt(e.target.value)||8,1,64);render();syncJSON()});
+document.getElementById('measures').addEventListener('input',e=>{S.measures=clamp(parseInt(e.target.value)||8,1,64);syncCycleControls();render();syncJSON()});
 
 // ═══════════════════════════════════════════════
 // JSON PREVIEW
@@ -1358,6 +1577,63 @@ function toggleJP(){
   syncJSON();
 }
 
+function buildUploadJSON(){
+  const full=buildJSON();
+  const cycle=getCycleRange();
+  if(!cycle)return full;
+
+  const {startBeat,endBeat}=cycle;
+  const spb=secondsPerBeat();
+  const toTimestamp=beat=>1+Math.max(0,(beat-startBeat))*spb;
+  const eventBeat=ev=>{
+    if(ev&&ev.beat!==undefined&&ev.beat!==null&&String(ev.beat).trim()!=='')return parseBeat(ev.beat);
+    if(ev&&ev.timestamp!==undefined&&ev.timestamp!==null)return secondsToBeat(ev.timestamp);
+    return 0;
+  };
+
+  const tracks=(full.song.tracks||[]).map(track=>{
+    const events=(track.events||[])
+      .filter(ev=>{
+        const beat=eventBeat(ev);
+        return beat>=startBeat&&beat<endBeat;
+      })
+      .map(ev=>{
+        const beat=eventBeat(ev);
+        if(track.type==='pluck'){
+          const durationBeats=(ev.duration_b!==undefined&&ev.duration_b!==null)
+            ? (parseFloat(ev.duration_b)||0.5)
+            : ((ev.duration_s!==undefined&&ev.duration_s!==null)
+                ? secondsToDurationBeats(ev.duration_s)
+                : (parseFloat(ev.duration)||0.5));
+          const out={
+            note:ev.note,
+            duration_s:durationBeats*spb,
+            speed:ev.speed,
+            slide:ev.slide,
+            timestamp:toTimestamp(beat),
+          };
+          if(ev.string_index!==undefined&&ev.string_index!==null)out.string_index=ev.string_index;
+          return out;
+        }
+        if(track.type==='chord'){
+          return {chord:ev.chord,timestamp:toTimestamp(beat)};
+        }
+        if(track.type==='midi'){
+          return {address:ev.address,args:ev.args,interp:ev.interp,timestamp:toTimestamp(beat)};
+        }
+        return ev;
+      });
+    return {...track,events};
+  });
+
+  return {
+    song:{
+      ...full.song,
+      tracks,
+    },
+  };
+}
+
 // ═══════════════════════════════════════════════
 // EXPORT / IMPORT
 // ═══════════════════════════════════════════════
@@ -1378,7 +1654,7 @@ document.getElementById('btn-upload').addEventListener('click',async()=>{
     const res=await fetch('http://127.0.0.1:8765/upload',{
       method:'POST',
       headers:{'Content-Type':'application/json'},
-      body:JSON.stringify(buildJSON())
+      body:JSON.stringify(buildUploadJSON())
     });
     const data=await res.json().catch(()=>({ok:false,error:'Invalid server response'}));
     if(!res.ok||!data.ok)throw new Error(data.error||`HTTP ${res.status}`);
@@ -1444,24 +1720,32 @@ function loadJSON(data){
   let maxB=0;
   (song.tracks||[]).forEach(tr=>{
     (tr.events||[]).forEach(ev=>{
-      const b=ev.beat?parseBeat(ev.beat):0;
+      const hasBeat=ev.beat!==undefined&&ev.beat!==null&&String(ev.beat).trim()!=='';
+      const hasTimestamp=Number.isFinite(parseFloat(ev.timestamp));
+      const b=hasBeat?parseBeat(ev.beat):(hasTimestamp?secondsToBeat(ev.timestamp):0);
       maxB=Math.max(maxB,b);
       if(tr.type==='pluck'){
+        const durationBeats=(ev.duration_b!==undefined&&ev.duration_b!==null)
+          ? (parseFloat(ev.duration_b)||0.5)
+          : ((ev.duration_s!==undefined&&ev.duration_s!==null)
+              ? secondsToDurationBeats(ev.duration_s)
+              : (parseFloat(ev.duration)||0.5));
         S.pluck.push({id:S.nextId++,note:ev.note||52,
-          duration_b:ev.duration_b??ev.duration??0.5,
+          duration_b:durationBeats,
           speed:normalizeImportedSpeed(ev.speed),slide:ev.slide??0,
-          beat:ev.beat||beatLabel(b),
+          beat:hasBeat?ev.beat:beatLabel(b),
           string_index:ev.string_index??null});
       } else if(tr.type==='chord'){
-        S.chord.push({id:S.nextId++,chord:ev.chord||'Em',beat:ev.beat||beatLabel(b)});
+        S.chord.push({id:S.nextId++,chord:ev.chord||'Em',beat:hasBeat?ev.beat:beatLabel(b)});
       } else if(tr.type==='midi'){
-        S.midi.push({id:S.nextId++,address:ev.address||'/cc',args:ev.args||[],interp:ev.interp??0,beat:ev.beat||beatLabel(b)});
+        S.midi.push({id:S.nextId++,address:ev.address||'/cc',args:ev.args||[],interp:ev.interp??0,beat:hasBeat?ev.beat:beatLabel(b)});
       }
     });
   });
   const m=bpm();
   S.measures=Math.max(8,Math.ceil(maxB/m)+2);
   document.getElementById('measures').value=S.measures;
+  syncCycleControls();
   render(); syncJSON();
 }
 
@@ -1548,6 +1832,17 @@ document.addEventListener('keydown',e=>{
 
   const k=e.key.toLowerCase();
   if(k==='b'){setEditMode(S.editMode==='draw'?'select':'draw');render();return;}
+  if((e.ctrlKey||e.metaKey)&&k==='a'){
+    e.preventDefault();
+    if(!S.pluck.length)return;
+    S.selPluckIds=new Set(S.pluck.map(ev=>ev.id));
+    S.selPluck=null;
+    S.selChord=null;
+    S.selMidi=null;
+    closeInsp();
+    render();
+    return;
+  }
   if((e.ctrlKey||e.metaKey)&&k==='c'){
     if(copySelectedPluckEvents())e.preventDefault();
     return;
@@ -1579,9 +1874,12 @@ function applyNewProject(){
   S.measures=8;
   S.playing=false;
   S.playBeat=0;
+  S.cycleEnabled=false;
+  S.cycleStartBar=1;
+  S.cycleEndBar=2;
   S.scrollX=0;
   noteH=noteH_MAX;
-  S.editMode='draw';
+  S.editMode='select';
   S.snapEnabled=true;
   S.gridIdx=1;
   S.pluck=[];
@@ -1605,7 +1903,8 @@ function applyNewProject(){
   document.getElementById('pos').textContent='1.1';
   document.getElementById('btn-snap').classList.add('on');
   document.getElementById('btn-snap').title='Snap to grid (on)';
-  setEditMode('draw');
+  syncCycleControls();
+  setEditMode('select');
   updateGridCtrl();
 }
 

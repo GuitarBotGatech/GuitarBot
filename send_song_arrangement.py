@@ -14,6 +14,34 @@ UDP_IP = "127.0.0.1"
 UDP_PORT = 12000
 UPLOAD_HOST = "127.0.0.1"
 UPLOAD_PORT = 8765
+MAX_EVENTS_PER_OSC_PACKET = 48
+
+
+def _chunked(items: list[list], chunk_size: int) -> list[list[list]]:
+    if chunk_size <= 0:
+        raise ValueError("chunk_size must be > 0")
+    return [items[index:index + chunk_size] for index in range(0, len(items), chunk_size)]
+
+
+def _send_event_payload(
+    client: SimpleUDPClient,
+    address: str,
+    payload: list[list],
+    max_events_per_packet: int = MAX_EVENTS_PER_OSC_PACKET,
+) -> None:
+    chunks = _chunked(payload, max_events_per_packet)
+    if len(chunks) == 1:
+        print(f"Sending {address}: {len(payload)} event(s)")
+        client.send_message(address, payload)
+        return
+
+    print(
+        f"Sending {address}: {len(payload)} event(s) in {len(chunks)} packets "
+        f"(max {max_events_per_packet} events/packet)"
+    )
+    for packet_index, chunk in enumerate(chunks, start=1):
+        print(f"  {address} packet {packet_index}/{len(chunks)}: {len(chunk)} event(s)")
+        client.send_message(address, chunk)
 
 
 def send_song_from_json(json_path: str | Path, ip: str = UDP_IP, port: int = UDP_PORT) -> None:
@@ -34,8 +62,7 @@ def send_song_from_arrangement(arrangement: SongArrangement, ip: str = UDP_IP, p
     for address in ("/Chords", "/Pluck", "/Midi"):
         payload = payloads.get(address, [])
         if payload:
-            print(f"Sending {address}: {len(payload)} event(s)")
-            client.send_message(address, payload)
+            _send_event_payload(client, address, payload)
 
 
 def send_reset(ip: str = UDP_IP, port: int = UDP_PORT) -> None:

@@ -161,8 +161,8 @@ def decode_osc_message(data):
         msg = OscMessage(data)
         if msg.address in ["/Chords", "/Strum", "/Pluck", "/Dyn", "/Fret", "/RLFret", "/Reset", "/Config", "/Midi"]:
             return msg.address[1:], msg.params  # Remove the leading '/'
-    except osc_types.ParseError:
-        print("Failed to parse OSC message")
+    except Exception as exc:
+        print(f"Failed to parse OSC message: {exc}")
     return None, None
 
 
