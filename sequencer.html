@@ -1326,6 +1326,37 @@ function hitMidi(cx,cy){
   }return null;
 }
 
+function midiCCFromEvent(ev){
+  if(!ev||ev.address!=='/cc'||!Array.isArray(ev.args)||ev.args.length<1)return null;
+  const cc=parseInt(ev.args[0],10);
+  return Number.isFinite(cc)?cc:null;
+}
+
+function findMidiCCCollision(beat,cc,excludeId=null){
+  if(!Number.isFinite(cc))return null;
+  const targetBeat=trimBeatNumber(Math.max(0,parseFloat(beat)||0));
+  for(const ev of S.midi){
+    if(excludeId!==null&&ev.id===excludeId)continue;
+    if(midiCCFromEvent(ev)!==cc)continue;
+    const b=trimBeatNumber(parseBeat(ev.beat));
+    if(Math.abs(b-targetBeat)<1e-4)return ev;
+  }
+  return null;
+}
+
+function dedupeMidiCCCollisions(keepId){
+  const keep=S.midi.find(ev=>ev.id===keepId);
+  if(!keep)return;
+  const cc=midiCCFromEvent(keep);
+  if(cc===null)return;
+  const keepBeat=trimBeatNumber(parseBeat(keep.beat));
+  S.midi=S.midi.filter(ev=>{
+    if(ev.id===keepId)return true;
+    if(midiCCFromEvent(ev)!==cc)return true;
+    return Math.abs(trimBeatNumber(parseBeat(ev.beat))-keepBeat)>=1e-4;
+  });
+}
+
 canvas.addEventListener('wheel',e=>{
   e.preventDefault();
   if(e.ctrlKey||e.metaKey){
@@ -1377,6 +1408,11 @@ function addChord(b){
   S.chord.push(ev); selChord(ev.id); syncJSON(); return ev;
 }
 function addMidi(b){
+  const existing=findMidiCCCollision(b,7,null);
+  if(existing){
+    selMidi(existing.id);
+    return existing;
+  }
   const ev={id:S.nextId++,address:'/cc',args:[7,64],interp:0,beat:beatLabel(b)};
   S.midi.push(ev); selMidi(ev.id); syncJSON(); return ev;
 }
@@ -1512,6 +1548,7 @@ function updMidi(k,v){
   const ev=S.midi.find(e=>e.id===S.selMidi);if(!ev)return;
   if(k==='args'){ev.args=v.split(',').map(s=>{const n=parseFloat(s.trim());return isNaN(n)?0:n})}
   else{ev[k]=v}
+  dedupeMidiCCCollisions(ev.id);
   syncJSON(); render();
 }
 function delMidi(){
@@ -1940,6 +1977,16 @@ function loadJSON(data){
         }
       }
     });
+  });
+  // Keep one /cc event per controller per beat in general MIDI lane.
+  const seenCCBeats=new Set();
+  S.midi=S.midi.filter(ev=>{
+    const cc=midiCCFromEvent(ev);
+    if(cc===null)return true;
+    const key=`${cc}@${trimBeatNumber(parseBeat(ev.beat)).toFixed(4)}`;
+    if(seenCCBeats.has(key))return false;
+    seenCCBeats.add(key);
+    return true;
   });
   const m=bpm();
   S.measures=Math.max(8,Math.ceil(maxB/m)+2);

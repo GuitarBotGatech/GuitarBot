@@ -15,12 +15,63 @@ UDP_PORT = 12000
 UPLOAD_HOST = "127.0.0.1"
 UPLOAD_PORT = 8765
 MAX_EVENTS_PER_OSC_PACKET = 48
+CC7_MIN_INTERVAL_S = 0.08
 
 
 def _chunked(items: list[list], chunk_size: int) -> list[list[list]]:
     if chunk_size <= 0:
         raise ValueError("chunk_size must be > 0")
     return [items[index:index + chunk_size] for index in range(0, len(items), chunk_size)]
+
+
+def _is_cc7_row(row: list) -> bool:
+    if not isinstance(row, list) or len(row) < 3:
+        return False
+    if str(row[0]) != "/cc":
+        return False
+    try:
+        cc = int(float(row[1]))
+    except (TypeError, ValueError):
+        return False
+    return cc == 7
+
+
+def _throttle_cc7_rows(payload: list[list], min_interval_s: float = CC7_MIN_INTERVAL_S) -> list[list]:
+    if min_interval_s <= 0:
+        return payload
+
+    cc7_rows: list[tuple[int, float]] = []
+    for index, row in enumerate(payload):
+        if not _is_cc7_row(row):
+            continue
+        try:
+            timestamp = float(row[-1])
+        except (TypeError, ValueError):
+            continue
+        cc7_rows.append((index, timestamp))
+
+    if len(cc7_rows) <= 2:
+        return payload
+
+    kept_indexes: set[int] = {cc7_rows[0][0]}
+    last_kept_time = cc7_rows[0][1]
+    for index, timestamp in cc7_rows[1:-1]:
+        if timestamp - last_kept_time >= min_interval_s:
+            kept_indexes.add(index)
+            last_kept_time = timestamp
+    kept_indexes.add(cc7_rows[-1][0])
+
+    thinned: list[list] = []
+    for index, row in enumerate(payload):
+        if _is_cc7_row(row) and index not in kept_indexes:
+            continue
+        thinned.append(row)
+
+    dropped = len(payload) - len(thinned)
+    if dropped > 0:
+        print(f"Throttled /cc 7 events: dropped {dropped} point(s) using min interval {min_interval_s:.3f}s")
+
+    return thinned
 
 
 def _send_event_payload(
@@ -64,6 +115,8 @@ def send_song_from_arrangement(arrangement: SongArrangement, ip: str = UDP_IP, p
     for address in ("/Midi", "/Chords", "/Pluck"):
         payload = payloads.get(address, [])
         if payload:
+            if address == "/Midi":
+                payload = _throttle_cc7_rows(payload)
             _send_event_payload(client, address, payload)
 
 
