@@ -54,7 +54,7 @@ select{cursor:pointer;background-image:none}
 #app{display:flex;flex-direction:column;height:100vh}
 #main{flex:1;display:flex;overflow:hidden;position:relative}
 #seq{flex:1;display:flex;flex-direction:column;overflow:hidden;min-width:0}
-#roll-wrap{flex:1;overflow:hidden;position:relative;cursor:default}
+#roll-wrap{flex:1;overflow-x:hidden;overflow-y:auto;position:relative;cursor:default}
 canvas{display:block}
 
 /* ── INSPECTOR ── */
@@ -335,9 +335,11 @@ input[type=range]::-webkit-slider-thumb:hover{transform:scale(1.2)}
 // CONSTANTS
 // ═══════════════════════════════════════════════
 const MIDI_MIN=40, MIDI_MAX=68, NOTE_COUNT=29;
-const NOTE_H=14, LABEL_W=54, CHORD_H=30, MIDI_H=30;
-const ROLL_H = NOTE_COUNT * NOTE_H; // 406
-const CANVAS_H = CHORD_H + ROLL_H + MIDI_H; // 466
+const noteH_DEFAULT=14, noteH_MIN=6, noteH_MAX=50;
+let noteH=noteH_MAX;
+const LABEL_W=54, CHORD_H=30, MIDI_H=30;
+const rollH=()=>NOTE_COUNT*noteH;
+const canvasH=()=>CHORD_H+rollH()+MIDI_H;
 const SUBDIV=4; // used by formatBeat/parseBeat for 3-part display only
 const GRID_STEPS=[
   {label:'1/16t',beats:1/6},
@@ -385,8 +387,8 @@ const bpm=()=>{const[n]=S.timeSig.split('/').map(Number);return n};
 const totalBeats=()=>S.measures*bpm();
 const beatToX=b=>LABEL_W+b*S.zoom-S.scrollX;
 const xToBeat=x=>(x-LABEL_W+S.scrollX)/S.zoom;
-const noteToY=n=>CHORD_H+(MIDI_MAX-n)*NOTE_H;
-const yToNote=y=>MIDI_MAX-Math.floor((y-CHORD_H)/NOTE_H);
+const noteToY=n=>CHORD_H+(MIDI_MAX-n)*noteH;
+const yToNote=y=>MIDI_MAX-Math.floor((y-CHORD_H)/noteH);
 const gridStep=()=>GRID_STEPS[S.gridIdx].beats;
 const snap=b=>{const gs=gridStep();return Math.round(b/gs)*gs;};
 const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
@@ -449,7 +451,7 @@ let CW=0;
 
 function resize(){
   CW=document.getElementById('roll-wrap').clientWidth;
-  canvas.width=CW; canvas.height=CANVAS_H;
+  canvas.width=CW; canvas.height=canvasH();
   render();
 }
 
@@ -458,7 +460,7 @@ function resize(){
 // ═══════════════════════════════════════════════
 function render(){
   if(!ctx)return;
-  ctx.clearRect(0,0,CW,CANVAS_H);
+  ctx.clearRect(0,0,CW,canvasH());
   drawBG(); drawGrid(); drawLabels();
   drawChordLane(); drawMidiLane(); drawNotes(); drawPlayhead(); drawSelectionBox();
 }
@@ -468,16 +470,16 @@ function drawBG(){
   ctx.fillStyle='#10101a'; ctx.fillRect(0,0,CW,CHORD_H);
   // Roll rows
   for(let n=MIDI_MIN;n<=MIDI_MAX;n++){
-    const y=noteToY(n), s=strOf(n);
-    ctx.fillStyle=s.dim; ctx.fillRect(LABEL_W,y,CW-LABEL_W,NOTE_H);
-    ctx.fillStyle='#14141e'; ctx.fillRect(LABEL_W,y+NOTE_H-1,CW-LABEL_W,1);
+    const y=noteToY(n), s=strOf(n), isSharp=[1,3,6,8,10].includes(n%12);
+    ctx.fillStyle=isSharp?'#08080e':s.dim; ctx.fillRect(LABEL_W,y,CW-LABEL_W,noteH);
+    ctx.fillStyle='#14141e'; ctx.fillRect(LABEL_W,y+noteH-1,CW-LABEL_W,1);
   }
   // MIDI lane
-  const my=CHORD_H+ROLL_H;
+  const my=CHORD_H+rollH();
   ctx.fillStyle='#0c0c14'; ctx.fillRect(0,my,CW,MIDI_H);
   // Label column
   ctx.fillStyle='#0e0e16';
-  ctx.fillRect(0,0,LABEL_W,CANVAS_H);
+  ctx.fillRect(0,0,LABEL_W,canvasH());
   ctx.fillStyle='#161622'; ctx.fillRect(0,0,LABEL_W,CHORD_H);
   ctx.fillRect(0,my,LABEL_W,MIDI_H);
   // Lane labels
@@ -497,7 +499,7 @@ function drawGrid(){
     const remB=br%1,  isBeat=remB<eps||(1-remB)<eps;
     ctx.strokeStyle=isMeasure?'#323250':isBeat?'#1e1e34':'#141428';
     ctx.lineWidth=1;
-    ctx.beginPath(); ctx.moveTo(x,0); ctx.lineTo(x,CANVAS_H); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(x,0); ctx.lineTo(x,canvasH()); ctx.stroke();
     if(isMeasure){
       const bar=Math.round(br/m)+1;
       ctx.fillStyle='#323250'; ctx.font='500 9px "JetBrains Mono"';
@@ -506,23 +508,23 @@ function drawGrid(){
   }
   // Zone separators
   ctx.strokeStyle='#232340'; ctx.lineWidth=1;
-  [[0,CHORD_H],[0,CHORD_H+ROLL_H]].forEach(([,y])=>{
+  [[0,CHORD_H],[0,CHORD_H+rollH()]].forEach(([,y])=>{
     ctx.beginPath(); ctx.moveTo(0,y); ctx.lineTo(CW,y); ctx.stroke();
   });
-  ctx.beginPath(); ctx.moveTo(LABEL_W,0); ctx.lineTo(LABEL_W,CANVAS_H); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(LABEL_W,0); ctx.lineTo(LABEL_W,canvasH()); ctx.stroke();
 }
 
 function drawLabels(){
   ctx.textAlign='right';
   for(let n=MIDI_MIN;n<=MIDI_MAX;n++){
-    const y=noteToY(n), isC=(n%12)===0;
-    ctx.fillStyle=isC?'#5858a0':'#303058';
+    const y=noteToY(n), isC=(n%12)===0, isSharp=[1,3,6,8,10].includes(n%12);
+    ctx.fillStyle=isC?'#5858a0':isSharp?'#1e1e38':'#303058';
     ctx.font=(isC?'600':'400')+' 9px "JetBrains Mono"';
-    ctx.fillText(noteName(n),LABEL_W-4,y+NOTE_H/2+3);
+    ctx.fillText(noteName(n),LABEL_W-4,y+noteH/2+3);
   }
   // String range indicators
   STRINGS.forEach(s=>{
-    const y1=noteToY(s.max), y2=noteToY(s.min)+NOTE_H;
+    const y1=noteToY(s.max), y2=noteToY(s.min)+noteH;
     ctx.fillStyle=s.color+'44'; ctx.fillRect(2,y1,3,y2-y1);
   });
 }
@@ -547,7 +549,7 @@ function drawChordLane(){
 }
 
 function drawMidiLane(){
-  const my=CHORD_H+ROLL_H, cy=my+MIDI_H/2;
+  const my=CHORD_H+rollH(), cy=my+MIDI_H/2;
   S.midi.forEach(ev=>{
     const x=beatToX(parseBeat(ev.beat));
     if(x<LABEL_W-20||x>CW+20)return;
@@ -578,23 +580,23 @@ function drawNotes(){
     if(cw2<=0)return;
 
     ctx.save();
-    ctx.beginPath(); ctx.rect(cx2,y+1,cw2,NOTE_H-2); ctx.clip();
+    ctx.beginPath(); ctx.rect(cx2,y+1,cw2,noteH-2); ctx.clip();
 
     // Body
     ctx.fillStyle=s.color+(sel?'ee':'bb');
-    ctx.fillRect(x,y+1,w,NOTE_H-2);
+    ctx.fillRect(x,y+1,w,noteH-2);
 
     // Slide stripes
     if(ev.slide){
       ctx.strokeStyle='rgba(255,255,255,0.22)'; ctx.lineWidth=1;
-      for(let sx=x-NOTE_H;sx<x+w+NOTE_H;sx+=5){
-        ctx.beginPath(); ctx.moveTo(sx,y+1); ctx.lineTo(sx+NOTE_H-2,y+NOTE_H-1); ctx.stroke();
+      for(let sx=x-noteH;sx<x+w+noteH;sx+=5){
+        ctx.beginPath(); ctx.moveTo(sx,y+1); ctx.lineTo(sx+noteH-2,y+noteH-1); ctx.stroke();
       }
     }
     // Tremolo wave
     if(isTrem){
       ctx.strokeStyle='rgba(0,0,0,0.45)'; ctx.lineWidth=1.5;
-      const my2=y+NOTE_H/2;
+      const my2=y+noteH/2;
       ctx.beginPath();
       for(let tx=x;tx<x+w;tx+=2){
         const wy=my2+Math.sin((tx-x)*1.2)*2.2;
@@ -608,14 +610,14 @@ function drawNotes(){
     ctx.strokeStyle=sel?'#fff':s.color;
     ctx.lineWidth=sel?1.5:0.8;
     if(sel){ctx.shadowBlur=10;ctx.shadowColor=s.color}
-    ctx.strokeRect(cx2,y+1,cw2,NOTE_H-2);
+    ctx.strokeRect(cx2,y+1,cw2,noteH-2);
     ctx.shadowBlur=0;
 
     // Resize handle
     const hx=Math.min(CW-4,x+w-4);
     if(hx>=LABEL_W){
       ctx.fillStyle='rgba(255,255,255,0.45)';
-      ctx.fillRect(hx,y+2,3,NOTE_H-4);
+      ctx.fillRect(hx,y+2,3,noteH-4);
     }
   });
 }
@@ -639,7 +641,7 @@ function drawPlayhead(){
   const x=beatToX(S.playBeat);
   if(x<LABEL_W||x>CW)return;
   ctx.strokeStyle='#f43f5e'; ctx.lineWidth=1.5;
-  ctx.beginPath(); ctx.moveTo(x,0); ctx.lineTo(x,CANVAS_H); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(x,0); ctx.lineTo(x,canvasH()); ctx.stroke();
   ctx.fillStyle='#f43f5e';
   ctx.beginPath(); ctx.moveTo(x-5,0); ctx.lineTo(x+5,0); ctx.lineTo(x,8); ctx.closePath(); ctx.fill();
 }
@@ -662,10 +664,16 @@ canvas.addEventListener('pointerdown',e=>{
   const r=canvas.getBoundingClientRect();
   const cx=e.clientX-r.left, cy=e.clientY-r.top;
   closeCPop(); closeMPop();
-  const myY=CHORD_H+ROLL_H;
+  const myY=CHORD_H+rollH();
 
   if(cy<CHORD_H){chordDown(cx,cy,e);return}
   if(cy>=myY){midiDown(cx,cy,e);return}
+
+  // Vertical zoom drag on label column
+  if(cx<LABEL_W){
+    drag={type:'vzoom',sy:e.clientY,startNoteH:noteH};
+    return;
+  }
 
   if(S.editMode==='draw'){
     const hit=hitPluck(cx,cy);
@@ -743,6 +751,12 @@ canvas.addEventListener('pointermove',e=>{
     updateHoverCursor(cx,cy);
     return;
   }
+  if(drag.type==='vzoom'){
+    const dy=e.clientY-drag.sy;
+    noteH=clamp(Math.round(drag.startNoteH+dy*0.3),noteH_MIN,noteH_MAX);
+    resize();
+    return;
+  }
   if(drag.type==='select-box'){
     drag.cx=cx;
     drag.cy=cy;
@@ -753,14 +767,32 @@ canvas.addEventListener('pointermove',e=>{
   if(drag.type==='drag-group'){
     const beatDelta=normalizeBeat(xToBeat(cx)-drag.sxBeat);
     const noteBase=clamp(yToNote(cy),MIDI_MIN,MIDI_MAX);
+    const dragSet=new Set(drag.ids);
+    // Check all moves first; if any collide with non-group notes, skip entire move
+    let blocked=false;
     for(const id of drag.ids){
       const ev=S.pluck.find(p=>p.id===id);
       const start=drag.startById.get(id);
       const offs=drag.noteOffsets.find(o=>o.id===id);
       if(!ev||!start||!offs)continue;
-      ev.beat=beatLabel(Math.max(0,start.beat+beatDelta));
-      ev.note=clamp(noteBase+offs.noteOffset,MIDI_MIN,MIDI_MAX);
-      if(S.selPluck===ev.id)refreshInspNote(ev);
+      const nb=Math.max(0,start.beat+beatDelta);
+      const nn=clamp(noteBase+offs.noteOffset,MIDI_MIN,MIDI_MAX);
+      for(const other of S.pluck){
+        if(dragSet.has(other.id))continue;
+        if(notesOverlap(nb,ev.duration_b,nn,parseBeat(other.beat),other.duration_b,other.note)){blocked=true;break;}
+      }
+      if(blocked)break;
+    }
+    if(!blocked){
+      for(const id of drag.ids){
+        const ev=S.pluck.find(p=>p.id===id);
+        const start=drag.startById.get(id);
+        const offs=drag.noteOffsets.find(o=>o.id===id);
+        if(!ev||!start||!offs)continue;
+        ev.beat=beatLabel(Math.max(0,start.beat+beatDelta));
+        ev.note=clamp(noteBase+offs.noteOffset,MIDI_MIN,MIDI_MAX);
+        if(S.selPluck===ev.id)refreshInspNote(ev);
+      }
     }
     render();
     return;
@@ -768,19 +800,29 @@ canvas.addEventListener('pointermove',e=>{
   const ev=S.pluck.find(p=>p.id===drag.id);
   if(!ev)return;
   if(drag.type==='drag'){
-    ev.beat=beatLabel(normalizeBeat(Math.max(0,xToBeat(cx)+drag.bo)));
-    ev.note=clamp(yToNote(cy)+drag.no,MIDI_MIN,MIDI_MAX);
+    const newBeat=normalizeBeat(Math.max(0,xToBeat(cx)+drag.bo));
+    const newNote=clamp(yToNote(cy)+drag.no,MIDI_MIN,MIDI_MAX);
+    if(!hasCollision(newBeat,ev.duration_b,newNote,ev.id)){
+      ev.beat=beatLabel(newBeat);
+      ev.note=newNote;
+    }
     if(S.selPluck===ev.id)refreshInspNote(ev);
   } else {
     const cursorBeat=normalizeBeat(Math.max(0,xToBeat(cx)));
     const minDur=minDurationBeats();
     if(drag.edge==='left'){
       const newStart=Math.min(cursorBeat,drag.oe-minDur);
-      ev.beat=beatLabel(newStart);
-      ev.duration_b=trimBeatNumber(Math.max(minDur,drag.oe-newStart));
+      const newDur=trimBeatNumber(Math.max(minDur,drag.oe-newStart));
+      if(!hasCollision(newStart,newDur,ev.note,ev.id)){
+        ev.beat=beatLabel(newStart);
+        ev.duration_b=newDur;
+      }
     } else {
       const newEnd=Math.max(cursorBeat,drag.os+minDur);
-      ev.duration_b=trimBeatNumber(Math.max(minDur,newEnd-drag.os));
+      const newDur=trimBeatNumber(Math.max(minDur,newEnd-drag.os));
+      if(!hasCollision(parseBeat(ev.beat),newDur,ev.note,ev.id)){
+        ev.duration_b=newDur;
+      }
     }
     if(S.selPluck===ev.id)refreshInspDur(ev);
   }
@@ -809,7 +851,7 @@ canvas.addEventListener('dblclick',e=>{
   const r=canvas.getBoundingClientRect();
   const cx=e.clientX-r.left;
   const cy=e.clientY-r.top;
-  const myY=CHORD_H+ROLL_H;
+  const myY=CHORD_H+rollH();
   if(cx<LABEL_W||cy<CHORD_H||cy>=myY)return;
 
   const hit=hitPluck(cx,cy);
@@ -833,7 +875,7 @@ function applySelectionBox(box){
     const x=beatToX(parseBeat(ev.beat));
     const y=noteToY(ev.note);
     const w=Math.max(8,ev.duration_b*S.zoom);
-    const nx1=x, nx2=x+w, ny1=y+1, ny2=y+NOTE_H-1;
+    const nx1=x, nx2=x+w, ny1=y+1, ny2=y+noteH-1;
     const overlaps=!(nx2<x1||nx1>x2||ny2<y1||ny1>y2);
     if(overlaps)ids.push(ev.id);
   }
@@ -869,7 +911,7 @@ function midiDown(cx,cy,e){
 function hitPluck(cx,cy){
   for(const ev of S.pluck){
     const x=beatToX(parseBeat(ev.beat)),y=noteToY(ev.note),w=Math.max(8,ev.duration_b*S.zoom);
-    if(cx>=x&&cx<=x+w&&cy>=y+1&&cy<=y+NOTE_H-1)return ev;
+    if(cx>=x&&cx<=x+w&&cy>=y+1&&cy<=y+noteH-1)return ev;
   }return null;
 }
 
@@ -884,7 +926,11 @@ function getPluckEdgeHit(cx,cy){
 }
 
 function updateHoverCursor(cx,cy){
-  const myY=CHORD_H+ROLL_H;
+  const myY=CHORD_H+rollH();
+  if(cx<LABEL_W&&cy>=CHORD_H&&cy<myY){
+    canvas.style.cursor='ns-resize';
+    return;
+  }
   if(cx<LABEL_W||cy<CHORD_H||cy>=myY){
     canvas.style.cursor=S.editMode==='draw'?'default':'crosshair';
     return;
@@ -903,7 +949,7 @@ function hitChord(cx,cy){
   }return null;
 }
 function hitMidi(cx,cy){
-  const my=CHORD_H+ROLL_H, cy2=my+MIDI_H/2;
+  const my=CHORD_H+rollH(), cy2=my+MIDI_H/2;
   for(const ev of S.midi){
     const x=beatToX(parseBeat(ev.beat));
     if(Math.abs(cx-x)<10&&Math.abs(cy-cy2)<10)return ev;
@@ -924,8 +970,30 @@ canvas.addEventListener('wheel',e=>{
 // ═══════════════════════════════════════════════
 // CRUD
 // ═══════════════════════════════════════════════
+function notesOverlap(startA,durA,noteA,startB,durB,noteB){
+  return noteA===noteB&&startA<startB+durB&&startA+durA>startB;
+}
+function hasCollision(beat,dur,note,excludeId){
+  for(const ev of S.pluck){
+    if(ev.id===excludeId)continue;
+    if(notesOverlap(beat,dur,note,parseBeat(ev.beat),ev.duration_b,ev.note))return true;
+  }
+  return false;
+}
+function clampDurationToNext(beat,note,maxDur,excludeId){
+  let clamped=maxDur;
+  for(const ev of S.pluck){
+    if(ev.id===excludeId)continue;
+    if(ev.note!==note)continue;
+    const s=parseBeat(ev.beat);
+    if(s>beat&&s<beat+clamped)clamped=s-beat;
+  }
+  return clamped;
+}
 function addNote(b,n){
-  const ev={id:S.nextId++,note:n,duration_b:gridStep(),speed:SPEED_DEFAULT,slide:0,beat:beatLabel(b),string_index:null};
+  const dur=clampDurationToNext(b,n,gridStep(),null);
+  if(hasCollision(b,dur,n,null))return null;
+  const ev={id:S.nextId++,note:n,duration_b:dur,speed:SPEED_DEFAULT,slide:0,beat:beatLabel(b),string_index:null};
   S.pluck.push(ev); selPluck(ev.id); syncJSON(); return ev;
 }
 function rmPluck(id){
@@ -1002,7 +1070,10 @@ function updSlide(c){
 }
 function updDur(v){
   const ev=S.pluck.find(e=>e.id===S.selPluck);if(!ev)return;
-  ev.duration_b=Math.max(0.0625,parseFloat(v)||0.5);
+  const raw=Math.max(0.0625,parseFloat(v)||0.5);
+  const beat=parseBeat(ev.beat);
+  ev.duration_b=clampDurationToNext(beat,ev.note,raw,ev.id);
+  document.getElementById('i-dur').value=ev.duration_b;
   document.getElementById('i-trem').classList.toggle('on',hasTremolo(ev));
   syncJSON(); render();
 }
@@ -1509,6 +1580,7 @@ function applyNewProject(){
   S.playing=false;
   S.playBeat=0;
   S.scrollX=0;
+  noteH=noteH_MAX;
   S.editMode='draw';
   S.snapEnabled=true;
   S.gridIdx=1;
