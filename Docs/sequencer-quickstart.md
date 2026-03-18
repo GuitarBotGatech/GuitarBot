@@ -146,7 +146,7 @@ When you select a pluck note, the **Inspector** slides in from the right showing
 ## Tips & Best Practices
 
 - **Snap to Grid:** All events snap to 16th-note subdivisions automatically.
-- **Beat Labels:** Positions are stored as `bar.beat` (e.g., `2.3` = bar 2, beat 3).
+- **Beat Labels:** Positions are stored as `bar.beat` / `bar.beat.sub` (e.g., `2.3`, `3.2.2`). For off-grid positions (like triplets), the UI may store raw beats as `~<beats>` (e.g., `~9.3333`, where `0` is `1.1`).
 - **String Override:** Leave empty to auto-assign strings; use override only when specific fingering is critical.
 - **Tremolo Detection:** Notes shorter than 0.5 beats are marked as tremolo (wavy pattern).
 - **Speed/Dynamics:** Vary pluck speed (0–127) for expressive playing.

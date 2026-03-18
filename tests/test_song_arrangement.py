@@ -168,6 +168,30 @@ def test_beat_label_examples_match_expected_seconds():
     assert meta.beat_label_to_seconds("3.2.1") == pytest.approx(4.5)
     assert meta.beat_label_to_seconds("3.2") == pytest.approx(4.5)
     assert meta.beat_label_to_seconds("3.2.2") == pytest.approx(4.625)
+    assert meta.beat_label_to_seconds("~9.3333") == pytest.approx(4.66665)
+
+
+def test_raw_beat_labels_with_tilde_are_supported_in_events():
+    arrangement = SongArrangement.from_dict(
+        {
+            "song": {
+                "name": "raw-beat-labeled",
+                "meta": {"key": "C", "time_signature": "4/4", "bpm": 120},
+                "tracks": [
+                    {
+                        "name": "pluck_main",
+                        "type": "pluck",
+                        "events": [
+                            {"note": 52, "duration_s": 0.2, "speed": 5, "slide": 0, "beat": "~9.3333"},
+                        ],
+                    },
+                ],
+            }
+        }
+    )
+
+    payloads = arrangement.render_osc_payloads()
+    assert payloads["/Pluck"][0][-1] == pytest.approx(4.66665)
 
 
 def test_events_can_use_beat_labels_instead_of_timestamp():

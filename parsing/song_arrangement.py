@@ -110,6 +110,7 @@ class SongMeta:
         Supported forms (1-indexed components):
         - "bar.beat"         (e.g. "2.1")
         - "bar.beat.sub"     (e.g. "3.2.2")
+        - "~raw_beats"       (e.g. "~9.3333", where 0.0 == "1.1")
 
         Notes
         -----
@@ -120,7 +121,17 @@ class SongMeta:
         if subdivisions_per_beat <= 0:
             raise ValueError("subdivisions_per_beat must be > 0")
 
-        parts = [part.strip() for part in beat_label.split(".")]
+        stripped = beat_label.strip()
+        if stripped.startswith("~"):
+            try:
+                raw_beats = float(stripped[1:])
+            except ValueError as exc:
+                raise ValueError(f"raw beat label must be a float after '~'; got {beat_label!r}") from exc
+            if raw_beats < 0:
+                raise ValueError("raw beat label must be >= 0")
+            return raw_beats * self.seconds_per_beat()
+
+        parts = [part.strip() for part in stripped.split(".")]
         if len(parts) not in (2, 3):
             raise ValueError(
                 f"beat label must be 'bar.beat' or 'bar.beat.sub'; got {beat_label!r}"
