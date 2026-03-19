@@ -10,8 +10,7 @@
 html,body{height:100%;background:var(--bg);color:var(--text);font-family:'IBM Plex Sans',sans-serif;font-size:13px;overflow:hidden;user-select:none}
 
 /* ── TOOLBAR ── */
-#toolbar{height:50px;background:var(--surface);border-bottom:1px solid var(--border);display:flex;align-items:center;gap:6px;padding:0 10px;flex-shrink:0;overflow-x:auto}
-#toolbar::-webkit-scrollbar{height:0}
+#toolbar{min-height:50px;padding:8px 10px;background:var(--surface);border-bottom:1px solid var(--border);display:flex;flex-wrap:wrap;align-items:center;gap:6px;flex-shrink:0}
 .logo{font-family:'JetBrains Mono',monospace;font-weight:700;font-size:15px;color:var(--amber);letter-spacing:-1px;white-space:nowrap;margin-right:4px}
 .logo em{color:var(--text-dim);font-style:normal;font-weight:300}
 .sep{width:1px;height:26px;background:var(--border);margin:0 2px;flex-shrink:0}
@@ -41,7 +40,7 @@ select{cursor:pointer;background-image:none}
 .tbtn.cycle{border-color:var(--purple);color:var(--purple)}
 .tbtn.cycle.on{background:var(--purple);color:#000}
 .pos-disp{font-family:'JetBrains Mono',monospace;font-size:12px;font-weight:600;color:var(--cyan);min-width:44px;text-align:center}
-.tr{margin-left:auto;display:flex;align-items:center;gap:6px;flex-shrink:0}
+.tr{margin-left:auto;display:flex;flex-wrap:wrap;justify-content:flex-end;align-items:center;gap:6px;flex-shrink:0;padding-left:6px}
 
 /* ── LAYOUT ── */
 #app{display:flex;flex-direction:column;height:100vh}

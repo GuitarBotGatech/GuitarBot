@@ -15,13 +15,13 @@ document.getElementById('btn-cycle').addEventListener('click',()=>{
   render();
 });
 document.getElementById('cycle-start').addEventListener('input',e=>{
-  S.cycleStartBar=clamp(parseInt(e.target.value)||1,1,S.measures);
+  S.cycleStartBar=clamp(parseFloat(e.target.value)||1,1,S.measures);
   if(S.cycleEndBar<S.cycleStartBar)S.cycleEndBar=S.cycleStartBar;
   syncCycleControls();
   render();
 });
 document.getElementById('cycle-end').addEventListener('input',e=>{
-  S.cycleEndBar=clamp(parseInt(e.target.value)||S.cycleStartBar,S.cycleStartBar,S.measures);
+  S.cycleEndBar=clamp(parseFloat(e.target.value)||S.cycleStartBar,S.cycleStartBar,S.measures);
   syncCycleControls();
   render();
 });

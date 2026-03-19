@@ -125,15 +125,34 @@ canvas.addEventListener('pointermove',e=>{
     render();
     return;
   }
+  if(drag.type==='cycle-resize'){
+    const cursorBeat=normalizeBeat(Math.max(0,xToBeat(cx)));
+    const m=bpm();
+    const cycle=getCycleRange();
+    if(!cycle)return;
+    const minDur=minDurationBeats();
+    if(drag.edge==='left'){
+      const newStartBeat=Math.min(cursorBeat,cycle.endBeat-minDur);
+      S.cycleStartBar=newStartBeat/m+1;
+    } else {
+      const newEndBeat=Math.max(cursorBeat,cycle.startBeat+minDur);
+      S.cycleEndBar=newEndBeat/m;
+    }
+    syncCycleControls();
+    render();
+    return;
+  }
   if(drag.type==='cycle-move'){
     const m=bpm();
-    const deltaBeats=xToBeat(cx)-drag.startBeat;
-    const deltaBars=Math.round(deltaBeats/m);
-    const spanBars=drag.endBar-drag.startBar+1;
-    let newStart=drag.startBar+deltaBars;
-    newStart=clamp(newStart,1,Math.max(1,S.measures-spanBars+1));
-    S.cycleStartBar=newStart;
-    S.cycleEndBar=newStart+spanBars-1;
+    let deltaBeats=xToBeat(cx)-drag.startBeat;
+    if(S.snapEnabled)deltaBeats=snap(deltaBeats);
+    const startBeat=(drag.startBar-1)*m;
+    const endBeat=drag.endBar*m;
+    const spanBeats=endBeat-startBeat;
+    let newStartBeat=startBeat+deltaBeats;
+    newStartBeat=clamp(newStartBeat,0,S.measures*m-spanBeats);
+    S.cycleStartBar=newStartBeat/m+1;
+    S.cycleEndBar=(newStartBeat+spanBeats)/m;
     syncCycleControls();
     render();
     return;
@@ -228,7 +247,7 @@ canvas.addEventListener('pointerup',()=>{
     render();
     return;
   }
-  if(drag.type==='cycle-move'){
+  if(drag.type==='cycle-move'||drag.type==='cycle-resize'){
     drag=null;
     render();
     return;
@@ -322,6 +341,16 @@ function chordDown(cx,cy,e){
   const cycle=getCycleRange();
   if(cycle){
     const beat=Math.max(0,xToBeat(cx));
+    const x1=beatToX(cycle.startBeat);
+    const x2=beatToX(cycle.endBeat);
+    if(Math.abs(cx-x1)<=6){
+      drag={type:'cycle-resize',edge:'left',startBar:cycle.startBar,endBar:cycle.endBar};
+      return;
+    }
+    if(Math.abs(cx-x2)<=6){
+      drag={type:'cycle-resize',edge:'right',startBar:cycle.startBar,endBar:cycle.endBar};
+      return;
+    }
     if(beat>=cycle.startBeat&&beat<cycle.endBeat){
       drag={
         type:'cycle-move',
@@ -375,6 +404,12 @@ function updateHoverCursor(cx,cy){
   if(cx>=LABEL_W&&cy<CHORD_H){
     const cycle=getCycleRange();
     if(cycle){
+      const x1=beatToX(cycle.startBeat);
+      const x2=beatToX(cycle.endBeat);
+      if(Math.abs(cx-x1)<=6||Math.abs(cx-x2)<=6){
+        canvas.style.cursor='ew-resize';
+        return;
+      }
       const beat=Math.max(0,xToBeat(cx));
       if(beat>=cycle.startBeat&&beat<cycle.endBeat){
         canvas.style.cursor=drag&&drag.type==='cycle-move'?'grabbing':'grab';

@@ -37,8 +37,10 @@ function hlJSON(s){
 }
 
 function syncJSON(){
+  const raw=JSON.stringify(buildJSON());
+  localStorage.setItem('guitarbot_autosave',raw);
   const jp=document.getElementById('jp');
-  if(!jp.classList.contains('open'))return;
+  if(!jp||!jp.classList.contains('open'))return;
   document.getElementById('jp-content').innerHTML=hlJSON(JSON.stringify(buildJSON(),null,2));
 }
 

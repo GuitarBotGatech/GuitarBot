@@ -93,6 +93,8 @@ body{display:flex;align-items:center;justify-content:center;padding:24px}
 .btn.open:hover{background:var(--cyan);color:#000}
 .btn.example{border-color:var(--amber);color:var(--amber)}
 .btn.example:hover{background:var(--amber);color:#000}
+.btn.recent{border-color:#a855f7;color:#a855f7}
+.btn.recent:hover{background:#a855f7;color:#000}
 
 .footer{
   border-top:1px solid var(--border);
@@ -130,9 +132,12 @@ body{display:flex;align-items:center;justify-content:center;padding:24px}
         </div>
 
         <div class="card">
-          <h2>2) Open JSON</h2>
-          <p>Load a saved song arrangement from a local JSON file and continue editing.</p>
-          <button class="btn open" id="btn-open">Open from JSON</button>
+          <h2>2) Open / Resume</h2>
+          <p>Load a saved arrangement from a local JSON file or resume your auto-saved session.</p>
+          <div style="display:flex;gap:8px">
+            <button class="btn open" id="btn-open" style="flex:1">Open JSON</button>
+            <button class="btn recent" id="btn-recent" style="display:none;flex:1">Resume</button>
+          </div>
         </div>
 
         <div class="card">
@@ -167,6 +172,17 @@ document.getElementById('btn-example').addEventListener('click',()=>{
   localStorage.removeItem(IMPORT_KEY);
   go('example');
 });
+
+const recentBtn = document.getElementById('btn-recent');
+if(recentBtn){
+  recentBtn.addEventListener('click',()=>{
+    localStorage.removeItem(IMPORT_KEY);
+    go('recent');
+  });
+  if(localStorage.getItem('guitarbot_autosave')){
+    recentBtn.style.display='block';
+  }
+}
 
 document.getElementById('btn-open').addEventListener('click',()=>{
   document.getElementById('hidden-file').click();

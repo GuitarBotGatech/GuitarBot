@@ -119,18 +119,19 @@ function parseBeat(s){
 function getCycleRange(){
   if(!S.cycleEnabled)return null;
   const m=bpm();
-  const startBar=clamp(parseInt(S.cycleStartBar)||1,1,S.measures);
-  const endBar=clamp(parseInt(S.cycleEndBar)||startBar,startBar,S.measures);
-  const startBeat=(startBar-1)*m;
-  const endBeat=endBar*m;
+  const startBar=clamp(parseFloat(S.cycleStartBar)||1,1,S.measures);
+  const endBar=clamp(parseFloat(S.cycleEndBar)||startBar,startBar,S.measures);
+  const startBeat=trimBeatNumber((startBar-1)*m);
+  const endBeat=trimBeatNumber(endBar*m);
   if(endBeat<=startBeat)return null;
   return {startBar,endBar,startBeat,endBeat};
 }
 
 function syncCycleControls(){
   const maxBars=Math.max(1,S.measures);
-  S.cycleStartBar=clamp(parseInt(S.cycleStartBar)||1,1,maxBars);
-  S.cycleEndBar=clamp(parseInt(S.cycleEndBar)||S.cycleStartBar,S.cycleStartBar,maxBars);
+  const roundVal=v=>Math.round(parseFloat(v)*100)/100;
+  S.cycleStartBar=clamp(roundVal(S.cycleStartBar)||1,1,maxBars);
+  S.cycleEndBar=clamp(roundVal(S.cycleEndBar)||S.cycleStartBar,S.cycleStartBar,maxBars);
 
   const btn=document.getElementById('btn-cycle');
   const inStart=document.getElementById('cycle-start');

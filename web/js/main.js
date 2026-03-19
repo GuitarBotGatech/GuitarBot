@@ -129,6 +129,17 @@ function applyStartupMode(){
     applyNewProject();
     return;
   }
+  if(mode==='recent'){
+    const raw=localStorage.getItem('guitarbot_autosave');
+    if(raw){
+      try{
+        loadJSON(JSON.parse(raw));
+        return;
+      }catch(_e){}
+    }
+    applyNewProject();
+    return;
+  }
   if(mode==='import'){
     const raw=localStorage.getItem(IMPORT_KEY);
     if(raw){
