@@ -164,10 +164,9 @@ function showCPop(ev,px,py){
   const p=document.getElementById('cpop');
   p.style.left=px+'px'; p.style.top=py+'px'; p.classList.add('on');
   
-  const m=ev.chord.match(/^([A-G][#b]?)(m?)(.*)$/);
+  const m=ev.chord.match(/^([A-G][#b]?)(.*)$/);
   const root=m?m[1]:'E';
   const qual=m?m[2]:'';
-  const ext=m?m[3]:'';
   
   const rSel=document.getElementById('cp-chord-root');
   if(![...rSel.options].some(o=>o.value===root)){
@@ -176,14 +175,12 @@ function showCPop(ev,px,py){
     rSel.value=r;
   }else rSel.value=root;
   
-  document.getElementById('cp-chord-quality').value=qual;
-
-  const eSel=document.getElementById('cp-chord-ext');
-  if(![...eSel.options].some(o=>o.value===ext)){
+  const qSel=document.getElementById('cp-chord-quality');
+  if(![...qSel.options].some(o=>o.value===qual)){
     const opt=document.createElement('option');
-    opt.value=ext; opt.text=ext; eSel.add(opt);
+    opt.value=qual; opt.text=qual; qSel.add(opt);
   }
-  eSel.value=ext;
+  qSel.value=qual;
 
   document.getElementById('cp-beat').value=ev.beat;
   setTimeout(()=>{
@@ -202,8 +199,7 @@ function updChordSplit(){
   const ev=S.chord.find(e=>e.id===S.selChord);if(!ev)return;
   const root=document.getElementById('cp-chord-root').value;
   const qual=document.getElementById('cp-chord-quality').value;
-  const ext=document.getElementById('cp-chord-ext').value;
-  ev.chord=root+qual+ext;
+  ev.chord=root+qual;
   syncJSON(); render();
 }
 function delChord(){
