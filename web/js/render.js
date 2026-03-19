@@ -192,6 +192,7 @@ function drawBG(){
 function drawGrid(){
   const tb=totalBeats(), m=bpm();
   const gs=gridStep(), eps=gs*0.05;
+  const measureLabelXs=[];
   for(let b=0; b<=tb+eps; b+=gs){
     const br=parseFloat(b.toFixed(9));
     const x=beatToX(br);
@@ -202,11 +203,20 @@ function drawGrid(){
     ctx.lineWidth=1;
     ctx.beginPath(); ctx.moveTo(x,0); ctx.lineTo(x,canvasH()); ctx.stroke();
     if(isMeasure){
-      const bar=Math.round(br/m)+1;
-      ctx.fillStyle='#323250'; ctx.font='500 9px "JetBrains Mono"';
-      ctx.textAlign='left'; ctx.fillText(bar,x+3,CHORD_H-5);
+      measureLabelXs.push({x,bar:Math.round(br/m)+1});
     }
   }
+
+  ctx.fillStyle='#8f8fd8';
+  ctx.font='700 10px "JetBrains Mono"';
+  ctx.textAlign='left';
+  ctx.shadowColor='rgba(0,0,0,0.55)';
+  ctx.shadowBlur=2;
+  for(const label of measureLabelXs){
+    ctx.fillText(label.bar,label.x+3,CHORD_H-4);
+  }
+  ctx.shadowBlur=0;
+
   // Zone separators
   ctx.strokeStyle='#232340'; ctx.lineWidth=1;
   [[0,CHORD_H],[0,CHORD_H+rollH()]].forEach(([,y])=>{
@@ -325,8 +335,17 @@ function drawMidiLane(){
       const x=beatToX(point.beat);
       const y=midiYFromValue(point.value,lane);
       if(x<LABEL_W-4||x>CW+4)continue;
+      const selected=isMidiCurvePointSelected(cc,point);
+      if(selected){
+        ctx.beginPath();
+        ctx.arc(x,y,5.2,0,Math.PI*2);
+        ctx.strokeStyle=color;
+        ctx.lineWidth=1.8;
+        ctx.globalAlpha=muted?0.45:1;
+        ctx.stroke();
+      }
       ctx.beginPath();
-      ctx.arc(x,y,2.7,0,Math.PI*2);
+      ctx.arc(x,y,selected?3.6:2.7,0,Math.PI*2);
       ctx.fillStyle=color;
       ctx.globalAlpha=muted?0.35:1;
       ctx.fill();

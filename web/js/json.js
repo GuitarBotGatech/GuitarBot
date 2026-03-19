@@ -36,9 +36,58 @@ function hlJSON(s){
     .replace(/:\s*(true|false|null)/g,': <span class="jb">$1</span>');
 }
 
+const HISTORY_LIMIT=200;
+
+function pushHistorySnapshot(raw){
+  if(S.historySuspend)return;
+  if(!S.historyUndo.length||S.historyUndo[S.historyUndo.length-1]!==raw){
+    S.historyUndo.push(raw);
+    if(S.historyUndo.length>HISTORY_LIMIT)S.historyUndo.shift();
+  }
+  S.historyRedo=[];
+}
+
+function restoreHistorySnapshot(raw){
+  if(!raw)return false;
+  try{
+    S.historySuspend=true;
+    loadJSON(JSON.parse(raw));
+    return true;
+  }catch(_e){
+    return false;
+  }finally{
+    S.historySuspend=false;
+  }
+}
+
+function canUndo(){
+  return S.historyUndo.length>1;
+}
+
+function canRedo(){
+  return S.historyRedo.length>0;
+}
+
+function undoHistory(){
+  if(!canUndo())return false;
+  const current=S.historyUndo.pop();
+  S.historyRedo.push(current);
+  const previous=S.historyUndo[S.historyUndo.length-1];
+  return restoreHistorySnapshot(previous);
+}
+
+function redoHistory(){
+  if(!canRedo())return false;
+  const next=S.historyRedo.pop();
+  if(!next)return false;
+  S.historyUndo.push(next);
+  return restoreHistorySnapshot(next);
+}
+
 function syncJSON(){
   const raw=JSON.stringify(buildJSON());
   localStorage.setItem('guitarbot_autosave',raw);
+  pushHistorySnapshot(raw);
   const jp=document.getElementById('jp');
   if(!jp||!jp.classList.contains('open'))return;
   document.getElementById('jp-content').innerHTML=hlJSON(JSON.stringify(buildJSON(),null,2));
@@ -190,7 +239,7 @@ function loadJSON(data){
     if(m.time_signature){S.timeSig=m.time_signature;document.getElementById('time-sig').value=S.timeSig}
   }
   S.pluck=[]; S.chord=[]; S.midi=[]; S.midiCurves=createEmptyMidiCurves(); S.midiCurveMuted=createEmptyMidiCurveMuteState(); S.midiLaneMenuLane=null; S.focusedCCLane=null; S.nextId=1;
-  S.selPluck=null; S.selPluckIds.clear(); S.selChord=null; S.selMidi=null; closeInsp();
+  S.selPluck=null; S.selPluckIds.clear(); S.selChord=null; S.selMidi=null; clearMidiCurveSelection(); S.clipboardPluck=null; S.clipboardMidiCurves=null; closeInsp();
   let maxB=0;
   (song.tracks||[]).forEach(tr=>{
     (tr.events||[]).forEach(ev=>{
@@ -239,70 +288,4 @@ function loadJSON(data){
   document.getElementById('measures').value=S.measures;
   syncCycleControls();
   render(); syncJSON();
-}
-
-function getSelectedPluckEvents(){
-  const ids=S.selPluckIds.size?[...S.selPluckIds]:(S.selPluck!==null?[S.selPluck]:[]);
-  if(!ids.length)return [];
-  const idSet=new Set(ids);
-  return S.pluck.filter(ev=>idSet.has(ev.id));
-}
-
-function copySelectedPluckEvents(){
-  const selected=getSelectedPluckEvents();
-  if(!selected.length)return false;
-  const events=selected
-    .map(ev=>({
-      beat:parseBeat(ev.beat),
-      note:ev.note,
-      duration_b:ev.duration_b,
-      speed:ev.speed,
-      slide:ev.slide,
-      string_index:ev.string_index,
-    }))
-    .sort((a,b)=>a.beat-b.beat||a.note-b.note);
-
-  const originBeat=Math.min(...events.map(e=>e.beat));
-  const originNote=Math.min(...events.map(e=>e.note));
-  S.clipboardPluck={originBeat,originNote,events};
-  return true;
-}
-
-function pastePluckEvents(){
-  const clip=S.clipboardPluck;
-  if(!clip||!clip.events||!clip.events.length)return false;
-  const targetBeat=S.pasteAnchor?S.pasteAnchor.beat:(clip.originBeat+1);
-  const created=[];
-
-  for(const src of clip.events){
-    const b=targetBeat+(src.beat-clip.originBeat);
-    if(b<0||b>=totalBeats())continue;
-    const n=clamp(src.note,MIDI_MIN,MIDI_MAX);
-    const ev={
-      id:S.nextId++,
-      note:n,
-      duration_b:src.duration_b,
-      speed:src.speed,
-      slide:src.slide,
-      beat:beatLabel(normalizeBeat(b)),
-      string_index:src.string_index,
-    };
-    S.pluck.push(ev);
-    created.push(ev.id);
-  }
-
-  if(!created.length)return false;
-  S.selPluckIds=new Set(created);
-  S.selPluck=created.length===1?created[0]:null;
-  S.selChord=null;
-  S.selMidi=null;
-  if(created.length===1){
-    const ev=S.pluck.find(e=>e.id===created[0]);
-    if(ev)openInsp(ev);
-  } else {
-    closeInsp();
-  }
-  syncJSON();
-  render();
-  return true;
 }

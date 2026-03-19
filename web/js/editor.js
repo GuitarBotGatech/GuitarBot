@@ -59,19 +59,20 @@ function addMidi(b){
 // SELECTION
 // ═══════════════════════════════════════════════
 function selPluck(id){
+  clearMidiCurveSelection();
   S.selPluckIds=new Set([id]);
   S.selPluck=id; S.selChord=null; S.selMidi=null;
   const ev=S.pluck.find(e=>e.id===id);
   if(ev)openInsp(ev);
 }
-function selChord(id){S.selChord=id;S.selPluck=null;S.selMidi=null;closeInsp()}
-function selMidi(id){S.selMidi=id;S.selPluck=null;S.selChord=null;closeInsp()}
+function selChord(id){clearMidiCurveSelection();S.selChord=id;S.selPluck=null;S.selMidi=null;closeInsp()}
+function selMidi(id){clearMidiCurveSelection();S.selMidi=id;S.selPluck=null;S.selChord=null;closeInsp()}
 function clearPluckSelection(){
   S.selPluck=null;
   S.selPluckIds.clear();
   closeInsp();
 }
-function deselectAll(){S.selPluck=null;S.selPluckIds.clear();S.selChord=null;S.selMidi=null;closeInsp()}
+function deselectAll(){S.selPluck=null;S.selPluckIds.clear();S.selChord=null;S.selMidi=null;clearMidiCurveSelection();closeInsp()}
 
 // ═══════════════════════════════════════════════
 // INSPECTOR
@@ -136,6 +137,21 @@ function delSelectedPluckEvents(){
   S.selPluck=null;
   S.selPluckIds.clear();
   closeInsp();
+  syncJSON();
+  render();
+  return true;
+}
+
+function delSelectedMidiCurvePoints(){
+  if(!hasMidiCurveSelection())return false;
+  for(const cc of MIDI_AUTOMATION_CCS){
+    const key=String(cc);
+    const selected=S.selMidiCurvePoints[key];
+    if(!selected||!selected.size)continue;
+    const points=S.midiCurves[key]||[];
+    S.midiCurves[key]=points.filter(point=>!selected.has(midiCurvePointKey(point.beat)));
+  }
+  clearMidiCurveSelection();
   syncJSON();
   render();
   return true;
@@ -241,4 +257,146 @@ function toggleSelectedMidiAutomationMute(){
   closeMLPop();
   syncJSON();
   render();
+}
+
+function selectedMidiCurvePoints(){
+  const points=[];
+  for(const cc of MIDI_AUTOMATION_CCS){
+    const key=String(cc);
+    const selected=S.selMidiCurvePoints[key];
+    if(!selected||!selected.size)continue;
+    for(const point of S.midiCurves[key]||[]){
+      if(!selected.has(midiCurvePointKey(point.beat)))continue;
+      points.push({cc,beat:trimBeatNumber(point.beat),value:clamp(Math.round(point.value),0,127)});
+    }
+  }
+  return points.sort((a,b)=>a.beat-b.beat||a.cc-b.cc||a.value-b.value);
+}
+
+function copySelectedTimelineEvents(){
+  const selectedPluck=getSelectedPluckEvents();
+  const selectedCurves=selectedMidiCurvePoints();
+  if(!selectedPluck.length&&!selectedCurves.length)return false;
+
+  if(selectedPluck.length){
+    const events=selectedPluck
+      .map(ev=>({
+        beat:parseBeat(ev.beat),
+        note:ev.note,
+        duration_b:ev.duration_b,
+        speed:ev.speed,
+        slide:ev.slide,
+        string_index:ev.string_index,
+      }))
+      .sort((a,b)=>a.beat-b.beat||a.note-b.note);
+    const originBeat=Math.min(...events.map(e=>e.beat));
+    const originNote=Math.min(...events.map(e=>e.note));
+    S.clipboardPluck={originBeat,originNote,events};
+  }else{
+    S.clipboardPluck=null;
+  }
+
+  if(selectedCurves.length){
+    const originBeat=Math.min(...selectedCurves.map(point=>point.beat));
+    S.clipboardMidiCurves={originBeat,points:selectedCurves};
+  }else{
+    S.clipboardMidiCurves=null;
+  }
+
+  return true;
+}
+
+function pasteTimelineEvents(){
+  const clipPluck=S.clipboardPluck;
+  const clipCurves=S.clipboardMidiCurves;
+  const hasPluckClip=!!(clipPluck&&clipPluck.events&&clipPluck.events.length);
+  const hasCurveClip=!!(clipCurves&&clipCurves.points&&clipCurves.points.length);
+  if(!hasPluckClip&&!hasCurveClip)return false;
+
+  const originBeat=hasPluckClip?clipPluck.originBeat:clipCurves.originBeat;
+  const targetBeat=S.pasteAnchor?S.pasteAnchor.beat:(originBeat+1);
+
+  const createdPluck=[];
+  const createdCurveSelection=createEmptyMidiCurveSelection();
+
+  if(hasPluckClip){
+    for(const src of clipPluck.events){
+      const b=targetBeat+(src.beat-clipPluck.originBeat);
+      if(b<0||b>=totalBeats())continue;
+      const n=clamp(src.note,MIDI_MIN,MIDI_MAX);
+      const ev={
+        id:S.nextId++,
+        note:n,
+        duration_b:src.duration_b,
+        speed:src.speed,
+        slide:src.slide,
+        beat:beatLabel(normalizeBeat(b)),
+        string_index:src.string_index,
+      };
+      S.pluck.push(ev);
+      createdPluck.push(ev.id);
+    }
+  }
+
+  if(hasCurveClip){
+    for(const src of clipCurves.points){
+      const b=targetBeat+(src.beat-clipCurves.originBeat);
+      if(b<0||b>=totalBeats())continue;
+      const beat=normalizeBeat(b);
+      upsertMidiCurvePoint(src.cc,beat,src.value);
+      createdCurveSelection[String(src.cc)].add(midiCurvePointKey(beat));
+    }
+  }
+
+  if(!createdPluck.length&&!hasCurveClip)return false;
+
+  S.selPluckIds=new Set(createdPluck);
+  S.selPluck=createdPluck.length===1?createdPluck[0]:null;
+  S.selChord=null;
+  S.selMidi=null;
+  S.selMidiCurvePoints=createdCurveSelection;
+
+  if(S.selPluck!==null&&!hasMidiCurveSelection()){
+    const ev=S.pluck.find(e=>e.id===S.selPluck);
+    if(ev)openInsp(ev);
+  }else{
+    closeInsp();
+  }
+
+  syncJSON();
+  render();
+  return true;
+}
+
+function selectAllEditableEvents(){
+  if(!S.pluck.length&&!MIDI_AUTOMATION_CCS.some(cc=>(S.midiCurves[String(cc)]||[]).length))return false;
+  S.selPluckIds=new Set(S.pluck.map(ev=>ev.id));
+  S.selPluck=null;
+  S.selChord=null;
+  S.selMidi=null;
+  const allCurveSelection=createEmptyMidiCurveSelection();
+  for(const cc of MIDI_AUTOMATION_CCS){
+    for(const point of S.midiCurves[String(cc)]||[]){
+      allCurveSelection[String(cc)].add(midiCurvePointKey(point.beat));
+    }
+  }
+  S.selMidiCurvePoints=allCurveSelection;
+  closeInsp();
+  render();
+  return true;
+}
+
+function getSelectedPluckEvents(){
+  const ids=S.selPluckIds.size?[...S.selPluckIds]:(S.selPluck!==null?[S.selPluck]:[]);
+  if(!ids.length)return [];
+  const idSet=new Set(ids);
+  return S.pluck.filter(ev=>idSet.has(ev.id));
+}
+
+function copySelectedPluckEvents(){
+  return copySelectedTimelineEvents();
+}
+
+function pastePluckEvents(){
+  return pasteTimelineEvents();
 }

@@ -40,3 +40,4 @@ const noteName=m=>NOTE_NAMES[m%12]+(Math.floor(m/12)-1);
 const strOf=m=>STRINGS.find(s=>m>=s.min&&m<=s.max)||STRINGS[0];
 const createEmptyMidiCurves=()=>Object.fromEntries(MIDI_AUTOMATION_CCS.map(cc=>[String(cc),[]]));
 const createEmptyMidiCurveMuteState=()=>Object.fromEntries(MIDI_AUTOMATION_CCS.map(cc=>[String(cc),false]));
+const createEmptyMidiCurveSelection=()=>Object.fromEntries(MIDI_AUTOMATION_CCS.map(cc=>[String(cc),new Set()]));

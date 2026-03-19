@@ -7,6 +7,7 @@ let S={
   pluck:[], chord:[], midi:[],
   midiCurves:createEmptyMidiCurves(),
   midiCurveMuted:createEmptyMidiCurveMuteState(),
+    selMidiCurvePoints:createEmptyMidiCurveSelection(),
   nextId:1, zoom:80, scrollX:0,
   playing:false, playBeat:0,
   cycleEnabled:false,
@@ -17,6 +18,10 @@ let S={
   gridIdx:1,
   selPluckIds:new Set(),
   clipboardPluck:null,
+    clipboardMidiCurves:null,
+  historyUndo:[],
+  historyRedo:[],
+  historySuspend:false,
   pasteAnchor:null,
   midiLaneMenuLane:null,
   focusedCCLane:null,
@@ -59,6 +64,7 @@ const snap=b=>{const gs=gridStep();return Math.round(b/gs)*gs;};
 const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
 
 const trimBeatNumber=v=>parseFloat(Number(v).toFixed(4));
+const midiCurvePointKey=beat=>trimBeatNumber(Math.max(0,parseFloat(beat)||0)).toFixed(4);
 const normalizeBeat=b=>S.snapEnabled?snap(b):trimBeatNumber(b);
 const minDurationBeats=()=>S.snapEnabled?gridStep():0.02;
 const noteDurationSeconds=ev=>ev.duration_b*(60/Math.max(1,S.bpm));
@@ -88,6 +94,15 @@ const secondsTickStep=()=>{
   return candidates[candidates.length-1];
 };
 const hasTremolo=ev=>noteDurationSeconds(ev)>0.5;
+const hasMidiCurveSelection=()=>MIDI_AUTOMATION_CCS.some(cc=>(S.selMidiCurvePoints[String(cc)]?.size||0)>0);
+const isMidiCurvePointSelected=(cc,point)=>{
+  const set=S.selMidiCurvePoints[String(cc)];
+  if(!set||!point)return false;
+  return set.has(midiCurvePointKey(point.beat));
+};
+function clearMidiCurveSelection(){
+  S.selMidiCurvePoints=createEmptyMidiCurveSelection();
+}
 const clampSpeed=v=>clamp(parseInt(v)||SPEED_DEFAULT,SPEED_MIN,SPEED_MAX);
 const speedToVelocity=s=>Math.round(((clampSpeed(s)-SPEED_MIN)/(SPEED_MAX-SPEED_MIN))*127);
 function normalizeImportedSpeed(raw){

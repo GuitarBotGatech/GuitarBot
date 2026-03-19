@@ -11,10 +11,20 @@ document.addEventListener('pointerdown',e=>{
 // KEYBOARD DELETE
 // ═══════════════════════════════════════════════
 document.addEventListener('keydown',e=>{
+  const k=e.key.toLowerCase();
+  if((e.ctrlKey||e.metaKey)&&!e.altKey&&k==='z'&&!e.shiftKey){
+    e.preventDefault();
+    undoHistory();
+    return;
+  }
+  if((e.ctrlKey||e.metaKey)&&!e.altKey&&k==='z'&&e.shiftKey){
+    e.preventDefault();
+    redoHistory();
+    return;
+  }
+
   const tag=document.activeElement?.tagName;
   if(tag==='INPUT'||tag==='SELECT'||tag==='TEXTAREA')return;
-
-  const k=e.key.toLowerCase();
   if(e.key==='Escape'&&hasFocusedCCLane()){
     S.focusedCCLane=null;
     render();
@@ -23,26 +33,21 @@ document.addEventListener('keydown',e=>{
   if(k==='b'){setEditMode(S.editMode==='draw'?'select':'draw');render();return;}
   if((e.ctrlKey||e.metaKey)&&k==='a'){
     e.preventDefault();
-    if(!S.pluck.length)return;
-    S.selPluckIds=new Set(S.pluck.map(ev=>ev.id));
-    S.selPluck=null;
-    S.selChord=null;
-    S.selMidi=null;
-    closeInsp();
-    render();
+    selectAllEditableEvents();
     return;
   }
   if((e.ctrlKey||e.metaKey)&&k==='c'){
-    if(copySelectedPluckEvents())e.preventDefault();
+    if(copySelectedTimelineEvents())e.preventDefault();
     return;
   }
   if((e.ctrlKey||e.metaKey)&&k==='v'){
-    if(pastePluckEvents())e.preventDefault();
+    if(pasteTimelineEvents())e.preventDefault();
     return;
   }
 
   if(e.key!=='Delete'&&e.key!=='Backspace')return;
   if(delSelectedPluckEvents())return;
+  if(delSelectedMidiCurvePoints())return;
   if(S.selPluck!==null){delSelNote();render()}
   else if(S.selChord!==null){delChord()}
   else if(S.selMidi!==null){delMidi()}
@@ -81,10 +86,12 @@ function applyNewProject(){
   S.nextId=1;
   S.selPluckIds.clear();
   S.clipboardPluck=null;
+  S.clipboardMidiCurves=null;
   S.pasteAnchor=null;
   S.selPluck=null;
   S.selChord=null;
   S.selMidi=null;
+  clearMidiCurveSelection();
   closeInsp();
 
   document.getElementById('song-name').value=S.songName;

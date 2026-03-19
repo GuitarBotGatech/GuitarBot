@@ -7,6 +7,21 @@ canvas.addEventListener('contextmenu',e=>{
   e.preventDefault();
   const r=canvas.getBoundingClientRect();
   const cx=e.clientX-r.left, cy=e.clientY-r.top;
+
+  const ccPointHit=hitMidiCurvePoint(cx,cy);
+  if(ccPointHit){
+    const key=String(ccPointHit.cc);
+    const points=S.midiCurves[key]||[];
+    if(ccPointHit.index>=0&&ccPointHit.index<points.length){
+      points.splice(ccPointHit.index,1);
+      S.midiCurves[key]=normalizeMidiCurvePoints(points);
+      closeMLPop();
+      syncJSON();
+      render();
+      return;
+    }
+  }
+
   const myY=midiTopY();
   if(cx<LABEL_W&&cy>=myY&&cy<myY+MIDI_H){
     const lane=midiLaneAtY(cy);
@@ -298,13 +313,15 @@ function applySelectionBox(box){
       selPluck(box.hitId);
       return;
     }
-    clearPluckSelection();
+    deselectAll();
     return;
   }
 
   const x1=Math.min(box.sx,box.cx), x2=Math.max(box.sx,box.cx);
   const y1=Math.min(box.sy,box.cy), y2=Math.max(box.sy,box.cy);
   const ids=[];
+  const selectedCurves=createEmptyMidiCurveSelection();
+
   for(const ev of S.pluck){
     const x=beatToX(parseBeat(ev.beat));
     const y=noteToY(ev.note);
@@ -313,15 +330,32 @@ function applySelectionBox(box){
     const overlaps=!(nx2<x1||nx1>x2||ny2<y1||ny1>y2);
     if(overlaps)ids.push(ev.id);
   }
-  if(!ids.length){
-    clearPluckSelection();
+
+  for(const cc of MIDI_AUTOMATION_CCS){
+    const lane=laneForCC(cc);
+    if(!midiLaneVisible(lane))continue;
+    const key=String(cc);
+    for(const point of S.midiCurves[key]||[]){
+      const x=beatToX(point.beat);
+      const y=midiYFromValue(point.value,lane);
+      const overlaps=x>=x1&&x<=x2&&y>=y1&&y<=y2;
+      if(!overlaps)continue;
+      selectedCurves[key].add(midiCurvePointKey(point.beat));
+    }
+  }
+
+  const hasCurveSelection=MIDI_AUTOMATION_CCS.some(cc=>selectedCurves[String(cc)].size>0);
+  if(!ids.length&&!hasCurveSelection){
+    deselectAll();
     return;
   }
+
   S.selPluckIds=new Set(ids);
   S.selPluck=ids.length===1?ids[0]:null;
   S.selChord=null;
   S.selMidi=null;
-  if(ids.length===1){
+  S.selMidiCurvePoints=selectedCurves;
+  if(ids.length===1&&!hasCurveSelection){
     const ev=S.pluck.find(e=>e.id===ids[0]);
     if(ev)openInsp(ev);
   } else {
@@ -367,19 +401,43 @@ function midiDown(cx,cy,e){
   if(cx<LABEL_W)return;
   const lane=midiLaneAtY(cy);
   if(lane<0)return;
+  const beat=normalizeBeat(clamp(xToBeat(cx),0,totalBeats()));
+  S.pasteAnchor={beat,note:MIDI_MIN};
+
   if(lane!==MIDI_GENERAL_LANE_INDEX){
     const cc=MIDI_AUTOMATION_CCS[lane];
-    const beat=normalizeBeat(clamp(xToBeat(cx),0,totalBeats()));
-    const value=midiValueFromY(cy,lane);
-    upsertMidiCurvePoint(cc,beat,value);
-    drag={type:'midi-curve',cc,lane,lastBeat:beat};
+    if(S.editMode==='draw'){
+      const value=midiValueFromY(cy,lane);
+      upsertMidiCurvePoint(cc,beat,value);
+      drag={type:'midi-curve',cc,lane,lastBeat:beat};
+      render();
+      syncJSON();
+      return;
+    }
+
+    const hit=hitMidiCurvePoint(cx,cy);
+    if(hit&&hit.cc===cc){
+      const selected=createEmptyMidiCurveSelection();
+      const point=(S.midiCurves[String(cc)]||[])[hit.index];
+      if(point)selected[String(cc)].add(midiCurvePointKey(point.beat));
+      S.selPluckIds.clear();
+      S.selPluck=null;
+      S.selChord=null;
+      S.selMidi=null;
+      S.selMidiCurvePoints=selected;
+      closeInsp();
+      render();
+      return;
+    }
+
+    drag={type:'select-box',sx:cx,sy:cy,cx,cy,hitId:null,moved:false,clickBeat:beat};
     render();
-    syncJSON();
     return;
   }
   const hit=hitMidi(cx,cy);
   if(hit){selMidi(hit.id);showMPop(hit,e.clientX,e.clientY)}
-  else{const b=normalizeBeat(Math.max(0,xToBeat(cx)));if(b<totalBeats()){addMidi(b);render()}}
+  else if(S.editMode==='draw'){if(beat<totalBeats()){addMidi(beat);render()}}
+  else {deselectAll(); render();}
 }
 
 function hitPluck(cx,cy){
@@ -468,6 +526,25 @@ function findMidiCCCollision(beat,cc,excludeId=null){
     if(midiCCFromEvent(ev)!==cc)continue;
     const b=trimBeatNumber(parseBeat(ev.beat));
     if(Math.abs(b-targetBeat)<1e-4)return ev;
+  }
+  return null;
+}
+
+function hitMidiCurvePoint(cx,cy){
+  if(cx<LABEL_W)return null;
+  const hitRadius=5;
+  for(const cc of MIDI_AUTOMATION_CCS){
+    const lane=laneForCC(cc);
+    if(!midiLaneVisible(lane))continue;
+    const points=[...(S.midiCurves[String(cc)]||[])].sort((a,b)=>a.beat-b.beat);
+    for(let index=0;index<points.length;index++){
+      const point=points[index];
+      const x=beatToX(point.beat);
+      const y=midiYFromValue(point.value,lane);
+      if(Math.abs(cx-x)<=hitRadius&&Math.abs(cy-y)<=hitRadius){
+        return {cc,index};
+      }
+    }
   }
   return null;
 }
