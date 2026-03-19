@@ -71,6 +71,22 @@ const secondsPerBeat=()=>{
 const secondsToBeat=t=>trimBeatNumber(Math.max(0,parseFloat(t)||0)/secondsPerBeat());
 const secondsToDurationBeats=t=>Math.max(0.02,trimBeatNumber((parseFloat(t)||0)/secondsPerBeat()));
 const beatsToSeconds=b=>Math.max(0,parseFloat(b)||0)*secondsPerBeat();
+const formatTimelineSeconds=s=>{
+  const total=Math.max(0,parseFloat(s)||0);
+  if(total<60)return `${parseFloat(total.toFixed(2)).toString()}s`;
+  const mins=Math.floor(total/60);
+  const secs=Math.floor(total%60);
+  return `${mins}:${String(secs).padStart(2,'0')}`;
+};
+const secondsTickStep=()=>{
+  const pxPerSecond=S.zoom/Math.max(1e-6,secondsPerBeat());
+  const minPx=72;
+  const candidates=[0.25,0.5,1,2,5,10,15,30,60,120];
+  for(const step of candidates){
+    if(pxPerSecond*step>=minPx)return step;
+  }
+  return candidates[candidates.length-1];
+};
 const hasTremolo=ev=>noteDurationSeconds(ev)>0.5;
 const clampSpeed=v=>clamp(parseInt(v)||SPEED_DEFAULT,SPEED_MIN,SPEED_MAX);
 const speedToVelocity=s=>Math.round(((clampSpeed(s)-SPEED_MIN)/(SPEED_MAX-SPEED_MIN))*127);

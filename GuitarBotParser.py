@@ -82,7 +82,31 @@ class GuitarBotParser:
 
         if self.graph:
             timestamps = np.arange(0, max_rows * tu.TIME_STEP, tu.TIME_STEP)
-            fig = go.Figure()
+            cc_points_by_controller = {}
+            if midi_events:
+                for event in midi_events:
+                    if event.address != '/cc' or len(event.args) < 2:
+                        continue
+                    try:
+                        controller = int(event.args[0])
+                        value = int(round(float(event.args[1])))
+                        value = max(0, min(127, value))
+                    except (ValueError, TypeError):
+                        continue
+                    cc_points_by_controller.setdefault(controller, []).append((event.timestamp, value))
+
+            has_cc_subplot = bool(cc_points_by_controller)
+            if has_cc_subplot:
+                fig = make_subplots(
+                    rows=2,
+                    cols=1,
+                    shared_xaxes=True,
+                    row_heights=[0.8, 0.2],
+                    vertical_spacing=0.06,
+                    subplot_titles=('Motor Positions', 'MIDI CC (0–127)')
+                )
+            else:
+                fig = go.Figure()
 
             # Add a trace for each motor
             for motor in range(12):
@@ -95,7 +119,8 @@ class GuitarBotParser:
                         y=combined_array[:, motor],
                         mode='lines',
                         name=f'LH {motor_type} {string_id + 1}'
-                    )
+                    ),
+                    **({'row': 1, 'col': 1} if has_cc_subplot else {})
                 )
 
             # Plot right hand motors (12-14)
@@ -109,80 +134,42 @@ class GuitarBotParser:
                         mode='lines',
                         name=f'RH Picker {picker_id}',
                         line=dict(width=2)
-                    )
+                    ),
+                    **({'row': 1, 'col': 1} if has_cc_subplot else {})
                 )
 
-            # ── MIDI event overlay ────────────────────────────────────────
-            if midi_events:
-                # Colour palette per MIDI type (cycles if more types present)
-                _MIDI_COLOURS = {
-                    '/cc':      '#e63946',   # red
-                    '/note':    '#2a9d8f',   # teal
-                    '/noteoff': '#457b9d',   # blue
-                    '/program': '#f4a261',   # orange
-                    '/pitch':   '#a8dadc',   # light blue
-                }
-                _DEFAULT_COLOUR = '#9b5de5'
-
-                y_range_min = float(np.min(combined_array))
-                y_range_max = float(np.max(combined_array))
-
-                # Invisible scatter used solely for the MIDI legend entries
-                seen_addresses = {}
-                for event in midi_events:
-                    colour = _MIDI_COLOURS.get(event.address, _DEFAULT_COLOUR)
-                    label = f'MIDI {event.address}'
-                    if label not in seen_addresses:
-                        seen_addresses[label] = colour
-                        fig.add_trace(
-                            go.Scatter(
-                                x=[None], y=[None],
-                                mode='lines',
-                                name=label,
-                                line=dict(color=colour, dash='dash', width=1.5),
-                                showlegend=True,
-                            )
-                        )
-
-                shapes = []
-                annotations = []
-                for event in midi_events:
-                    colour = _MIDI_COLOURS.get(event.address, _DEFAULT_COLOUR)
-                    t = event.timestamp
-                    # Vertical line spanning full y range
-                    shapes.append(dict(
-                        type='line',
-                        x0=t, x1=t,
-                        y0=y_range_min, y1=y_range_max,
-                        line=dict(color=colour, dash='dash', width=1.5),
-                    ))
-                    # Compact label: address + args (truncated if long)
-                    args_str = ', '.join(str(a) for a in event.args)
-                    short_label = f"{event.address}({args_str})"
-                    if len(short_label) > 30:
-                        short_label = short_label[:28] + '…'
-                    annotations.append(dict(
-                        x=t,
-                        y=y_range_max,
-                        xanchor='left',
-                        yanchor='top',
-                        text=short_label,
-                        showarrow=False,
-                        font=dict(size=9, color=colour),
-                        bgcolor='rgba(255,255,255,0.7)',
-                        bordercolor=colour,
-                        borderwidth=1,
-                    ))
-
-                fig.update_layout(shapes=shapes, annotations=annotations)
+            if has_cc_subplot:
+                for controller in sorted(cc_points_by_controller):
+                    points = sorted(cc_points_by_controller[controller], key=lambda p: p[0])
+                    fig.add_trace(
+                        go.Scatter(
+                            x=[point[0] for point in points],
+                            y=[point[1] for point in points],
+                            mode='lines+markers',
+                            name=f'CC{controller}',
+                            marker=dict(size=5),
+                            line=dict(width=1.5),
+                        ),
+                        row=2,
+                        col=1,
+                    )
 
             # Update layout
-            fig.update_layout(
-                title='Motor Positions Over Time' + (' + MIDI Events' if midi_events else ''),
-                xaxis_title='Time (s)',
-                yaxis_title='Motor Position',
-                legend_title='Motors'
-            )
+            if has_cc_subplot:
+                fig.update_layout(
+                    title='Motor Positions Over Time + MIDI CC',
+                    legend_title='Signals'
+                )
+                fig.update_yaxes(title_text='Motor Position', row=1, col=1)
+                fig.update_yaxes(title_text='CC Value', range=[0, 127], row=2, col=1)
+                fig.update_xaxes(title_text='Time (s)', row=2, col=1)
+            else:
+                fig.update_layout(
+                    title='Motor Positions Over Time',
+                    xaxis_title='Time (s)',
+                    yaxis_title='Motor Position',
+                    legend_title='Motors'
+                )
             fig.show()
 
         return combined_array
@@ -573,8 +560,6 @@ class GuitarBotParser:
             else:
                 note, duration, speed, slide_toggle, timestamp = pick_info
                 specified_string = None
-
-            slide_toggles.append(slide_toggle)
             assigned = False
             timestamp = round(timestamp * tu.TIMESTAMP_ROUNDING_FACTOR) / tu.TIMESTAMP_ROUNDING_FACTOR
             duration = round(duration, 3)
@@ -590,6 +575,7 @@ class GuitarBotParser:
                     if low <= note <= high:
                         if last_notes[pickerID] == note or timestamp - prep_time >= active_pickers[pickerID]:
                             pick_events.append(["pick", [pickerID, note, duration, speed, timestamp]])
+                            slide_toggles.append(slide_toggle)
                             active_pickers[pickerID] = timestamp
                             last_notes[pickerID] = note
                             assigned = True
@@ -604,6 +590,7 @@ class GuitarBotParser:
                     if low <= note <= high:
                         if last_notes[pickerID] == note or timestamp - prep_time >= active_pickers[pickerID]:
                             pick_events.append(["pick", [pickerID, note, duration, speed, timestamp]])
+                            slide_toggles.append(slide_toggle)
                             active_pickers[pickerID] = timestamp
                             last_notes[pickerID] = note
                             assigned = True

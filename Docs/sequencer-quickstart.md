@@ -2,7 +2,20 @@
 
 The **GuitarBot Sequencer** (`sequencer.html`) is a web-based timeline editor for composing robot guitar performances. Arrange pluck notes, chord symbols, and MIDI effects in a single interface, then export as JSON or send directly to the robot.
 
-## Opening the Sequencer
+## Quick Launch
+
+First, initialize GuitarBot by uploading or resetting the main OpenCR board, turning on the PSU's, and opening the serial monitor in ArduinoIDE. Then, wait for homing to finish.
+
+To simplify the startup process, you can launch the three necessary components with one script via:
+```
+python launch.py
+```
+
+This launches ```OSC_Message_Receiver.py```, ```send_song_arrangement.py```, and serves the UI via localhost by using python subprocesses.
+
+## Manual Launch
+
+It can be useful to run each component individually for testing.
 
 ### Start GUI
 

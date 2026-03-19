@@ -219,6 +219,33 @@ function drawGrid(){
   }
   ctx.beginPath(); ctx.moveTo(0,midiTopY()+MIDI_H); ctx.lineTo(CW,midiTopY()+MIDI_H); ctx.stroke();
   ctx.beginPath(); ctx.moveTo(LABEL_W,0); ctx.lineTo(LABEL_W,canvasH()); ctx.stroke();
+
+  // Bottom time ruler (seconds), companion to top bar numbering
+  const rulerH=14;
+  const rulerY=canvasH()-rulerH;
+  ctx.fillStyle='rgba(10,10,18,0.92)';
+  ctx.fillRect(LABEL_W,rulerY,CW-LABEL_W,rulerH);
+  ctx.strokeStyle='#232340';
+  ctx.lineWidth=1;
+  ctx.beginPath(); ctx.moveTo(LABEL_W,rulerY); ctx.lineTo(CW,rulerY); ctx.stroke();
+
+  const totalSeconds=beatsToSeconds(tb);
+  const secStep=secondsTickStep();
+  const visibleStartSec=beatsToSeconds(Math.max(0,xToBeat(LABEL_W)));
+  const tickStart=Math.floor(visibleStartSec/secStep)*secStep;
+  const startSec=Math.max(0,tickStart-secStep);
+  const endSec=totalSeconds+secStep;
+  ctx.font='500 9px "JetBrains Mono"';
+  ctx.textAlign='left';
+  for(let sec=startSec;sec<=endSec+1e-6;sec+=secStep){
+    const beat=sec/Math.max(1e-6,secondsPerBeat());
+    const x=beatToX(beat);
+    if(x<LABEL_W-2||x>CW+2)continue;
+    ctx.strokeStyle='#2a2a44';
+    ctx.beginPath(); ctx.moveTo(x,rulerY); ctx.lineTo(x,canvasH()); ctx.stroke();
+    ctx.fillStyle='#565680';
+    ctx.fillText(formatTimelineSeconds(sec),x+2,canvasH()-4);
+  }
 }
 
 function drawLabels(){

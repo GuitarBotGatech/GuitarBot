@@ -289,10 +289,17 @@ def song_creator():
                     last_timestamp = 0.0
                     for pluck_segment in temp_pluck_list:
                         for pluck_event in pluck_segment:
-                            if len(pluck_event) >= 5:  # [note, duration, string, ?, timestamp]
-                                event_time = pluck_event[4]
-                                event_dur  = pluck_event[1]
-                                last_timestamp = max(last_timestamp, event_time) + event_dur
+                            if len(pluck_event) >= 5:
+                                # Supported row formats:
+                                #   [note, duration, speed, slide, timestamp]
+                                #   [note, duration, speed, slide, string_index, timestamp]
+                                try:
+                                    event_time = float(pluck_event[-1])
+                                    event_dur = max(0.0, float(pluck_event[1]))
+                                except (TypeError, ValueError):
+                                    continue
+                                event_end = max(0.0, event_time) + event_dur
+                                last_timestamp = max(last_timestamp, event_end)
                     
                     # Generate synthetic chord message
                     synthetic_chord = [['On', last_timestamp + 1.0]]
