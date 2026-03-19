@@ -11,7 +11,7 @@ To simplify the startup process, you can launch the three necessary components w
 python launch.py
 ```
 
-This launches ```OSC_Message_Receiver.py```, ```send_song_arrangement.py```, and serves the UI via localhost by using python subprocesses.
+This launches ```OSC_Message_Receiver.py```, ```send_song_arrangement.py```, and serves the UI via localhost all by using python subprocesses.
 
 ## Manual Launch
 
