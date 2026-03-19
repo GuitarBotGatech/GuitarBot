@@ -37,7 +37,14 @@ function buildJSON(){
     tracks.push({name:"midi_fx",type:"midi",
       events:combinedMidi});
   }
-  return{song:{name:S.songName,meta:{key:`${S.keyRoot} ${S.keyMode}`,time_signature:S.timeSig,bpm:S.bpm,tempo_curve:tempoCurve},tracks}};
+  const automationLaneRanges=Object.fromEntries(
+    MIDI_AUTOMATION_KEYS.map(key=>{
+      const k=String(key);
+      const range=getAutomationLaneRange(k);
+      return [k,{min:range.min,max:range.max}];
+    })
+  );
+  return{song:{name:S.songName,meta:{key:`${S.keyRoot} ${S.keyMode}`,time_signature:S.timeSig,bpm:S.bpm,tempo_curve:tempoCurve,automation_lane_ranges:automationLaneRanges},tracks}};
 }
 
 function hlJSON(s){
@@ -289,6 +296,7 @@ function loadJSON(data){
   const song=data.song; if(!song)return alert('Missing "song" key');
   S.songName=song.name||'Imported';
   document.getElementById('song-name').value=S.songName;
+  S.automationLaneRanges=createDefaultAutomationLaneRanges();
   if(song.meta){
     const m=song.meta;
     if(m.bpm){S.bpm=m.bpm;document.getElementById('bpm').value=m.bpm}
@@ -296,6 +304,24 @@ function loadJSON(data){
       document.getElementById('key-root').value=S.keyRoot;
       document.getElementById('key-mode').value=S.keyMode}
     if(m.time_signature){S.timeSig=m.time_signature;document.getElementById('time-sig').value=S.timeSig}
+    if(m.automation_lane_ranges&&typeof m.automation_lane_ranges==='object'){
+      for(const key of MIDI_AUTOMATION_KEYS){
+        const k=String(key);
+        const raw=m.automation_lane_ranges[k];
+        if(!raw||typeof raw!=='object')continue;
+        const min=parseFloat(raw.min);
+        const max=parseFloat(raw.max);
+        if(!Number.isFinite(min)||!Number.isFinite(max))continue;
+        const hard=isTempoLaneKey(k)
+          ?{min:TEMPO_MIN,max:TEMPO_MAX}
+          :{min:0,max:127};
+        let nMin=clamp(Math.round(min),hard.min,hard.max);
+        let nMax=clamp(Math.round(max),hard.min,hard.max);
+        if(nMax<=nMin)nMax=Math.min(hard.max,nMin+1);
+        if(nMax<=nMin){nMin=hard.min;nMax=Math.min(hard.max,hard.min+1);}
+        S.automationLaneRanges[k]={min:nMin,max:nMax};
+      }
+    }
   }
   S.pluck=[]; S.chord=[]; S.midi=[]; S.midiCurves=createEmptyMidiCurves(); S.midiCurveMuted=createEmptyMidiCurveMuteState(); S.midiLaneMenuLane=null; S.focusedCCLane=null; S.nextId=1;
   S.selPluck=null; S.selPluckIds.clear(); S.selChord=null; S.selMidi=null; clearMidiCurveSelection(); S.clipboardPluck=null; S.clipboardMidiCurves=null; closeInsp();
@@ -352,6 +378,11 @@ function loadJSON(data){
       points.push({beat:secondsToBeat(time),value:clamp(Math.round(bpmVal),TEMPO_MIN,TEMPO_MAX)});
     }
     S.midiCurves[TEMPO_AUTOMATION_KEY]=normalizeMidiCurvePoints(points,TEMPO_AUTOMATION_KEY);
+  }
+
+  for(const key of MIDI_AUTOMATION_KEYS){
+    const k=String(key);
+    S.midiCurves[k]=normalizeMidiCurvePoints(S.midiCurves[k]||[],k);
   }
 
   S.measures=Math.max(8,Math.ceil(maxB/m)+2);

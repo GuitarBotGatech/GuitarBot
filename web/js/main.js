@@ -83,6 +83,7 @@ function applyNewProject(){
   S.midi=[];
   S.midiCurves=createEmptyMidiCurves();
   S.midiCurveMuted=createEmptyMidiCurveMuteState();
+  S.automationLaneRanges=createDefaultAutomationLaneRanges();
   S.midiLaneMenuLane=null;
   S.focusedCCLane=null;
   S.nextId=1;

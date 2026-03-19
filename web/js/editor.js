@@ -221,6 +221,17 @@ function showMLPop(lane,px,py){
   p.style.top=py+'px';
   p.classList.add('on');
   document.getElementById('ml-label').textContent=isTempoLaneKey(laneKey)?'Tempo Automation':`CC${laneKey} Automation`;
+  const range=getAutomationLaneRange(laneKey);
+  const minInput=document.getElementById('ml-min');
+  const maxInput=document.getElementById('ml-max');
+  minInput.value=range.min;
+  maxInput.value=range.max;
+  minInput.min=isTempoLaneKey(laneKey)?String(TEMPO_MIN):'0';
+  minInput.max=isTempoLaneKey(laneKey)?String(TEMPO_MAX):'127';
+  maxInput.min=isTempoLaneKey(laneKey)?String(TEMPO_MIN):'0';
+  maxInput.max=isTempoLaneKey(laneKey)?String(TEMPO_MAX):'127';
+  minInput.step='1';
+  maxInput.step='1';
   const muted=!!S.midiCurveMuted[String(laneKey)];
   document.getElementById('ml-mute').textContent=muted?'Unmute Automation':'Mute Automation';
   setTimeout(()=>{
@@ -254,6 +265,49 @@ function toggleSelectedMidiAutomationMute(){
   const muted=!!S.midiCurveMuted[key];
   document.getElementById('ml-mute').textContent=muted?'Unmute Automation':'Mute Automation';
   closeMLPop();
+  syncJSON();
+  render();
+}
+
+function setSelectedMidiAutomationRange(which,valueRaw){
+  if(!Number.isInteger(S.midiLaneMenuLane))return;
+  const lane=S.midiLaneMenuLane;
+  if(lane<0||lane>=MIDI_AUTOMATION_KEYS.length)return;
+  const key=String(automationLaneKey(lane));
+  const defaultRange=isTempoLaneKey(key)
+    ?{min:TEMPO_MIN,max:TEMPO_MAX}
+    :{min:0,max:127};
+  const hardMin=defaultRange.min;
+  const hardMax=defaultRange.max;
+  const parsed=parseFloat(valueRaw);
+  if(!Number.isFinite(parsed))return;
+
+  const current=getAutomationLaneRange(key);
+  let min=current.min;
+  let max=current.max;
+  if(which==='min')min=Math.round(parsed);
+  if(which==='max')max=Math.round(parsed);
+
+  min=clamp(min,hardMin,hardMax);
+  max=clamp(max,hardMin,hardMax);
+  if(max<=min){
+    if(which==='min')max=Math.min(hardMax,min+1);
+    else min=Math.max(hardMin,max-1);
+  }
+  if(max<=min){
+    min=hardMin;
+    max=Math.min(hardMax,hardMin+1);
+  }
+
+  S.automationLaneRanges[key]={min,max};
+  const points=S.midiCurves[key]||[];
+  S.midiCurves[key]=normalizeMidiCurvePoints(points,key);
+
+  const minInput=document.getElementById('ml-min');
+  const maxInput=document.getElementById('ml-max');
+  minInput.value=min;
+  maxInput.value=max;
+
   syncJSON();
   render();
 }
@@ -345,7 +399,7 @@ function pasteTimelineEvents(){
       const b=targetBeat+(src.beat-clipCurves.originBeat);
       if(b<0||b>=totalBeats())continue;
       const beat=normalizeBeat(b);
-      upsertMidiCurvePoint(src.key,beat,src.value);
+      upsertMidiCurvePoint(src.key,beat,clampAutomationValue(src.key,src.value));
       createdCurveSelection[String(src.key)].add(midiCurvePointKey(beat));
     }
   }

@@ -184,6 +184,14 @@
 <div class="popup" id="mlpop">
   <div class="ph">MIDI Lane <span class="pc" onclick="closeMLPop()">×</span></div>
   <div class="pr"><div class="pl" id="ml-label">CC</div></div>
+  <div class="pr">
+    <div class="pl">Visible Range</div>
+    <div style="display:flex;gap:6px;align-items:center">
+      <input type="number" id="ml-min" onchange="setSelectedMidiAutomationRange('min',this.value)" style="width:74px">
+      <span style="font-size:11px;color:var(--text-dim)">to</span>
+      <input type="number" id="ml-max" onchange="setSelectedMidiAutomationRange('max',this.value)" style="width:74px">
+    </div>
+  </div>
   <button class="mlbtn" id="ml-clear" onclick="clearSelectedMidiAutomationLane()">Delete Automation</button>
   <button class="mlbtn" id="ml-mute" onclick="toggleSelectedMidiAutomationMute()">Mute Automation</button>
 </div>

@@ -45,3 +45,10 @@ const strOf=m=>STRINGS.find(s=>m>=s.min&&m<=s.max)||STRINGS[0];
 const createEmptyMidiCurves=()=>Object.fromEntries(MIDI_AUTOMATION_KEYS.map(key=>[String(key),[]]));
 const createEmptyMidiCurveMuteState=()=>Object.fromEntries(MIDI_AUTOMATION_KEYS.map(key=>[String(key),false]));
 const createEmptyMidiCurveSelection=()=>Object.fromEntries(MIDI_AUTOMATION_KEYS.map(key=>[String(key),new Set()]));
+const createDefaultAutomationLaneRanges=()=>Object.fromEntries(
+  MIDI_AUTOMATION_KEYS.map(key=>{
+    const k=String(key);
+    if(k===TEMPO_AUTOMATION_KEY)return [k,{min:TEMPO_MIN,max:TEMPO_MAX}];
+    return [k,{min:0,max:127}];
+  })
+);

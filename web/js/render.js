@@ -79,14 +79,12 @@ function eventStringIndex(ev){
 
 function normalizeMidiCurvePoints(points,key='1'){
   const curveKey=String(key);
-  const isTempo=isTempoLaneKey(curveKey);
   const sorted=[...points].sort((a,b)=>a.beat-b.beat);
   const deduped=[];
   for(const point of sorted){
     const beat=trimBeatNumber(Math.max(0,parseFloat(point.beat)||0));
-    const value=isTempo
-      ?clamp(Math.round(parseFloat(point.value)||S.bpm),TEMPO_MIN,TEMPO_MAX)
-      :clamp(Math.round(parseFloat(point.value)||0),0,127);
+    const fallback=isTempoLaneKey(curveKey)?S.bpm:0;
+    const value=clampAutomationValue(curveKey,parseFloat(point.value)||fallback);
     if(deduped.length&&Math.abs(deduped[deduped.length-1].beat-beat)<1e-4){
       deduped[deduped.length-1]={beat,value};
     }else{
@@ -98,11 +96,8 @@ function normalizeMidiCurvePoints(points,key='1'){
 
 function upsertMidiCurvePoint(curveKey,beat,value){
   const key=String(curveKey);
-  const isTempo=isTempoLaneKey(key);
   const targetBeat=trimBeatNumber(Math.max(0,beat));
-  const targetValue=isTempo
-    ?clamp(Math.round(value),TEMPO_MIN,TEMPO_MAX)
-    :clamp(Math.round(value),0,127);
+  const targetValue=clampAutomationValue(key,value);
   const points=S.midiCurves[key]||[];
 
   const filtered=points.filter(point=>{

@@ -8,6 +8,7 @@ let S={
   midiCurves:createEmptyMidiCurves(),
   midiCurveMuted:createEmptyMidiCurveMuteState(),
     selMidiCurvePoints:createEmptyMidiCurveSelection(),
+  automationLaneRanges:createDefaultAutomationLaneRanges(),
   nextId:1, zoom:80, scrollX:0,
   playing:false, playBeat:0,
   cycleEnabled:false,
@@ -60,22 +61,35 @@ const automationLaneKey=lane=>{
   return String(MIDI_AUTOMATION_KEYS[lane]);
 };
 const isTempoLaneKey=key=>String(key)===TEMPO_AUTOMATION_KEY;
+function getAutomationLaneRange(key){
+  const laneKey=String(key);
+  const fallback=isTempoLaneKey(laneKey)
+    ?{min:TEMPO_MIN,max:TEMPO_MAX}
+    :{min:0,max:127};
+  const src=S.automationLaneRanges?.[laneKey];
+  let min=Number.isFinite(parseFloat(src?.min))?parseFloat(src.min):fallback.min;
+  let max=Number.isFinite(parseFloat(src?.max))?parseFloat(src.max):fallback.max;
+  min=Math.round(min);
+  max=Math.round(max);
+  if(max<=min)max=min+1;
+  return {min,max};
+}
+function clampAutomationValue(key,value){
+  const range=getAutomationLaneRange(key);
+  return clamp(Math.round(parseFloat(value)||0),range.min,range.max);
+}
 const midiValueFromY=(cy,lane)=>{
   const key=automationLaneKey(lane);
+  if(!key)return 0;
+  const range=getAutomationLaneRange(key);
   const norm=(1-clamp((cy-midiLaneTop(lane))/Math.max(1,midiLaneHeight(lane)),0,1));
-  if(isTempoLaneKey(key)){
-    return Math.round(TEMPO_MIN+(norm*(TEMPO_MAX-TEMPO_MIN)));
-  }
-  return Math.round(norm*127);
+  return Math.round(range.min+(norm*(range.max-range.min)));
 };
 const midiYFromValue=(value,lane)=>{
   const key=automationLaneKey(lane);
-  let norm=0;
-  if(isTempoLaneKey(key)){
-    norm=clamp((parseFloat(value)-TEMPO_MIN)/Math.max(1,(TEMPO_MAX-TEMPO_MIN)),0,1);
-  }else{
-    norm=clamp((parseFloat(value)||0)/127,0,1);
-  }
+  if(!key)return midiLaneTop(lane);
+  const range=getAutomationLaneRange(key);
+  const norm=clamp((parseFloat(value)-range.min)/Math.max(1,(range.max-range.min)),0,1);
   return midiLaneTop(lane)+(1-norm)*midiLaneHeight(lane);
 };
 const laneForCC=cc=>{
