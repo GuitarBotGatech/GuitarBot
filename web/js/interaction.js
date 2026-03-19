@@ -21,11 +21,11 @@ canvas.addEventListener('contextmenu',e=>{
 
   const ccPointHit=hitMidiCurvePoint(cx,cy);
   if(ccPointHit){
-    const key=String(ccPointHit.cc);
+    const key=String(ccPointHit.key);
     const points=S.midiCurves[key]||[];
     if(ccPointHit.index>=0&&ccPointHit.index<points.length){
       points.splice(ccPointHit.index,1);
-      S.midiCurves[key]=normalizeMidiCurvePoints(points);
+      S.midiCurves[key]=normalizeMidiCurvePoints(points,key);
       closeMLPop();
       syncJSON();
       render();
@@ -155,9 +155,9 @@ canvas.addEventListener('pointermove',e=>{
     const beat=normalizeBeat(clamp(xToBeat(cx),0,totalBeats()));
     const value=midiValueFromY(cy,drag.lane);
     if(S.snapEnabled&&typeof drag.lastBeat==='number'&&Math.abs(beat-drag.lastBeat)>1e-4){
-      clearMidiCurveRange(drag.cc,drag.lastBeat,beat);
+      clearMidiCurveRange(drag.key,drag.lastBeat,beat);
     }
-    upsertMidiCurvePoint(drag.cc,beat,value);
+    upsertMidiCurvePoint(drag.key,beat,value);
     drag.lastBeat=beat;
     render();
     return;
@@ -353,10 +353,10 @@ function applySelectionBox(box){
     if(overlaps)ids.push(ev.id);
   }
 
-  for(const cc of MIDI_AUTOMATION_CCS){
-    const lane=laneForCC(cc);
+  for(let lane=0;lane<MIDI_AUTOMATION_KEYS.length;lane++){
+    const laneKey=automationLaneKey(lane);
     if(!midiLaneVisible(lane))continue;
-    const key=String(cc);
+    const key=String(laneKey);
     for(const point of S.midiCurves[key]||[]){
       const x=beatToX(point.beat);
       const y=midiYFromValue(point.value,lane);
@@ -366,7 +366,7 @@ function applySelectionBox(box){
     }
   }
 
-  const hasCurveSelection=MIDI_AUTOMATION_CCS.some(cc=>selectedCurves[String(cc)].size>0);
+  const hasCurveSelection=MIDI_AUTOMATION_KEYS.some(key=>selectedCurves[String(key)].size>0);
   if(!ids.length&&!hasCurveSelection){
     deselectAll();
     return;
@@ -427,21 +427,21 @@ function midiDown(cx,cy,e){
   S.pasteAnchor={beat,note:MIDI_MIN};
 
   if(lane!==MIDI_GENERAL_LANE_INDEX){
-    const cc=MIDI_AUTOMATION_CCS[lane];
+    const laneKey=automationLaneKey(lane);
     if(S.editMode==='draw'){
       const value=midiValueFromY(cy,lane);
-      upsertMidiCurvePoint(cc,beat,value);
-      drag={type:'midi-curve',cc,lane,lastBeat:beat};
+      upsertMidiCurvePoint(laneKey,beat,value);
+      drag={type:'midi-curve',key:laneKey,lane,lastBeat:beat};
       render();
       syncJSON();
       return;
     }
 
     const hit=hitMidiCurvePoint(cx,cy);
-    if(hit&&hit.cc===cc){
+    if(hit&&String(hit.key)===String(laneKey)){
       const selected=createEmptyMidiCurveSelection();
-      const point=(S.midiCurves[String(cc)]||[])[hit.index];
-      if(point)selected[String(cc)].add(midiCurvePointKey(point.beat));
+      const point=(S.midiCurves[String(laneKey)]||[])[hit.index];
+      if(point)selected[String(laneKey)].add(midiCurvePointKey(point.beat));
       S.selPluckIds.clear();
       S.selPluck=null;
       S.selChord=null;
@@ -555,16 +555,16 @@ function findMidiCCCollision(beat,cc,excludeId=null){
 function hitMidiCurvePoint(cx,cy){
   if(cx<LABEL_W)return null;
   const hitRadius=5;
-  for(const cc of MIDI_AUTOMATION_CCS){
-    const lane=laneForCC(cc);
+  for(let lane=0;lane<MIDI_AUTOMATION_KEYS.length;lane++){
+    const laneKey=automationLaneKey(lane);
     if(!midiLaneVisible(lane))continue;
-    const points=[...(S.midiCurves[String(cc)]||[])].sort((a,b)=>a.beat-b.beat);
+    const points=[...(S.midiCurves[String(laneKey)]||[])].sort((a,b)=>a.beat-b.beat);
     for(let index=0;index<points.length;index++){
       const point=points[index];
       const x=beatToX(point.beat);
       const y=midiYFromValue(point.value,lane);
       if(Math.abs(cx-x)<=hitRadius&&Math.abs(cy-y)<=hitRadius){
-        return {cc,index};
+        return {key:laneKey,index};
       }
     }
   }

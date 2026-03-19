@@ -37,7 +37,7 @@ const xToBeat=x=>(x-LABEL_W+S.scrollX)/S.zoom;
 const noteToY=n=>CHORD_H+(MIDI_MAX-n)*noteH;
 const yToNote=y=>MIDI_MAX-Math.floor((y-CHORD_H)/noteH);
 const midiTopY=()=>CHORD_H+rollH();
-const hasFocusedCCLane=()=>Number.isInteger(S.focusedCCLane)&&S.focusedCCLane>=0&&S.focusedCCLane<MIDI_AUTOMATION_CCS.length;
+const hasFocusedCCLane=()=>Number.isInteger(S.focusedCCLane)&&S.focusedCCLane>=0&&S.focusedCCLane<MIDI_AUTOMATION_KEYS.length;
 const midiLaneVisible=index=>!hasFocusedCCLane()||index===S.focusedCCLane;
 const midiLaneTop=index=>{
   if(hasFocusedCCLane())return midiTopY();
@@ -52,15 +52,37 @@ function midiLaneAtY(cy){
   const rel=cy-midiTopY();
   if(rel<0||rel>=MIDI_H)return-1;
   if(hasFocusedCCLane())return S.focusedCCLane;
-  if(rel<MIDI_AUTOMATION_TOTAL_H)return Math.min(MIDI_AUTOMATION_CCS.length-1,Math.floor(rel/MIDI_AUTOMATION_LANE_H));
+  if(rel<MIDI_AUTOMATION_TOTAL_H)return Math.min(MIDI_AUTOMATION_KEYS.length-1,Math.floor(rel/MIDI_AUTOMATION_LANE_H));
   return MIDI_GENERAL_LANE_INDEX;
 }
-const midiValueFromY=(cy,lane)=>Math.round((1-clamp((cy-midiLaneTop(lane))/Math.max(1,midiLaneHeight(lane)),0,1))*127);
-const midiYFromValue=(value,lane)=>midiLaneTop(lane)+(1-clamp((parseFloat(value)||0)/127,0,1))*midiLaneHeight(lane);
+const automationLaneKey=lane=>{
+  if(!Number.isInteger(lane)||lane<0||lane>=MIDI_AUTOMATION_KEYS.length)return null;
+  return String(MIDI_AUTOMATION_KEYS[lane]);
+};
+const isTempoLaneKey=key=>String(key)===TEMPO_AUTOMATION_KEY;
+const midiValueFromY=(cy,lane)=>{
+  const key=automationLaneKey(lane);
+  const norm=(1-clamp((cy-midiLaneTop(lane))/Math.max(1,midiLaneHeight(lane)),0,1));
+  if(isTempoLaneKey(key)){
+    return Math.round(TEMPO_MIN+(norm*(TEMPO_MAX-TEMPO_MIN)));
+  }
+  return Math.round(norm*127);
+};
+const midiYFromValue=(value,lane)=>{
+  const key=automationLaneKey(lane);
+  let norm=0;
+  if(isTempoLaneKey(key)){
+    norm=clamp((parseFloat(value)-TEMPO_MIN)/Math.max(1,(TEMPO_MAX-TEMPO_MIN)),0,1);
+  }else{
+    norm=clamp((parseFloat(value)||0)/127,0,1);
+  }
+  return midiLaneTop(lane)+(1-norm)*midiLaneHeight(lane);
+};
 const laneForCC=cc=>{
   const index=MIDI_AUTOMATION_CCS.indexOf(parseInt(cc,10));
-  return index>=0?index:-1;
+  return index>=0?index+1:-1;
 };
+const tempoLane=()=>0;
 const gridStep=()=>GRID_STEPS[S.gridIdx].beats;
 const snap=b=>{const gs=gridStep();return Math.round(b/gs)*gs;};
 const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
@@ -96,9 +118,9 @@ const secondsTickStep=()=>{
   return candidates[candidates.length-1];
 };
 const hasTremolo=ev=>noteDurationSeconds(ev)>0.5;
-const hasMidiCurveSelection=()=>MIDI_AUTOMATION_CCS.some(cc=>(S.selMidiCurvePoints[String(cc)]?.size||0)>0);
-const isMidiCurvePointSelected=(cc,point)=>{
-  const set=S.selMidiCurvePoints[String(cc)];
+const hasMidiCurveSelection=()=>MIDI_AUTOMATION_KEYS.some(key=>(S.selMidiCurvePoints[String(key)]?.size||0)>0);
+const isMidiCurvePointSelected=(key,point)=>{
+  const set=S.selMidiCurvePoints[String(key)];
   if(!set||!point)return false;
   return set.has(midiCurvePointKey(point.beat));
 };

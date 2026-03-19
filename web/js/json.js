@@ -2,6 +2,18 @@
 // JSON PREVIEW
 // ═══════════════════════════════════════════════
 function buildJSON(){
+  const tempoPoints=normalizeMidiCurvePoints(S.midiCurves[TEMPO_AUTOMATION_KEY]||[],TEMPO_AUTOMATION_KEY);
+  const tempoCurve=[];
+  if(!tempoPoints.length||Math.abs((tempoPoints[0]?.beat||0))>1e-4){
+    tempoCurve.push({time:0.0,bpm:S.bpm});
+  }
+  tempoPoints.forEach(point=>{
+    tempoCurve.push({
+      time:beatsToSeconds(point.beat),
+      bpm:clamp(Math.round(point.value),TEMPO_MIN,TEMPO_MAX),
+    });
+  });
+
   const tracks=[];
   if(S.chord.length){
     tracks.push({name:"chords_main",type:"chord",
@@ -25,7 +37,7 @@ function buildJSON(){
     tracks.push({name:"midi_fx",type:"midi",
       events:combinedMidi});
   }
-  return{song:{name:S.songName,meta:{key:`${S.keyRoot} ${S.keyMode}`,time_signature:S.timeSig,bpm:S.bpm,tempo_curve:[{time:0.0,bpm:S.bpm}]},tracks}};
+  return{song:{name:S.songName,meta:{key:`${S.keyRoot} ${S.keyMode}`,time_signature:S.timeSig,bpm:S.bpm,tempo_curve:tempoCurve},tracks}};
 }
 
 function hlJSON(s){
@@ -176,9 +188,29 @@ function buildUploadJSON(){
     return {...track,events};
   });
 
+  const tempoCurve=(full.song.meta?.tempo_curve||[])
+    .filter(point=>Number.isFinite(parseFloat(point?.time))&&Number.isFinite(parseFloat(point?.bpm)))
+    .map(point=>({
+      beat:secondsToBeat(parseFloat(point.time)),
+      bpm:clamp(Math.round(parseFloat(point.bpm)),TEMPO_MIN,TEMPO_MAX),
+    }))
+    .filter(point=>point.beat>=startBeat&&point.beat<endBeat)
+    .map(point=>({
+      time:Math.max(0,(point.beat-startBeat))*spb,
+      bpm:point.bpm,
+    }))
+    .sort((a,b)=>a.time-b.time);
+  if(!tempoCurve.length||tempoCurve[0].time>1e-6){
+    tempoCurve.unshift({time:0.0,bpm:clamp(Math.round(S.bpm),TEMPO_MIN,TEMPO_MAX)});
+  }
+
   return {
     song:{
       ...full.song,
+      meta:{
+        ...full.song.meta,
+        tempo_curve:tempoCurve,
+      },
       tracks,
     },
   };
@@ -311,6 +343,17 @@ function loadJSON(data){
     return true;
   });
   const m=bpm();
+  if(Array.isArray(song.meta?.tempo_curve)){
+    const points=[];
+    for(const entry of song.meta.tempo_curve){
+      const time=parseFloat(entry?.time);
+      const bpmVal=parseFloat(entry?.bpm);
+      if(!Number.isFinite(time)||!Number.isFinite(bpmVal))continue;
+      points.push({beat:secondsToBeat(time),value:clamp(Math.round(bpmVal),TEMPO_MIN,TEMPO_MAX)});
+    }
+    S.midiCurves[TEMPO_AUTOMATION_KEY]=normalizeMidiCurvePoints(points,TEMPO_AUTOMATION_KEY);
+  }
+
   S.measures=Math.max(8,Math.ceil(maxB/m)+2);
   document.getElementById('measures').value=S.measures;
   syncCycleControls();

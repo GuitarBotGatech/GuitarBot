@@ -144,8 +144,8 @@ function delSelectedPluckEvents(){
 
 function delSelectedMidiCurvePoints(){
   if(!hasMidiCurveSelection())return false;
-  for(const cc of MIDI_AUTOMATION_CCS){
-    const key=String(cc);
+  for(const laneKey of MIDI_AUTOMATION_KEYS){
+    const key=String(laneKey);
     const selected=S.selMidiCurvePoints[key];
     if(!selected||!selected.size)continue;
     const points=S.midiCurves[key]||[];
@@ -213,15 +213,15 @@ function delMidi(){
 }
 
 function showMLPop(lane,px,py){
-  if(lane<0||lane>=MIDI_AUTOMATION_CCS.length)return;
+  if(lane<0||lane>=MIDI_AUTOMATION_KEYS.length)return;
   S.midiLaneMenuLane=lane;
-  const cc=MIDI_AUTOMATION_CCS[lane];
+  const laneKey=automationLaneKey(lane);
   const p=document.getElementById('mlpop');
   p.style.left=px+'px';
   p.style.top=py+'px';
   p.classList.add('on');
-  document.getElementById('ml-label').textContent=`CC${cc} Automation`;
-  const muted=!!S.midiCurveMuted[String(cc)];
+  document.getElementById('ml-label').textContent=isTempoLaneKey(laneKey)?'Tempo Automation':`CC${laneKey} Automation`;
+  const muted=!!S.midiCurveMuted[String(laneKey)];
   document.getElementById('ml-mute').textContent=muted?'Unmute Automation':'Mute Automation';
   setTimeout(()=>{
     const r=p.getBoundingClientRect();
@@ -237,9 +237,9 @@ function closeMLPop(){
 function clearSelectedMidiAutomationLane(){
   if(!Number.isInteger(S.midiLaneMenuLane))return;
   const lane=S.midiLaneMenuLane;
-  if(lane<0||lane>=MIDI_AUTOMATION_CCS.length)return;
-  const cc=MIDI_AUTOMATION_CCS[lane];
-  S.midiCurves[String(cc)]=[];
+  if(lane<0||lane>=MIDI_AUTOMATION_KEYS.length)return;
+  const laneKey=automationLaneKey(lane);
+  S.midiCurves[String(laneKey)]=[];
   closeMLPop();
   syncJSON();
   render();
@@ -248,9 +248,8 @@ function clearSelectedMidiAutomationLane(){
 function toggleSelectedMidiAutomationMute(){
   if(!Number.isInteger(S.midiLaneMenuLane))return;
   const lane=S.midiLaneMenuLane;
-  if(lane<0||lane>=MIDI_AUTOMATION_CCS.length)return;
-  const cc=MIDI_AUTOMATION_CCS[lane];
-  const key=String(cc);
+  if(lane<0||lane>=MIDI_AUTOMATION_KEYS.length)return;
+  const key=String(automationLaneKey(lane));
   S.midiCurveMuted[key]=!S.midiCurveMuted[key];
   const muted=!!S.midiCurveMuted[key];
   document.getElementById('ml-mute').textContent=muted?'Unmute Automation':'Mute Automation';
@@ -261,16 +260,19 @@ function toggleSelectedMidiAutomationMute(){
 
 function selectedMidiCurvePoints(){
   const points=[];
-  for(const cc of MIDI_AUTOMATION_CCS){
-    const key=String(cc);
+  for(const laneKey of MIDI_AUTOMATION_KEYS){
+    const key=String(laneKey);
     const selected=S.selMidiCurvePoints[key];
     if(!selected||!selected.size)continue;
     for(const point of S.midiCurves[key]||[]){
       if(!selected.has(midiCurvePointKey(point.beat)))continue;
-      points.push({cc,beat:trimBeatNumber(point.beat),value:clamp(Math.round(point.value),0,127)});
+      const value=isTempoLaneKey(key)
+        ?clamp(Math.round(point.value),TEMPO_MIN,TEMPO_MAX)
+        :clamp(Math.round(point.value),0,127);
+      points.push({key,beat:trimBeatNumber(point.beat),value});
     }
   }
-  return points.sort((a,b)=>a.beat-b.beat||a.cc-b.cc||a.value-b.value);
+  return points.sort((a,b)=>a.beat-b.beat||String(a.key).localeCompare(String(b.key))||a.value-b.value);
 }
 
 function copySelectedTimelineEvents(){
@@ -343,8 +345,8 @@ function pasteTimelineEvents(){
       const b=targetBeat+(src.beat-clipCurves.originBeat);
       if(b<0||b>=totalBeats())continue;
       const beat=normalizeBeat(b);
-      upsertMidiCurvePoint(src.cc,beat,src.value);
-      createdCurveSelection[String(src.cc)].add(midiCurvePointKey(beat));
+      upsertMidiCurvePoint(src.key,beat,src.value);
+      createdCurveSelection[String(src.key)].add(midiCurvePointKey(beat));
     }
   }
 
@@ -369,15 +371,15 @@ function pasteTimelineEvents(){
 }
 
 function selectAllEditableEvents(){
-  if(!S.pluck.length&&!MIDI_AUTOMATION_CCS.some(cc=>(S.midiCurves[String(cc)]||[]).length))return false;
+  if(!S.pluck.length&&!MIDI_AUTOMATION_KEYS.some(key=>(S.midiCurves[String(key)]||[]).length))return false;
   S.selPluckIds=new Set(S.pluck.map(ev=>ev.id));
   S.selPluck=null;
   S.selChord=null;
   S.selMidi=null;
   const allCurveSelection=createEmptyMidiCurveSelection();
-  for(const cc of MIDI_AUTOMATION_CCS){
-    for(const point of S.midiCurves[String(cc)]||[]){
-      allCurveSelection[String(cc)].add(midiCurvePointKey(point.beat));
+  for(const laneKey of MIDI_AUTOMATION_KEYS){
+    for(const point of S.midiCurves[String(laneKey)]||[]){
+      allCurveSelection[String(laneKey)].add(midiCurvePointKey(point.beat));
     }
   }
   S.selMidiCurvePoints=allCurveSelection;

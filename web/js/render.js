@@ -18,7 +18,54 @@ function render(){
   if(!ctx)return;
   ctx.clearRect(0,0,CW,canvasH());
   drawBG(); drawGrid(); drawLabels();
-  drawCycleBar(); drawChordLane(); drawMidiLane(); drawSlideLinks(); drawNotes(); drawPlayhead(); drawSelectionBox();
+  drawCycleBar(); drawChordLane(); drawMidiLane(); drawTempoPointOverlay(); drawSlideLinks(); drawNotes(); drawPlayhead(); drawSelectionBox();
+}
+
+function drawTempoPointOverlay(){
+  const lane=tempoLane();
+  if(!midiLaneVisible(lane))return;
+  const selected=S.selMidiCurvePoints[TEMPO_AUTOMATION_KEY];
+  if(!selected||selected.size!==1)return;
+
+  const points=S.midiCurves[TEMPO_AUTOMATION_KEY]||[];
+  let target=null;
+  for(const point of points){
+    if(selected.has(midiCurvePointKey(point.beat))){
+      target=point;
+      break;
+    }
+  }
+  if(!target)return;
+
+  const x=beatToX(target.beat);
+  const y=midiYFromValue(target.value,lane);
+  const valueText=`${clamp(Math.round(target.value),TEMPO_MIN,TEMPO_MAX)} BPM`;
+
+  ctx.save();
+  ctx.font='600 10px "JetBrains Mono"';
+  const textW=ctx.measureText(valueText).width;
+  const padX=6;
+  const bubbleW=textW+padX*2;
+  const bubbleH=18;
+  let bx=x+8;
+  let by=y-24;
+
+  if(bx+bubbleW>CW-4)bx=x-bubbleW-8;
+  if(by<CHORD_H+2)by=y+8;
+
+  ctx.fillStyle='rgba(10,10,16,0.92)';
+  ctx.strokeStyle='#f59e0b';
+  ctx.lineWidth=1;
+  ctx.beginPath();
+  ctx.roundRect(bx,by,bubbleW,bubbleH,5);
+  ctx.fill();
+  ctx.stroke();
+
+  ctx.fillStyle='#fbbf24';
+  ctx.textAlign='left';
+  ctx.textBaseline='middle';
+  ctx.fillText(valueText,bx+padX,by+bubbleH/2+0.5);
+  ctx.restore();
 }
 
 function eventStringIndex(ev){
@@ -30,12 +77,16 @@ function eventStringIndex(ev){
   return inferred>=0?inferred:0;
 }
 
-function normalizeMidiCurvePoints(points){
+function normalizeMidiCurvePoints(points,key='1'){
+  const curveKey=String(key);
+  const isTempo=isTempoLaneKey(curveKey);
   const sorted=[...points].sort((a,b)=>a.beat-b.beat);
   const deduped=[];
   for(const point of sorted){
     const beat=trimBeatNumber(Math.max(0,parseFloat(point.beat)||0));
-    const value=clamp(Math.round(parseFloat(point.value)||0),0,127);
+    const value=isTempo
+      ?clamp(Math.round(parseFloat(point.value)||S.bpm),TEMPO_MIN,TEMPO_MAX)
+      :clamp(Math.round(parseFloat(point.value)||0),0,127);
     if(deduped.length&&Math.abs(deduped[deduped.length-1].beat-beat)<1e-4){
       deduped[deduped.length-1]={beat,value};
     }else{
@@ -45,10 +96,13 @@ function normalizeMidiCurvePoints(points){
   return deduped;
 }
 
-function upsertMidiCurvePoint(cc,beat,value){
-  const key=String(cc);
+function upsertMidiCurvePoint(curveKey,beat,value){
+  const key=String(curveKey);
+  const isTempo=isTempoLaneKey(key);
   const targetBeat=trimBeatNumber(Math.max(0,beat));
-  const targetValue=clamp(Math.round(value),0,127);
+  const targetValue=isTempo
+    ?clamp(Math.round(value),TEMPO_MIN,TEMPO_MAX)
+    :clamp(Math.round(value),0,127);
   const points=S.midiCurves[key]||[];
 
   const filtered=points.filter(point=>{
@@ -57,11 +111,11 @@ function upsertMidiCurvePoint(cc,beat,value){
     return Math.abs(snap(pointBeat)-targetBeat)>1e-4;
   });
   filtered.push({beat:targetBeat,value:targetValue});
-  S.midiCurves[key]=normalizeMidiCurvePoints(filtered);
+  S.midiCurves[key]=normalizeMidiCurvePoints(filtered,key);
 }
 
-function clearMidiCurveRange(cc,startBeat,endBeat){
-  const key=String(cc);
+function clearMidiCurveRange(curveKey,startBeat,endBeat){
+  const key=String(curveKey);
   const lo=Math.min(startBeat,endBeat);
   const hi=Math.max(startBeat,endBeat);
   const eps=1e-4;
@@ -77,7 +131,7 @@ function midiAutomationEvents(){
   const interpDefault=1;
   for(const cc of MIDI_AUTOMATION_CCS){
     if(S.midiCurveMuted[String(cc)])continue;
-    const points=normalizeMidiCurvePoints(S.midiCurves[String(cc)]||[]);
+    const points=normalizeMidiCurvePoints(S.midiCurves[String(cc)]||[],String(cc));
     points.forEach((point,index)=>{
       events.push({
         address:'/cc',
@@ -167,7 +221,9 @@ function drawBG(){
     if(!midiLaneVisible(lane))continue;
     const top=midiLaneTop(lane);
     const height=midiLaneHeight(lane);
-    ctx.fillStyle=lane===0?'#0c0c14':(lane%2===0?'#0a0a12':'#0d0d16');
+    const laneKey=automationLaneKey(lane);
+    const isTempo=lane!==MIDI_GENERAL_LANE_INDEX&&isTempoLaneKey(laneKey);
+    ctx.fillStyle=isTempo?'#10141b':(lane%2===0?'#0a0a12':'#0d0d16');
     ctx.fillRect(LABEL_W,top,CW-LABEL_W,height);
   }
   // Label column
@@ -182,9 +238,12 @@ function drawBG(){
     if(!midiLaneVisible(lane))continue;
     const top=midiLaneTop(lane);
     const h=midiLaneHeight(lane);
+    const laneKey=automationLaneKey(lane);
     const label=lane===MIDI_GENERAL_LANE_INDEX
       ?'FX'
-      :`CC${MIDI_AUTOMATION_CCS[lane]}${S.midiCurveMuted[String(MIDI_AUTOMATION_CCS[lane])]?' (M)':''}`;
+      :(isTempoLaneKey(laneKey)
+        ?`TMP${S.midiCurveMuted[String(laneKey)]?' (M)':''}`
+        :`CC${laneKey}${S.midiCurveMuted[String(laneKey)]?' (M)':''}`);
     ctx.fillText(label,LABEL_W/2,top+h/2+3);
   }
 }
@@ -344,13 +403,13 @@ function drawMidiLane(){
   });
   }
 
-  for(const cc of MIDI_AUTOMATION_CCS){
-    const lane=laneForCC(cc);
-    const points=[...(S.midiCurves[String(cc)]||[])].sort((a,b)=>a.beat-b.beat);
+  for(let lane=0;lane<MIDI_AUTOMATION_KEYS.length;lane++){
+    const laneKey=automationLaneKey(lane);
+    const points=[...(S.midiCurves[String(laneKey)]||[])].sort((a,b)=>a.beat-b.beat);
     if(!points.length)continue;
-    const muted=!!S.midiCurveMuted[String(cc)];
+    const muted=!!S.midiCurveMuted[String(laneKey)];
 
-    const color=cc===7?'#22d3ee':'#a855f7';
+    const color=isTempoLaneKey(laneKey)?'#f59e0b':(String(laneKey)==='7'?'#22d3ee':'#a855f7');
     ctx.strokeStyle=color;
     ctx.lineWidth=1.8;
     ctx.globalAlpha=muted?0.28:0.9;
@@ -367,7 +426,7 @@ function drawMidiLane(){
       const x=beatToX(point.beat);
       const y=midiYFromValue(point.value,lane);
       if(x<LABEL_W-4||x>CW+4)continue;
-      const selected=isMidiCurvePointSelected(cc,point);
+      const selected=isMidiCurvePointSelected(laneKey,point);
       if(selected){
         ctx.beginPath();
         ctx.arc(x,y,5.2,0,Math.PI*2);
