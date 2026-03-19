@@ -102,8 +102,32 @@ function toggleJP(){
 
 function buildUploadJSON(){
   const full=buildJSON();
+  const soloRange=Number.isInteger(S.stringSoloIndex)?STRINGS[S.stringSoloIndex]:null;
+  const mutedRanges=STRINGS.filter((_,index)=>!!S.stringMuted[index]);
+  const allowPluckNote=(noteRaw)=>{
+    const note=parseInt(noteRaw,10);
+    if(!Number.isFinite(note))return false;
+    if(soloRange)return note>=soloRange.min&&note<=soloRange.max;
+    return !mutedRanges.some(range=>note>=range.min&&note<=range.max);
+  };
+
+  if(!getCycleRange()){
+    if(!soloRange&&!mutedRanges.length)return full;
+    return {
+      song:{
+        ...full.song,
+        tracks:(full.song.tracks||[]).map(track=>{
+          if(track.type!=='pluck')return track;
+          return {
+            ...track,
+            events:(track.events||[]).filter(ev=>allowPluckNote(ev.note)),
+          };
+        }),
+      },
+    };
+  }
+
   const cycle=getCycleRange();
-  if(!cycle)return full;
 
   const {startBeat,endBeat}=cycle;
   const spb=secondsPerBeat();
@@ -117,6 +141,9 @@ function buildUploadJSON(){
   const tracks=(full.song.tracks||[]).map(track=>{
     const events=(track.events||[])
       .filter(ev=>{
+        if(track.type==='pluck'&&(soloRange||mutedRanges.length)){
+          if(!allowPluckNote(ev.note))return false;
+        }
         const beat=eventBeat(ev);
         return beat>=startBeat&&beat<endBeat;
       })

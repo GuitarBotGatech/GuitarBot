@@ -16,6 +16,8 @@ let S={
   editMode:'select',
   snapEnabled:true,
   gridIdx:1,
+  stringSoloIndex:null,
+  stringMuted:[false,false,false],
   selPluckIds:new Set(),
   clipboardPluck:null,
     clipboardMidiCurves:null,
@@ -105,6 +107,32 @@ function clearMidiCurveSelection(){
 }
 const clampSpeed=v=>clamp(parseInt(v)||SPEED_DEFAULT,SPEED_MIN,SPEED_MAX);
 const speedToVelocity=s=>Math.round(((clampSpeed(s)-SPEED_MIN)/(SPEED_MAX-SPEED_MIN))*127);
+
+function stringLaneBounds(index){
+  const s=STRINGS[index];
+  if(!s)return null;
+  const top=noteToY(s.max);
+  const bottom=noteToY(s.min)+noteH;
+  return {top,bottom,height:Math.max(0,bottom-top)};
+}
+
+function stringTrackControlRects(index){
+  const bounds=stringLaneBounds(index);
+  if(!bounds)return null;
+  const pad=3;
+  const laneH=Math.max(16,bounds.height-pad*2);
+  const y=bounds.top+pad;
+  const labelH = 7;
+  const btnH = 16;
+  const btnW = 20;
+  const gap = 4;
+  const label = {x: 6, y: y + 1, w: LABEL_W - 12, h: labelH};
+  const stackH = btnH * 2 + gap;
+  const startY = Math.min(bounds.bottom - stackH - 2, y + labelH + 8);
+  const solo = {x: 6, y: startY, w: btnW, h: btnH};
+  const mute = {x: 6, y: startY + btnH + gap, w: btnW, h: btnH};
+  return {label,solo,mute,bounds};
+}
 function normalizeImportedSpeed(raw){
   const n=parseFloat(raw);
   if(!Number.isFinite(n))return SPEED_DEFAULT;

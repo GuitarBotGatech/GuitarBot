@@ -3,6 +3,17 @@
 // ═══════════════════════════════════════════════
 let drag=null;
 
+function hitStringTrackControl(cx,cy){
+  for(let index=0;index<STRINGS.length;index++){
+    const rects=stringTrackControlRects(index);
+    if(!rects)continue;
+    const inside=(r)=>cx>=r.x&&cx<=r.x+r.w&&cy>=r.y&&cy<=r.y+r.h;
+    if(inside(rects.solo))return {index,control:'solo'};
+    if(inside(rects.mute))return {index,control:'mute'};
+  }
+  return null;
+}
+
 canvas.addEventListener('contextmenu',e=>{
   e.preventDefault();
   const r=canvas.getBoundingClientRect();
@@ -49,6 +60,17 @@ canvas.addEventListener('pointerdown',e=>{
 
   // Vertical zoom drag on label column
   if(cx<LABEL_W){
+    const stringCtl=hitStringTrackControl(cx,cy);
+    if(stringCtl){
+      if(stringCtl.control==='solo'){
+        S.stringSoloIndex=(S.stringSoloIndex===stringCtl.index)?null:stringCtl.index;
+      }else if(stringCtl.control==='mute'){
+        S.stringMuted[stringCtl.index]=!S.stringMuted[stringCtl.index];
+      }
+      syncJSON();
+      render();
+      return;
+    }
     drag={type:'vzoom',sy:e.clientY,startNoteH:noteH};
     return;
   }

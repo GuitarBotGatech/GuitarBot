@@ -266,10 +266,42 @@ function drawLabels(){
     ctx.font=(isC?'600':'400')+' 9px "JetBrains Mono"';
     ctx.fillText(noteName(n),LABEL_W-4,y+noteH/2+3);
   }
-  // String range indicators
-  STRINGS.forEach(s=>{
-    const y1=noteToY(s.max), y2=noteToY(s.min)+noteH;
-    ctx.fillStyle=s.color+'44'; ctx.fillRect(2,y1,3,y2-y1);
+  // String lanes + controls in left column
+  STRINGS.forEach((s,index)=>{
+    const rects=stringTrackControlRects(index);
+    if(!rects)return;
+    const isSoloed=S.stringSoloIndex===index;
+    const hasAnySolo=Number.isInteger(S.stringSoloIndex);
+    const isMuted=!!S.stringMuted[index];
+    const inactive=(hasAnySolo&&!isSoloed)||isMuted;
+
+    ctx.fillStyle=inactive?'#1a1a28':s.dim;
+    ctx.fillRect(1,rects.bounds.top+1,LABEL_W-2,rects.bounds.height-2);
+    ctx.fillStyle=inactive?'#303050':s.color+'aa';
+    ctx.fillRect(2,rects.bounds.top+1,3,rects.bounds.height-2);
+
+    ctx.font='600 8px "JetBrains Mono"';
+    ctx.textAlign='left';
+    ctx.fillStyle=inactive?'#4a4a72':'#a5a5d0';
+    ctx.fillText(s.name,rects.label.x,rects.label.y+rects.label.h-1);
+
+    const drawBtn=(r,label,on,color)=>{
+      ctx.fillStyle=on?color+'cc':'#181827';
+      ctx.strokeStyle=on?color:'#2e2e48';
+      ctx.lineWidth=1;
+      ctx.beginPath();
+      ctx.roundRect(r.x, r.y, r.w, r.h, 4);
+      ctx.fill();
+      ctx.stroke();
+      ctx.font='600 10px "JetBrains Mono"';
+      ctx.fillStyle=on?'#0c0c12':'#6d6d98';
+      ctx.textAlign='center';
+      ctx.textBaseline='middle';
+      ctx.fillText(label,r.x+r.w/2,r.y+r.h/2 + 0.5);
+    };
+
+    drawBtn(rects.solo,'S',isSoloed,'#22d3ee');
+    drawBtn(rects.mute,'M',isMuted,'#f43f5e');
   });
 }
 

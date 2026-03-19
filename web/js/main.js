@@ -76,6 +76,8 @@ function applyNewProject(){
   S.editMode='select';
   S.snapEnabled=true;
   S.gridIdx=1;
+  S.stringSoloIndex=null;
+  S.stringMuted=[false,false,false];
   S.pluck=[];
   S.chord=[];
   S.midi=[];
