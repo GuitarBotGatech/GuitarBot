@@ -419,6 +419,7 @@ function drawMidiLane(){
   }
 
   for(let lane=0;lane<MIDI_AUTOMATION_KEYS.length;lane++){
+    if(!midiLaneVisible(lane))continue;
     const laneKey=automationLaneKey(lane);
     const points=[...(S.midiCurves[String(laneKey)]||[])].sort((a,b)=>a.beat-b.beat);
     if(!points.length)continue;
