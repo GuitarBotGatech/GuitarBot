@@ -475,12 +475,9 @@ function findMidiCCCollision(beat,cc,excludeId=null){
 function dedupeMidiCCCollisions(keepId){
   const keep=S.midi.find(ev=>ev.id===keepId);
   if(!keep)return;
-  const cc=midiCCFromEvent(keep);
-  if(cc===null)return;
   const keepBeat=trimBeatNumber(parseBeat(keep.beat));
   S.midi=S.midi.filter(ev=>{
     if(ev.id===keepId)return true;
-    if(midiCCFromEvent(ev)!==cc)return true;
     return Math.abs(trimBeatNumber(parseBeat(ev.beat))-keepBeat)>=1e-4;
   });
 }

@@ -1,6 +1,15 @@
 // ═══════════════════════════════════════════════
 // CRUD
 // ═══════════════════════════════════════════════
+function findPointCollision(array,beat,excludeId){
+  const b=trimBeatNumber(Math.max(0,beat));
+  for(const ev of array){
+    if(ev.id===excludeId)continue;
+    if(Math.abs(trimBeatNumber(parseBeat(ev.beat))-b)<1e-4)return ev;
+  }
+  return null;
+}
+
 function notesOverlap(startA,durA,noteA,startB,durB,noteB){
   return noteA===noteB&&startA<startB+durB&&startA+durA>startB;
 }
@@ -34,15 +43,14 @@ function rmPluck(id){
   syncJSON();
 }
 function addChord(b){
+  const existing=findPointCollision(S.chord,b,null);
+  if(existing){selChord(existing.id);return existing;}
   const ev={id:S.nextId++,chord:'Em',beat:beatLabel(b)};
   S.chord.push(ev); selChord(ev.id); syncJSON(); return ev;
 }
 function addMidi(b){
-  const existing=findMidiCCCollision(b,7,null);
-  if(existing){
-    selMidi(existing.id);
-    return existing;
-  }
+  const existing=findPointCollision(S.midi,b,null);
+  if(existing){selMidi(existing.id);return existing;}
   const ev={id:S.nextId++,address:'/cc',args:[7,64],interp:0,beat:beatLabel(b)};
   S.midi.push(ev); selMidi(ev.id); syncJSON(); return ev;
 }
@@ -150,6 +158,7 @@ function showCPop(ev,px,py){
 function closeCPop(){document.getElementById('cpop').classList.remove('on')}
 function updChord(k,v){
   const ev=S.chord.find(e=>e.id===S.selChord);if(!ev)return;
+  if(k==='beat'&&findPointCollision(S.chord,parseBeat(v),ev.id))return;
   ev[k]=v; syncJSON(); render();
 }
 function delChord(){
