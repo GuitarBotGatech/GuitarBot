@@ -42,6 +42,9 @@ function drawTempoPointOverlay(){
   const valueText=`${clamp(Math.round(target.value),TEMPO_MIN,TEMPO_MAX)} BPM`;
 
   ctx.save();
+  ctx.beginPath();
+  ctx.rect(LABEL_W, 0, CW - LABEL_W, canvasH());
+  ctx.clip();
   ctx.font='600 10px "JetBrains Mono"';
   const textW=ctx.measureText(valueText).width;
   const padX=6;
@@ -140,6 +143,11 @@ function midiAutomationEvents(){
 }
 
 function drawSlideLinks(){
+  ctx.save();
+  ctx.beginPath();
+  ctx.rect(LABEL_W, 0, CW - LABEL_W, canvasH());
+  ctx.clip();
+
   const byString=[[],[],[]];
   for(const ev of S.pluck){
     byString[eventStringIndex(ev)].push(ev);
@@ -182,6 +190,7 @@ function drawSlideLinks(){
       ctx.globalAlpha=1;
     }
   }
+  ctx.restore();
 }
 
 function drawCycleBar(){
@@ -360,6 +369,11 @@ function drawLabels(){
 }
 
 function drawChordLane(){
+  ctx.save();
+  ctx.beginPath();
+  ctx.rect(LABEL_W, 0, CW - LABEL_W, canvasH());
+  ctx.clip();
+
   state.chord.forEach(ev=>{
     const x=beatToX(parseBeat(ev.beat));
     if(x<LABEL_W-60||x>CW+20)return;
@@ -376,9 +390,15 @@ function drawChordLane(){
     ctx.fillStyle=col; ctx.font='600 10px "JetBrains Mono"';
     ctx.textAlign='left'; ctx.fillText(ev.chord,x+5,CHORD_H-9);
   });
+  ctx.restore();
 }
 
 function drawMidiLane(){
+  ctx.save();
+  ctx.beginPath();
+  ctx.rect(LABEL_W, 0, CW - LABEL_W, canvasH());
+  ctx.clip();
+
   if(midiLaneVisible(MIDI_GENERAL_LANE_INDEX)){
   const cy=midiLaneTop(MIDI_GENERAL_LANE_INDEX)+midiLaneHeight(MIDI_GENERAL_LANE_INDEX)/2;
   S.midi.forEach(ev=>{
@@ -441,6 +461,7 @@ function drawMidiLane(){
       ctx.globalAlpha=1;
     }
   }
+  ctx.restore();
 }
 
 function drawNotes(){
@@ -503,6 +524,9 @@ function drawSelectionBox(){
   const x=Math.min(drag.sx,drag.cx), y=Math.min(drag.sy,drag.cy);
   const w=Math.abs(drag.cx-drag.sx), h=Math.abs(drag.cy-drag.sy);
   ctx.save();
+  ctx.beginPath();
+  ctx.rect(LABEL_W, 0, CW - LABEL_W, canvasH());
+  ctx.clip();
   ctx.setLineDash([4,3]);
   ctx.fillStyle='rgba(34,211,238,0.14)';
   ctx.strokeStyle='#22d3ee';
@@ -515,9 +539,16 @@ function drawSelectionBox(){
 function drawPlayhead(){
   if(!S.playing&&S.playBeat===0)return;
   const x=beatToX(S.playBeat);
-  if(x<LABEL_W||x>CW)return;
+  if(x<LABEL_W-5||x>CW+5)return;
+  
+  ctx.save();
+  ctx.beginPath();
+  ctx.rect(LABEL_W, 0, CW - LABEL_W, canvasH());
+  ctx.clip();
+
   ctx.strokeStyle='#f43f5e'; ctx.lineWidth=1.5;
   ctx.beginPath(); ctx.moveTo(x,0); ctx.lineTo(x,canvasH()); ctx.stroke();
   ctx.fillStyle='#f43f5e';
   ctx.beginPath(); ctx.moveTo(x-5,0); ctx.lineTo(x+5,0); ctx.lineTo(x,8); ctx.closePath(); ctx.fill();
+  ctx.restore();
 }

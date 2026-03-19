@@ -142,12 +142,40 @@
 <!-- CHORD POPUP -->
 <div class="popup" id="cpop">
   <div class="ph">Chord Event <span class="pc" onclick="closeCPop()">×</span></div>
-  <div class="pr"><div class="pl">Chord Symbol</div>
-    <select id="cp-chord" onchange="updChord('chord',this.value)" style="width:100%">
-      <option>Em</option><option>Am</option><option>Dm</option><option>Bm</option>
-      <option>C</option><option>G</option><option>D</option><option>A</option>
-      <option>E</option><option>F</option><option>Fm</option><option>Gm</option>
-      <option>B</option><option>Eb</option><option>Ab</option><option>On</option>
+  <div class="pr"><div class="pl">Root</div>
+    <select id="cp-chord-root" onchange="updChordSplit()" style="width:100%">
+      <option value="C">C</option><option value="C#">C#</option>
+      <option value="D">D</option><option value="D#">D#</option>
+      <option value="E">E</option><option value="F">F</option>
+      <option value="F#">F#</option><option value="G">G</option>
+      <option value="G#">G#</option><option value="A">A</option>
+      <option value="A#">A#</option><option value="B">B</option>
+    </select>
+  </div>
+  <div class="pr"><div class="pl">Quality</div>
+    <select id="cp-chord-quality" onchange="updChordSplit()" style="width:100%">
+      <option value="">Major</option>
+      <option value="m">Minor</option>
+    </select>
+  </div>
+  <div class="pr"><div class="pl">Extension</div>
+    <select id="cp-chord-ext" onchange="updChordSplit()" style="width:100%">
+      <option value="">(None)</option>
+      <option value="7">7 (Dominant)</option>
+      <option value="^7">^7 (Major 7)</option>
+      <option value="9">9 (Dominant 9)</option>
+      <option value="^9">^9 (Major 9)</option>
+      <option value="11">11</option>
+      <option value="13">13</option>
+      <option value="^13">^13 (Major 13)</option>
+      <option value="6">6</option>
+      <option value="dim">dim (Diminished)</option>
+      <option value="dim7">dim7 (Fully Dim)</option>
+      <option value="7b5">7b5 (Half Dim)</option>
+      <option value="aug">aug (Augmented)</option>
+      <option value="sus2">sus2</option>
+      <option value="sus4">sus4</option>
+      <option value="5">5 (Power chord)</option>
     </select>
   </div>
   <div class="pr"><div class="pl">Beat Position</div>

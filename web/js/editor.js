@@ -163,7 +163,28 @@ function delSelectedMidiCurvePoints(){
 function showCPop(ev,px,py){
   const p=document.getElementById('cpop');
   p.style.left=px+'px'; p.style.top=py+'px'; p.classList.add('on');
-  document.getElementById('cp-chord').value=ev.chord;
+  
+  const m=ev.chord.match(/^([A-G][#b]?)(m?)(.*)$/);
+  const root=m?m[1]:'E';
+  const qual=m?m[2]:'';
+  const ext=m?m[3]:'';
+  
+  const rSel=document.getElementById('cp-chord-root');
+  if(![...rSel.options].some(o=>o.value===root)){
+    let r=root;
+    if(r==='Db')r='C#';else if(r==='Eb')r='D#';else if(r==='Gb')r='F#';else if(r==='Ab')r='G#';else if(r==='Bb')r='A#';
+    rSel.value=r;
+  }else rSel.value=root;
+  
+  document.getElementById('cp-chord-quality').value=qual;
+
+  const eSel=document.getElementById('cp-chord-ext');
+  if(![...eSel.options].some(o=>o.value===ext)){
+    const opt=document.createElement('option');
+    opt.value=ext; opt.text=ext; eSel.add(opt);
+  }
+  eSel.value=ext;
+
   document.getElementById('cp-beat').value=ev.beat;
   setTimeout(()=>{
     const r=p.getBoundingClientRect();
@@ -176,6 +197,14 @@ function updChord(k,v){
   const ev=S.chord.find(e=>e.id===S.selChord);if(!ev)return;
   if(k==='beat'&&findPointCollision(S.chord,parseBeat(v),ev.id))return;
   ev[k]=v; syncJSON(); render();
+}
+function updChordSplit(){
+  const ev=S.chord.find(e=>e.id===S.selChord);if(!ev)return;
+  const root=document.getElementById('cp-chord-root').value;
+  const qual=document.getElementById('cp-chord-quality').value;
+  const ext=document.getElementById('cp-chord-ext').value;
+  ev.chord=root+qual+ext;
+  syncJSON(); render();
 }
 function delChord(){
   if(S.selChord===null)return;
