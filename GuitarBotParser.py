@@ -532,6 +532,10 @@ class GuitarBotParser:
             lh_motor_positions.append([motor_values, timestamp])
         return lh_motor_positions
 
+    # Maps 0-based string index to picker ID for chord pluck messages.
+    # Only strings 0, 2, 4 have physical pluckers.
+    _CHORD_PLUCK_STRING_TO_PICKER = {0: 0, 2: 1, 4: 2}
+
     def parsePickMIDI(self, picks):
         """
         Parses picking MIDI commands and converts them into motor positions.
@@ -543,6 +547,11 @@ class GuitarBotParser:
                 OR
                 (note, duration, speed, slide_toggle, timestamp, string) for manual assignment,
                 where 'string' is an integer from 1 to 6.
+
+                Special chord pluck format: when note is 0-5, it is treated as a direct
+                string index (0-based) that activates the plucker without modifying the
+                slider trajectory.  Only strings 0, 2, 4 have pluckers; strings 1, 3, 5
+                will produce a warning and be skipped.
         Returns:
             tuple: A tuple containing:
                 - pick_motor_positions (list): A list of motor position events for the picking mechanism.
@@ -562,6 +571,20 @@ class GuitarBotParser:
                 specified_string = None
             assigned = False
             timestamp = round(timestamp * tu.TIMESTAMP_ROUNDING_FACTOR) / tu.TIMESTAMP_ROUNDING_FACTOR
+
+            # Chord pluck: note 0-5 is a direct string index, not a MIDI pitch.
+            # The plucker fires but the slider trajectory is left unchanged.
+            if 0 <= note <= 5:
+                pickerID = self._CHORD_PLUCK_STRING_TO_PICKER.get(note)
+                if pickerID is None:
+                    print(f"Warning: String {note} has no plucker, skipping chord pluck at {timestamp}.")
+                elif timestamp >= active_pickers[pickerID]:
+                    pick_events.append(["pick", [pickerID, note, duration, speed, timestamp]])
+                    slide_toggles.append(slide_toggle)
+                    active_pickers[pickerID] = timestamp
+                else:
+                    print(f"Warning: Picker {pickerID} busy at {timestamp}, skipping chord pluck on string {note}.")
+                continue
             duration = round(duration, 3)
             if duration < tu.TREMOLO_DURATION_THRESHOLD:
                 duration = tu.SHORT_NOTE_DEFAULT_DURATION
@@ -621,6 +644,12 @@ class GuitarBotParser:
 
         for pick_element in pick_motor_positions:
             pick_timestamp = pick_element[1]
+            note = pick_element[0][1]
+            # Chord plucks (note 0-5) are intentionally paired with chord events;
+            # they must not be filtered out by the LH overlap window.
+            if 0 <= note <= 5:
+                pick_motor_positions_prepped.append(pick_element)
+                continue
             overlap = any(abs(pick_timestamp - lh_ts) <= tu.MOVEMENT_OVERLAP_WINDOW for lh_ts in lh_timestamps)
             if not overlap:
                 pick_motor_positions_prepped.append(pick_element)
@@ -681,13 +710,15 @@ class GuitarBotParser:
                     trajectory_array[start_index : start_index + num_gen, motor_id] = all_points
                 current_positions[motor_id] = all_points[-1]
 
-            fret = note - tu.STRING_MIDI_RANGES[motor_id][0]
-            if fret == 0:
-                lh_enc_val = -1
-            else:
-                s_dir = tu.STRING_MIDI_RANGES[motor_id][2]
-                lh_enc_val = ((tu.SLIDER_MM_PER_FRET[fret - 1] * 2048) / tu.MM_TO_ENCODER_CONVERSION_FACTOR + tu.SLIDER_ENCODER_OFFSET) * s_dir
-            lh_pick_events.append([motor_id, lh_enc_val, slide_toggles[i], timestamp - tu.LH_PREP_TIME_BEFORE_PICK])
+            # Chord plucks (note 0-5) activate the plucker without repositioning the slider.
+            if note > 5:
+                fret = note - tu.STRING_MIDI_RANGES[motor_id][0]
+                if fret == 0:
+                    lh_enc_val = -1
+                else:
+                    s_dir = tu.STRING_MIDI_RANGES[motor_id][2]
+                    lh_enc_val = ((tu.SLIDER_MM_PER_FRET[fret - 1] * 2048) / tu.MM_TO_ENCODER_CONVERSION_FACTOR + tu.SLIDER_ENCODER_OFFSET) * s_dir
+                lh_pick_events.append([motor_id, lh_enc_val, slide_toggles[i], timestamp - tu.LH_PREP_TIME_BEFORE_PICK])
 
         df = pd.DataFrame(trajectory_array)
         df.ffill(inplace=True)
