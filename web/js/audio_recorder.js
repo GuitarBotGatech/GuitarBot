@@ -55,7 +55,17 @@ const AR = (() => {
     }
 
     chunks = [];
-    recStartBeat = S.playBeat;
+    let effectiveStartBeat = S.playBeat;
+    const cycleRange = getCycleRange();
+    if (!S.playing && cycleRange && (effectiveStartBeat < cycleRange.startBeat || effectiveStartBeat >= cycleRange.endBeat)) {
+      effectiveStartBeat = cycleRange.startBeat;
+      if (typeof setPlayheadBeat === 'function') {
+        setPlayheadBeat(effectiveStartBeat);
+      } else {
+        S.playBeat = effectiveStartBeat;
+      }
+    }
+    recStartBeat = effectiveStartBeat;
 
     mediaRecorder = new MediaRecorder(stream);
     mediaRecorder.ondataavailable = e => { if (e.data.size > 0) chunks.push(e.data); };
