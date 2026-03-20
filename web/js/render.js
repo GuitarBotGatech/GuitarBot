@@ -7,7 +7,13 @@ let CW=0;
 
 function resize(){
   CW=document.getElementById('roll-wrap').clientWidth;
-  canvas.width=CW; canvas.height=canvasH();
+  const h=canvasH();
+  const dpr=window.devicePixelRatio||1;
+  canvas.width=CW*dpr;
+  canvas.height=h*dpr;
+  canvas.style.width=CW+'px';
+  canvas.style.height=h+'px';
+  ctx.scale(dpr,dpr);
   render();
 }
 
