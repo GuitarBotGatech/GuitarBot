@@ -33,6 +33,7 @@ async function _analyzeViaPython() {
       bpm:            S.bpm,
       time_sig:       S.timeSig,
       latency_ms:     S.latencyMs,
+      latency_drift_ms_per_min: S.latencyDriftMsPerMin,
       rec_start_beat: S.recStartBeat,
     };
     const resp = await fetch('http://127.0.0.1:8765/analyze', {
@@ -92,11 +93,12 @@ function _analyzeAllNotesJS() {
 
     const { fftSize, sampleRate, minBin } = params;
     const dataLen = frames[0].data.length;
-    const latencyBeats = (S.latencyMs || 0) / (secondsPerBeat() * 1000);
+    const spb = secondsPerBeat();
     const result = {};
 
     for (const ev of S.pluck) {
       const noteBeat = parseBeat(ev.beat);
+      const latencyBeats = latencyMsAtBeat(noteBeat, S.recStartBeat) / (spb * 1000);
       const wStart = noteBeat + latencyBeats - HIT_WINDOW_BEFORE;
       const wEnd   = noteBeat + latencyBeats + HIT_WINDOW_AFTER;
       const wFrames = frames.filter(f => f.beat >= wStart && f.beat <= wEnd);

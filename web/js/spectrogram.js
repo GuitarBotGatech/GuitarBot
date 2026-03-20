@@ -67,8 +67,7 @@ function drawSpectrogram() {
 
   const binCache = isPython ? null : _getNoteBinCache(params);
   const dataLen = frames[0].data.length;
-  // Python frames: latency already baked in. Browser frames: shift left by latency.
-  const latencyBeats = isPython ? 0 : (S.latencyMs || 0) / (secondsPerBeat() * 1000);
+  const spb = secondsPerBeat();
 
   ctx.save();
   ctx.beginPath();
@@ -77,7 +76,8 @@ function drawSpectrogram() {
   ctx.globalAlpha = 0.62;
 
   for (const frame of frames) {
-    const x = beatToX(frame.beat - latencyBeats);
+    const frameLatencyBeats = isPython ? 0 : (latencyMsAtBeat(frame.beat, S.recStartBeat) / (spb * 1000));
+    const x = beatToX(frame.beat - frameLatencyBeats);
     if (x + frameW < LABEL_W || x > CW) continue;
 
     for (let n = MIDI_MIN; n <= MIDI_MAX; n++) {

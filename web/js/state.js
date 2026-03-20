@@ -35,6 +35,7 @@ let S={
   spectrogramVisible:false,
   recordingActive:false,
   latencyMs:80,
+  latencyDriftMsPerMin:0,
   audioWavB64:null,
   recStartBeat:0,
 };
@@ -145,6 +146,13 @@ const secondsPerBeat=()=>{
 const secondsToBeat=t=>trimBeatNumber(Math.max(0,parseFloat(t)||0)/secondsPerBeat());
 const secondsToDurationBeats=t=>Math.max(0.02,trimBeatNumber((parseFloat(t)||0)/secondsPerBeat()));
 const beatsToSeconds=b=>Math.max(0,parseFloat(b)||0)*secondsPerBeat();
+const latencyMsAtBeat=(beat,referenceBeat=S.recStartBeat)=>{
+  const base=Math.max(0,parseFloat(S.latencyMs)||0);
+  const driftPerMin=parseFloat(S.latencyDriftMsPerMin)||0;
+  const elapsedBeats=Math.max(0,(parseFloat(beat)||0)-(parseFloat(referenceBeat)||0));
+  const elapsedMinutes=(elapsedBeats*secondsPerBeat())/60;
+  return Math.max(0,base+(driftPerMin*elapsedMinutes));
+};
 const formatTimelineSeconds=s=>{
   const total=Math.max(0,parseFloat(s)||0);
   if(total<60)return `${parseFloat(total.toFixed(2)).toString()}s`;

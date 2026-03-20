@@ -157,6 +157,7 @@ def _analyze_audio(payload: dict) -> dict:
     bpm_val: float = float(payload.get("bpm", 120))
     time_sig: str = payload.get("time_sig", "4/4")
     latency_ms: float = float(payload.get("latency_ms", 0))
+    latency_drift_ms_per_min: float = float(payload.get("latency_drift_ms_per_min", 0))
     rec_start_beat: float = float(payload.get("rec_start_beat", 0))
 
     # Time signature → seconds per beat
@@ -201,13 +202,18 @@ def _analyze_audio(payload: dict) -> dict:
         b = int(round(f * nperseg / sr))
         midi_bins[n] = min(b, db_matrix.shape[0] - 1)
 
-    # Latency in beats (robot plays this many beats after OSC is sent)
-    latency_beats = latency_ms / (seconds_per_beat * 1000.0)
+    # Beat-dependent latency in beats: base + drift over elapsed recording minutes
+    def latency_beats_at(beat_value: float) -> float:
+        elapsed_beats = max(0.0, beat_value - rec_start_beat)
+        elapsed_minutes = (elapsed_beats * seconds_per_beat) / 60.0
+        latency_ms_now = max(0.0, latency_ms + (latency_drift_ms_per_min * elapsed_minutes))
+        return latency_ms_now / (seconds_per_beat * 1000.0)
 
     # Build spectrogram frames aligned to sequencer beats (latency already applied)
     spec_frames = []
     for i, t in enumerate(times):
-        beat = rec_start_beat + t / seconds_per_beat - latency_beats
+        raw_beat = rec_start_beat + t / seconds_per_beat
+        beat = raw_beat - latency_beats_at(raw_beat)
         data = [
             float(db_matrix[midi_bins[n], i]) for n in range(MIDI_MIN_VAL, MIDI_MAX_VAL + 1)
         ]
@@ -226,8 +232,9 @@ def _analyze_audio(payload: dict) -> dict:
             continue
 
         note_beat = _parse_beat_label(str(ev.get("beat", "")), beats_per_bar)
-        w_start = note_beat + latency_beats - HIT_WINDOW_BEFORE
-        w_end = note_beat + latency_beats + HIT_WINDOW_AFTER
+        note_latency_beats = latency_beats_at(note_beat)
+        w_start = note_beat + note_latency_beats - HIT_WINDOW_BEFORE
+        w_end = note_beat + note_latency_beats + HIT_WINDOW_AFTER
 
         # Convert beat window to time window
         t_start = w_start * seconds_per_beat
@@ -253,8 +260,8 @@ def _analyze_audio(payload: dict) -> dict:
         tremolo_hz = None
         duration_b = float(ev.get("duration_b", 0))
         if duration_b > 0.5:
-            dur_t_start = (note_beat + latency_beats) * seconds_per_beat
-            dur_t_end = (note_beat + latency_beats + duration_b) * seconds_per_beat
+            dur_t_start = (note_beat + note_latency_beats) * seconds_per_beat
+            dur_t_end = (note_beat + note_latency_beats + duration_b) * seconds_per_beat
             dur_mask = (times >= dur_t_start) & (times <= dur_t_end)
             if dur_mask.sum() >= 20:
                 lin = np.power(10.0, db_matrix[lo : hi + 1, :][:, dur_mask] / 20.0)

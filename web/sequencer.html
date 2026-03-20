@@ -65,13 +65,11 @@
   <div class="sep"></div>
   <div class="tg">
     <button class="tbtn rec" id="btn-record" title="Upload to bot + record audio">⏺</button>
+    <button class="tbtn gear" id="btn-settings" title="Latency settings">⚙</button>
     <button class="tbtn spec" id="btn-spectrogram" title="Toggle spectrogram">SPEC</button>
     <button class="tbtn" id="btn-analyze" title="Analyze recording">ANALYZE</button>
     <span class="analyze-status" id="analyze-status"></span>
     <button class="tbtn" id="btn-clear-recording" title="Clear recording">✕REC</button>
-    <span class="tl">LAT</span>
-    <input type="number" id="rec-latency" value="80" min="0" max="2000" step="10" style="width:52px;text-align:center" title="Robot latency offset (ms)">
-    <span class="tl">ms</span>
   </div>
   <div class="tr">
     <button class="tbtn act" id="btn-upload">⇪ Upload to Bot</button>
@@ -238,6 +236,24 @@
   </div>
   <button class="mlbtn" id="ml-clear" onclick="clearSelectedMidiAutomationLane()">Delete Automation</button>
   <button class="mlbtn" id="ml-mute" onclick="toggleSelectedMidiAutomationMute()">Mute Automation</button>
+</div>
+
+<!-- SETTINGS POPUP -->
+<div class="popup" id="settings-pop">
+  <div class="ph">Latency Settings <span class="pc" onclick="closeSettingsPop()">×</span></div>
+  <div class="pr">
+    <div class="pl">Base Latency (ms)</div>
+    <input type="number" id="set-latency-ms" min="0" max="3000" step="1" style="width:100%">
+  </div>
+  <div class="pr">
+    <div class="pl">Drift (ms/min)</div>
+    <input type="number" id="set-latency-drift" min="-500" max="500" step="0.1" style="width:100%">
+  </div>
+  <div class="pr" style="display:flex;gap:6px;flex-wrap:wrap">
+    <button class="mlbtn" id="btn-calibrate-latency-quick" style="flex:1">Quick Calibrate</button>
+    <button class="mlbtn" id="btn-calibrate-latency-long" style="flex:1">Long Calibrate</button>
+  </div>
+  <div class="pl" style="margin-top:4px">Quick = single test pluck, Long = multi-point drift fit.</div>
 </div>
 
 <input type="file" id="hidden-file" accept=".json">
