@@ -130,6 +130,26 @@ function updStrOv(v){
 }
 function delSelNote(){if(S.selPluck!==null){rmPluck(S.selPluck);render()}}
 
+function toggleSlideForSelectedPluckEvents(){
+  const selected=getSelectedPluckEvents();
+  if(!selected.length)return false;
+  const allOn=selected.every(ev=>ev.slide===1);
+  const next=allOn?0:1;
+  for(const ev of selected)ev.slide=next;
+
+  if(S.selPluck!==null&&selected.length===1){
+    const sel=S.pluck.find(e=>e.id===S.selPluck);
+    if(sel){
+      document.getElementById('i-slide').checked=sel.slide===1;
+      document.getElementById('i-slide-lbl').textContent=sel.slide?'On':'Off';
+    }
+  }
+
+  syncJSON();
+  render();
+  return true;
+}
+
 function delSelectedPluckEvents(){
   const ids=S.selPluckIds.size?[...S.selPluckIds]:(S.selPluck!==null?[S.selPluck]:[]);
   if(!ids.length)return false;

@@ -30,6 +30,12 @@ document.addEventListener('keydown',e=>{
     render();
     return;
   }
+  if(!e.ctrlKey&&!e.metaKey&&!e.altKey&&k==='s'){
+    if(toggleSlideForSelectedPluckEvents()){
+      e.preventDefault();
+    }
+    return;
+  }
   if(k==='b'){setEditMode(S.editMode==='draw'?'select':'draw');render();return;}
   if((e.ctrlKey||e.metaKey)&&k==='a'){
     e.preventDefault();
