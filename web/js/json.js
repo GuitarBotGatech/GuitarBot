@@ -342,11 +342,13 @@ function loadJSON(data){
           : ((ev.duration_s!==undefined&&ev.duration_s!==null)
               ? secondsToDurationBeats(ev.duration_s)
               : (parseFloat(ev.duration)||0.5));
-        S.pluck.push({id:S.nextId++,note:ev.note||52,
+        S.pluck.push(ensureSlideShape({id:S.nextId++,note:ev.note||52,
           duration_b:durationBeats,
           speed:normalizeImportedSpeed(ev.speed),slide:ev.slide??0,
+          slideIn:ev.slideIn??ev.slide_in??0,
+          slideOut:ev.slideOut??ev.slide_out??0,
           beat:hasBeat?ev.beat:beatLabel(b),
-          string_index:ev.string_index??null});
+          string_index:ev.string_index??null}));
       } else if(tr.type==='chord'){
         S.chord.push({id:S.nextId++,chord:ev.chord||'Em',beat:hasBeat?ev.beat:beatLabel(b)});
       } else if(tr.type==='midi'){

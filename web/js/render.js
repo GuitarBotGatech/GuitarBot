@@ -168,10 +168,10 @@ function drawSlideLinks(){
 
   for(const events of byString){
     events.sort((a,b)=>parseBeat(a.beat)-parseBeat(b.beat)||a.id-b.id);
-    for(let index=0;index<events.length-1;index++){
-      const from=events[index];
-      if(!from.slide)continue;
-      const to=events[index+1];
+    for(let index=1;index<events.length;index++){
+      const to=events[index];
+      if(!to.slide)continue;
+      const from=events[index-1];
 
       const fromBeat=parseBeat(from.beat);
       const toBeat=parseBeat(to.beat);
@@ -182,7 +182,7 @@ function drawSlideLinks(){
 
       if(toX<LABEL_W||fromX>CW)continue;
 
-      const color=strOf(from.note).color;
+      const color=strOf(to.note).color;
       ctx.strokeStyle=color;
       ctx.lineWidth=1.3;
       ctx.globalAlpha=0.85;
@@ -520,6 +520,16 @@ function drawNotes(){
       for(let sx=x-noteH;sx<x+w+noteH;sx+=5){
         ctx.beginPath(); ctx.moveTo(sx,y+1); ctx.lineTo(sx+noteH-2,y+noteH-1); ctx.stroke();
       }
+
+      const markerX=Math.max(LABEL_W+3, x+4);
+      const markerY=y+(noteH/2);
+      ctx.beginPath();
+      ctx.moveTo(markerX+6,markerY-4);
+      ctx.lineTo(markerX,markerY);
+      ctx.lineTo(markerX+6,markerY+4);
+      ctx.strokeStyle='rgba(255,255,255,0.8)';
+      ctx.lineWidth=1.4;
+      ctx.stroke();
     }
     // Tremolo wave
     if(isTrem){

@@ -91,14 +91,14 @@ canvas.addEventListener('pointerdown',e=>{
       }
       selPluck(hit.id);
     } else if(cx>=LABEL_W){
-      const b=normalizeBeat(Math.max(0,xToBeat(cx)));
+      const b=normalizePlacementBeat(Math.max(0,xToBeat(cx)));
       const n=clampNote(yToNote(cy));
       if(b<totalBeats())addNote(b,n);
       deselectAll();
     }
   } else {
     if(cx<LABEL_W)return;
-    const clickedBeat=normalizeBeat(Math.max(0,xToBeat(cx)));
+    const clickedBeat=normalizePlacementBeat(Math.max(0,xToBeat(cx)));
     const clickedNote=clampNote(yToNote(cy));
     S.pasteAnchor={
       beat:clickedBeat,
@@ -313,7 +313,7 @@ canvas.addEventListener('dblclick',e=>{
   }
 
   if(cx>=LABEL_W&&cy<CHORD_H){
-    const b=normalizeBeat(Math.max(0,xToBeat(cx)));
+    const b=normalizePlacementBeat(Math.max(0,xToBeat(cx)));
     if(b<totalBeats()){
       addChord(b);
       render();
@@ -423,7 +423,7 @@ function midiDown(cx,cy,e){
   if(cx<LABEL_W)return;
   const lane=midiLaneAtY(cy);
   if(lane<0)return;
-  const beat=normalizeBeat(clamp(xToBeat(cx),0,totalBeats()));
+  const beat=normalizePlacementBeat(clamp(xToBeat(cx),0,totalBeats()));
   S.pasteAnchor={beat,note:MIDI_MIN};
 
   if(lane!==MIDI_GENERAL_LANE_INDEX){

@@ -130,11 +130,13 @@ const laneForCC=cc=>{
 const tempoLane=()=>0;
 const gridStep=()=>GRID_STEPS[S.gridIdx].beats;
 const snap=b=>{const gs=gridStep();return Math.round(b/gs)*gs;};
+const snapCellStart=b=>{const gs=gridStep();return Math.floor(b/gs)*gs;};
 const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
 
 const trimBeatNumber=v=>parseFloat(Number(v).toFixed(4));
 const midiCurvePointKey=beat=>trimBeatNumber(Math.max(0,parseFloat(beat)||0)).toFixed(4);
 const normalizeBeat=b=>S.snapEnabled?snap(b):trimBeatNumber(b);
+const normalizePlacementBeat=b=>S.snapEnabled?snapCellStart(b):trimBeatNumber(b);
 const minDurationBeats=()=>S.snapEnabled?gridStep():0.02;
 const noteDurationSeconds=ev=>ev.duration_b*(60/Math.max(1,S.bpm));
 const secondsPerBeat=()=>{
@@ -215,6 +217,15 @@ function normalizeImportedSpeed(raw){
     return clampSpeed(scaled);
   }
   return clampSpeed(n);
+}
+
+function ensureSlideShape(ev){
+  if(!ev)return ev;
+  ev.slide=ev.slide===1?1:0;
+  // TODO: keep placeholders for future independent slide-in / slide-out semantics.
+  ev.slideIn=ev.slideIn===1?1:0;
+  ev.slideOut=ev.slideOut===1?1:0;
+  return ev;
 }
 
 function beatLabel(b){
