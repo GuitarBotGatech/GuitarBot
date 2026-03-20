@@ -558,6 +558,42 @@ function drawNotes(){
       ctx.fillStyle='rgba(255,255,255,0.45)';
       ctx.fillRect(hx,y+2,3,noteH-4);
     }
+
+    const layout=(typeof noteWarningBadgeLayout==='function')?noteWarningBadgeLayout(ev):null;
+    if(layout){
+      const pulse=(typeof noteWarningPulseActive==='function')?noteWarningPulseActive():false;
+      const badgeR=layout.r;
+      const badgeCx=layout.cx;
+      const badgeCy=layout.cy;
+
+      ctx.save();
+      if(pulse){
+        ctx.shadowColor='rgba(251,191,36,0.95)';
+        ctx.shadowBlur=16;
+      }
+      ctx.fillStyle='rgba(245,158,11,0.96)';
+      ctx.beginPath();
+      ctx.arc(badgeCx,badgeCy,badgeR,0,Math.PI*2);
+      ctx.fill();
+      ctx.strokeStyle='#fff3c4';
+      ctx.lineWidth=1.4;
+      ctx.stroke();
+
+      ctx.shadowBlur=0;
+      ctx.fillStyle='#19130a';
+      ctx.font='700 9px "JetBrains Mono"';
+      ctx.textAlign='center';
+      ctx.textBaseline='middle';
+      ctx.fillText(String(Math.min(99,layout.warningCount)),badgeCx,badgeCy+0.5);
+
+      ctx.strokeStyle='rgba(245,158,11,0.85)';
+      ctx.lineWidth=1;
+      ctx.beginPath();
+      ctx.moveTo(badgeCx+badgeR*0.45,badgeCy+badgeR*0.45);
+      ctx.lineTo(cx2,y+1);
+      ctx.stroke();
+      ctx.restore();
+    }
   });
 }
 

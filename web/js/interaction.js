@@ -49,6 +49,7 @@ canvas.addEventListener('contextmenu',e=>{
 
 canvas.addEventListener('pointerdown',e=>{
   if(e.button!==0)return;
+  if(typeof hideNoteWarningPopover==='function')hideNoteWarningPopover();
   canvas.setPointerCapture(e.pointerId);
   const r=canvas.getBoundingClientRect();
   const cx=e.clientX-r.left, cy=e.clientY-r.top;
@@ -148,6 +149,10 @@ canvas.addEventListener('pointermove',e=>{
   const r=canvas.getBoundingClientRect();
   const cx=e.clientX-r.left, cy=e.clientY-r.top;
   if(!drag){
+    if(typeof updateNoteWarningHover==='function'&&updateNoteWarningHover(cx,cy,e.clientX,e.clientY)){
+      canvas.style.cursor='pointer';
+      return;
+    }
     updateHoverCursor(cx,cy);
     return;
   }
@@ -273,6 +278,7 @@ canvas.addEventListener('pointermove',e=>{
 });
 
 canvas.addEventListener('pointerleave',()=>{
+  if(typeof hideNoteWarningPopover==='function')hideNoteWarningPopover();
   canvas.style.cursor=S.editMode==='draw'?'default':'crosshair';
 });
 

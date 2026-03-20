@@ -107,6 +107,7 @@ function syncJSON(){
   const raw=JSON.stringify(buildJSON());
   localStorage.setItem('guitarbot_autosave',raw);
   pushHistorySnapshot(raw);
+  if(typeof renderNoteWarnings==='function')renderNoteWarnings();
   const jp=document.getElementById('jp');
   if(!jp||!jp.classList.contains('open'))return;
   document.getElementById('jp-content').innerHTML=hlJSON(JSON.stringify(buildJSON(),null,2));
