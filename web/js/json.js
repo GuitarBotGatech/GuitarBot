@@ -119,6 +119,23 @@ function toggleJP(){
   syncJSON();
 }
 
+async function copyPreviewJSON(event){
+  if(event)event.stopPropagation();
+  const raw=JSON.stringify(buildJSON(),null,2);
+  try{
+    await navigator.clipboard.writeText(raw);
+  }catch(_e){
+    const ta=document.createElement('textarea');
+    ta.value=raw;
+    ta.style.position='fixed';
+    ta.style.opacity='0';
+    document.body.appendChild(ta);
+    ta.select();
+    document.execCommand('copy');
+    ta.remove();
+  }
+}
+
 function buildUploadJSON(){
   const full=buildJSON();
   const soloRange=Number.isInteger(S.stringSoloIndex)?STRINGS[S.stringSoloIndex]:null;

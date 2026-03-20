@@ -108,6 +108,25 @@ def _derive_lh_pick_events(payload: OscPayload, *, quiet: bool = True) -> list[l
     return lh_pick_events
 
 
+def _derive_pick_and_lh_pick_events(
+    payload: OscPayload, *, quiet: bool = True
+) -> tuple[list[list[Any]], list[list[Any]]]:
+    parser = GuitarBotParser(initial_point=copy.deepcopy(tu.initial_point), graph=False)
+    if quiet:
+        with contextlib.redirect_stdout(io.StringIO()):
+            lh_positions = parser.parseleftMIDI(payload.chords)
+            pick_positions, slide_toggles = parser.parsePickMIDI(payload.pluck)
+            pick_positions_adj = parser.prepPicker(lh_positions, pick_positions)
+            _, lh_pick_events = parser.interpPick(pick_positions_adj, slide_toggles, copy.deepcopy(tu.initial_point))
+            return pick_positions_adj, lh_pick_events
+
+    lh_positions = parser.parseleftMIDI(payload.chords)
+    pick_positions, slide_toggles = parser.parsePickMIDI(payload.pluck)
+    pick_positions_adj = parser.prepPicker(lh_positions, pick_positions)
+    _, lh_pick_events = parser.interpPick(pick_positions_adj, slide_toggles, copy.deepcopy(tu.initial_point))
+    return pick_positions_adj, lh_pick_events
+
+
 class PayloadFidelityAnalyzer:
     name = "payload_fidelity"
 
@@ -234,6 +253,104 @@ class SlideContinuityAnalyzer:
         }
 
 
+class TremoloReadinessAnalyzer:
+    name = "tremolo_readiness"
+
+    def __init__(
+        self,
+        *,
+        slider_tolerance: int = 3,
+        presser_ready_pos: int = tu.LH_PRESSER_PRESSED_POS,
+        quiet_parser_output: bool = True,
+    ):
+        self.slider_tolerance = int(slider_tolerance)
+        self.presser_ready_pos = int(presser_ready_pos)
+        self.quiet_parser_output = quiet_parser_output
+
+    def _analyze_payload(self, label: str, payload: OscPayload, trajectory: np.ndarray) -> dict[str, Any]:
+        pick_events, lh_pick_events = _derive_pick_and_lh_pick_events(payload, quiet=self.quiet_parser_output)
+        pick_by_timestamp = {round(float(ts), 3): event for event, ts in pick_events}
+
+        checked = 0
+        violations: list[dict[str, Any]] = []
+
+        for motor_id, target_slider_pos, _, lh_start_ts in lh_pick_events:
+            pick_ts = round(float(lh_start_ts) + float(tu.LH_PREP_TIME_BEFORE_PICK), 3)
+            pick_event = pick_by_timestamp.get(round(pick_ts, 3))
+            if pick_event is None:
+                continue
+
+            _, note, _, duration, _ = pick_event
+            if float(duration) < float(tu.TREMOLO_DURATION_THRESHOLD):
+                continue
+            if int(note) <= 5:
+                continue
+
+            checked += 1
+
+            slider_col = int(motor_id) * 2
+            presser_col = int(motor_id) * 2 + 6
+            start_idx = max(0, int(float(lh_start_ts) / tu.TIME_STEP))
+
+            target_slider = int(target_slider_pos)
+            if target_slider == -1:
+                continue
+
+            ready_idx = None
+            for idx in range(start_idx, trajectory.shape[0]):
+                slider_ok = abs(int(trajectory[idx, slider_col]) - target_slider) <= self.slider_tolerance
+                presser_ok = float(trajectory[idx, presser_col]) >= float(self.presser_ready_pos)
+                if slider_ok and presser_ok:
+                    ready_idx = idx
+                    break
+
+            if ready_idx is None:
+                violations.append(
+                    {
+                        "motor_id": int(motor_id),
+                        "note": int(note),
+                        "pick_timestamp": round(float(pick_ts), 6),
+                        "reason": "never_ready",
+                    }
+                )
+                continue
+
+            ready_ts = ready_idx * tu.TIME_STEP
+            delta_ms = (float(pick_ts) - float(ready_ts)) * 1000.0
+            if delta_ms < 0:
+                violations.append(
+                    {
+                        "motor_id": int(motor_id),
+                        "note": int(note),
+                        "pick_timestamp": round(float(pick_ts), 6),
+                        "ready_timestamp": round(float(ready_ts), 6),
+                        "early_by_ms": round(abs(float(delta_ms)), 3),
+                    }
+                )
+
+        return {
+            "label": label,
+            "checked_tremolo_events": checked,
+            "violation_count": len(violations),
+            "violations": violations,
+            "pass": len(violations) == 0,
+            "config": {
+                "slider_tolerance": self.slider_tolerance,
+                "presser_ready_pos": self.presser_ready_pos,
+                "tremolo_duration_threshold": tu.TREMOLO_DURATION_THRESHOLD,
+            },
+        }
+
+    def analyze(self, context: HarnessContext) -> dict[str, Any]:
+        python_result = self._analyze_payload("python", context.python_payload, context.python_trajectory)
+        json_result = self._analyze_payload("json", context.json_payload, context.json_trajectory)
+        return {
+            "pass": python_result["pass"] and json_result["pass"],
+            "python": python_result,
+            "json": json_result,
+        }
+
+
 class TrajectoryHarness:
     def __init__(self, analyzers: list[Analyzer] | None = None, *, quiet_parser_output: bool = True):
         self.quiet_parser_output = quiet_parser_output
@@ -241,6 +358,7 @@ class TrajectoryHarness:
             PayloadFidelityAnalyzer(),
             TrajectoryDiffAnalyzer(),
             SlideContinuityAnalyzer(quiet_parser_output=quiet_parser_output),
+            TremoloReadinessAnalyzer(quiet_parser_output=quiet_parser_output),
         ]
 
     def run(self, *, python_payload: OscPayload, json_payload: OscPayload) -> dict[str, Any]:

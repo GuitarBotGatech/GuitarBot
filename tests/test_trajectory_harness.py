@@ -6,7 +6,13 @@ import pytest
 import tune as tu
 from GuitarBotParser import GuitarBotParser
 from pluck_message_to_json import pluck_message_to_song_dict
-from trajectory_harness import PayloadFidelityAnalyzer, OscPayload, _derive_lh_pick_events, compute_trajectory
+from trajectory_harness import (
+    PayloadFidelityAnalyzer,
+    TremoloReadinessAnalyzer,
+    OscPayload,
+    _derive_lh_pick_events,
+    compute_trajectory,
+)
 
 
 def test_payload_fidelity_analyzer_passes_for_equivalent_python_and_json_payloads(tmp_path):
@@ -114,3 +120,55 @@ class TestChordPluckParsing:
             traj_pluck[:rows, slider_cols],
             err_msg="Chord pluck modified slider positions unexpectedly.",
         )
+
+
+def _build_context_from_payload(payload: OscPayload):
+    trajectory = compute_trajectory(payload)
+    return type(
+        "Context",
+        (),
+        {
+            "python_payload": payload,
+            "json_payload": payload,
+            "python_trajectory": trajectory,
+            "json_trajectory": trajectory,
+        },
+    )()
+
+
+def test_tremolo_readiness_flags_early_pick_start():
+    payload = OscPayload(
+        chords=[],
+        pluck=[
+            [43, 1.0, 6, 0, 4.0],
+            [45, 1.0, 6, 1, 5.0],
+            [43, 1.0, 6, 0, 6.0],
+        ],
+        midi=[],
+    )
+
+    analyzer = TremoloReadinessAnalyzer(presser_ready_pos=tu.LH_PRESSER_PRESSED_POS)
+    result = analyzer.analyze(_build_context_from_payload(payload))
+
+    assert result["pass"] is False
+    assert result["python"]["checked_tremolo_events"] >= 1
+    assert result["python"]["violation_count"] >= 1
+
+
+def test_tremolo_readiness_passes_with_sufficient_lead_time():
+    payload = OscPayload(
+        chords=[],
+        pluck=[
+            [43, 0.25, 6, 0, 4.0],
+            [43, 1.0, 6, 0, 4.5],
+            [43, 0.25, 6, 0, 5.5],
+        ],
+        midi=[],
+    )
+
+    analyzer = TremoloReadinessAnalyzer(presser_ready_pos=tu.LH_PRESSER_PRESSED_POS)
+    result = analyzer.analyze(_build_context_from_payload(payload))
+
+    assert result["pass"] is True
+    assert result["python"]["checked_tremolo_events"] >= 1
+    assert result["python"]["violation_count"] == 0
