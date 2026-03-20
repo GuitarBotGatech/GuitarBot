@@ -867,7 +867,13 @@ transition_segment = get_pluck_segment(string_theory, 74.0, 100.0)
 song_segment = get_pluck_segment(string_theory, 0.0, 101)
 outro_segment = get_pluck_segment(string_theory, 1+40.0, 170.0)
 # Set part here
-pluck_message = Async_Glissando_Phrase_2
+#pluck_message = Variable_Speed_Tremolo_1 #NA
+#pluck_message = Variable_Speed_Tremolo_2
+#pluck_message = Async_Glissando_Phrase_1
+#pluck_message = Async_Glissando_Phrase_2 #NA
+#pluck_message = Polyrhythmic_Phrase_1 #NA
+#pluck_message = Polyrhythmic_Phrase_2
+pluck_message = string_theory
 
 # print("First 3 notes of selected segment:")
 # for msg in chorus_segment[:3]:
