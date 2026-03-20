@@ -408,7 +408,7 @@ function pasteTimelineEvents(){
     for(const src of clipPluck.events){
       const b=targetBeat+(src.beat-clipPluck.originBeat);
       if(b<0||b>=totalBeats())continue;
-      const n=clamp(src.note,MIDI_MIN,MIDI_MAX);
+      const n=clampNote(src.note);
       const ev={
         id:S.nextId++,
         note:n,
