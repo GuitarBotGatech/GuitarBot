@@ -62,6 +62,15 @@
     <button class="tbtn" id="zoom-out" title="Zoom out">−</button>
     <button class="tbtn" id="zoom-in" title="Zoom in">+</button>
   </div>
+  <div class="sep"></div>
+  <div class="tg">
+    <button class="tbtn rec" id="btn-record" title="Upload to bot + record audio">⏺</button>
+    <button class="tbtn gear" id="btn-settings" title="Latency settings">⚙</button>
+    <button class="tbtn spec" id="btn-spectrogram" title="Toggle spectrogram">SPEC</button>
+    <button class="tbtn" id="btn-analyze" title="Analyze recording">ANALYZE</button>
+    <span class="analyze-status" id="analyze-status"></span>
+    <button class="tbtn" id="btn-clear-recording" title="Clear recording">✕REC</button>
+  </div>
   <div class="tr">
     <button class="tbtn act" id="btn-upload">⇪ Upload to Bot</button>
     <button class="tbtn stop" id="btn-reset-bot">↺ Reset Bot</button>
@@ -85,6 +94,9 @@
     <div id="jp-bar" onclick="toggleJP()">
       <span id="jp-chev">▲</span>
       <span id="jp-lbl">JSON Preview</span>
+      <div id="jp-actions">
+        <button class="jp-btn" type="button" onclick="copyPreviewJSON(event)">Copy</button>
+      </div>
     </div>
     <div id="jp"><div id="jp-content"></div></div>
   </div>
@@ -112,7 +124,7 @@
         <div style="display:flex;justify-content:space-between;font-size:9px;color:var(--text-dim);margin-top:3px"><span>slow</span><span>fast</span></div>
       </div>
       <div class="if">
-        <div class="il">Slide</div>
+        <div class="il">Slide In</div>
         <div class="tog-row">
           <label class="tog"><input type="checkbox" id="i-slide" onchange="updSlide(this.checked)"><div class="tog-t"></div><div class="tog-k"></div></label>
           <span class="tog-lbl" id="i-slide-lbl">Off</span>
@@ -131,6 +143,11 @@
           <option value="1">1 — D</option>
           <option value="2">2 — B</option>
         </select>
+      </div>
+      <div class="if" id="i-analysis-row" style="display:none">
+        <div class="il">Recording Analysis</div>
+        <div id="i-hit-status" style="font-size:12px;font-weight:600;margin-bottom:3px"></div>
+        <div id="i-tremolo-rate" style="font-size:11px;color:var(--purple)"></div>
       </div>
       <button class="del-btn" onclick="delSelNote()">Delete Note</button>
     </div>
@@ -224,6 +241,24 @@
   <button class="mlbtn" id="ml-mute" onclick="toggleSelectedMidiAutomationMute()">Mute Automation</button>
 </div>
 
+<!-- SETTINGS POPUP -->
+<div class="popup" id="settings-pop">
+  <div class="ph">Latency Settings <span class="pc" onclick="closeSettingsPop()">×</span></div>
+  <div class="pr">
+    <div class="pl">Base Latency (ms)</div>
+    <input type="number" id="set-latency-ms" min="0" max="3000" step="1" style="width:100%">
+  </div>
+  <div class="pr">
+    <div class="pl">Drift (ms/min)</div>
+    <input type="number" id="set-latency-drift" min="-500" max="500" step="0.1" style="width:100%">
+  </div>
+  <div class="pr" style="display:flex;gap:6px;flex-wrap:wrap">
+    <button class="mlbtn" id="btn-calibrate-latency-quick" style="flex:1">Quick Calibrate</button>
+    <button class="mlbtn" id="btn-calibrate-latency-long" style="flex:1">Long Calibrate</button>
+  </div>
+  <div class="pl" style="margin-top:4px">Quick = single test pluck, Long = multi-point drift fit.</div>
+</div>
+
 <input type="file" id="hidden-file" accept=".json">
 
 <script src="js/constants.js"></script>
@@ -235,5 +270,8 @@
 <script src="js/toolbar.js"></script>
 <script src="js/json.js"></script>
 <script src="js/main.js"></script>
+<script src="js/audio_recorder.js"></script>
+<script src="js/spectrogram.js"></script>
+<script src="js/analysis.js"></script>
 </body>
 </html>

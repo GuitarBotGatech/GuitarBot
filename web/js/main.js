@@ -30,6 +30,12 @@ document.addEventListener('keydown',e=>{
     render();
     return;
   }
+  if(!e.ctrlKey&&!e.metaKey&&!e.altKey&&k==='s'){
+    if(toggleSlideForSelectedPluckEvents()){
+      e.preventDefault();
+    }
+    return;
+  }
   if(k==='b'){setEditMode(S.editMode==='draw'?'select':'draw');render();return;}
   if((e.ctrlKey||e.metaKey)&&k==='a'){
     e.preventDefault();
@@ -114,12 +120,12 @@ function applyNewProject(){
 function applyExampleProject(){
   applyNewProject();
   S.pluck=[
-    {id:S.nextId++,note:52,duration_b:0.5,speed:6,slide:0,beat:"1.2",string_index:null},
-    {id:S.nextId++,note:55,duration_b:0.5,speed:7,slide:0,beat:"1.4",string_index:null},
-    {id:S.nextId++,note:59,duration_b:0.5,speed:6,slide:1,beat:"2.2",string_index:null},
-    {id:S.nextId++,note:62,duration_b:0.25,speed:9,slide:0,beat:"2.4",string_index:null},
-    {id:S.nextId++,note:52,duration_b:1.0,speed:6,slide:0,beat:"3.1",string_index:null},
-    {id:S.nextId++,note:55,duration_b:0.5,speed:7,slide:0,beat:"4.1",string_index:null},
+    ensureSlideShape({id:S.nextId++,note:52,duration_b:0.5,speed:6,slide:0,beat:"1.2",string_index:null}),
+    ensureSlideShape({id:S.nextId++,note:55,duration_b:0.5,speed:7,slide:0,beat:"1.4",string_index:null}),
+    ensureSlideShape({id:S.nextId++,note:59,duration_b:0.5,speed:6,slide:1,beat:"2.2",string_index:null}),
+    ensureSlideShape({id:S.nextId++,note:62,duration_b:0.25,speed:9,slide:0,beat:"2.4",string_index:null}),
+    ensureSlideShape({id:S.nextId++,note:52,duration_b:1.0,speed:6,slide:0,beat:"3.1",string_index:null}),
+    ensureSlideShape({id:S.nextId++,note:55,duration_b:0.5,speed:7,slide:0,beat:"4.1",string_index:null}),
   ];
   S.chord=[
     {id:S.nextId++,chord:"Em",beat:"1.1"},

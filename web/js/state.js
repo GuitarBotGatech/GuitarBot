@@ -29,15 +29,46 @@ let S={
   midiLaneMenuLane:null,
   focusedCCLane:null,
   selPluck:null, selChord:null, selMidi:null,
+  spectrogramFrames:[],
+  spectrogramParams:null,
+  noteAnalysis:{},
+  spectrogramVisible:false,
+  recordingActive:false,
+  latencyMs:80,
+  latencyDriftMsPerMin:0,
+  audioWavB64:null,
+  recStartBeat:0,
 };
 
 const bpm=()=>{const[n]=S.timeSig.split('/').map(Number);return n};
 const totalBeats=()=>S.measures*bpm();
 const beatToX=b=>LABEL_W+b*S.zoom-S.scrollX;
 const xToBeat=x=>(x-LABEL_W+S.scrollX)/S.zoom;
-const noteToY=n=>CHORD_H+(MIDI_MAX-n)*noteH;
-const yToNote=y=>MIDI_MAX-Math.floor((y-CHORD_H)/noteH);
-const midiTopY=()=>CHORD_H+rollH();
+const noteToY=n=>{
+  if(n===4) return CHORD_H + rollH() + 0*SLIDERLESS_H + (SLIDERLESS_H-noteH)/2;
+  if(n===2) return CHORD_H + rollH() + 1*SLIDERLESS_H + (SLIDERLESS_H-noteH)/2;
+  if(n===0) return CHORD_H + rollH() + 2*SLIDERLESS_H + (SLIDERLESS_H-noteH)/2;
+  return CHORD_H+(MIDI_MAX-n)*noteH;
+};
+const yToNote=y=>{
+  const slTop = CHORD_H + rollH();
+  if (y >= slTop && y < slTop + SLIDERLESS_TOTAL) {
+    const laneIndex = Math.floor((y - slTop) / SLIDERLESS_H);
+    if(laneIndex===0) return 4;
+    if(laneIndex===1) return 2;
+    if(laneIndex===2) return 0;
+  }
+  return Math.max(MIDI_MIN, Math.min(MIDI_MAX, MIDI_MAX-Math.floor((y-CHORD_H)/noteH)));
+};
+const clampNote = n => {
+  if (n <= 4) {
+    if (n < 1) return 0;
+    if (n < 3) return 2;
+    return 4;
+  }
+  return clamp(n, MIDI_MIN, MIDI_MAX);
+};
+const midiTopY=()=>CHORD_H+rollH()+SLIDERLESS_TOTAL;
 const hasFocusedCCLane=()=>Number.isInteger(S.focusedCCLane)&&S.focusedCCLane>=0&&S.focusedCCLane<MIDI_AUTOMATION_KEYS.length;
 const midiLaneVisible=index=>!hasFocusedCCLane()||index===S.focusedCCLane;
 const midiLaneTop=index=>{
@@ -99,11 +130,13 @@ const laneForCC=cc=>{
 const tempoLane=()=>0;
 const gridStep=()=>GRID_STEPS[S.gridIdx].beats;
 const snap=b=>{const gs=gridStep();return Math.round(b/gs)*gs;};
+const snapCellStart=b=>{const gs=gridStep();return Math.floor(b/gs)*gs;};
 const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
 
 const trimBeatNumber=v=>parseFloat(Number(v).toFixed(4));
 const midiCurvePointKey=beat=>trimBeatNumber(Math.max(0,parseFloat(beat)||0)).toFixed(4);
 const normalizeBeat=b=>S.snapEnabled?snap(b):trimBeatNumber(b);
+const normalizePlacementBeat=b=>S.snapEnabled?snapCellStart(b):trimBeatNumber(b);
 const minDurationBeats=()=>S.snapEnabled?gridStep():0.02;
 const noteDurationSeconds=ev=>ev.duration_b*(60/Math.max(1,S.bpm));
 const secondsPerBeat=()=>{
@@ -115,6 +148,13 @@ const secondsPerBeat=()=>{
 const secondsToBeat=t=>trimBeatNumber(Math.max(0,parseFloat(t)||0)/secondsPerBeat());
 const secondsToDurationBeats=t=>Math.max(0.02,trimBeatNumber((parseFloat(t)||0)/secondsPerBeat()));
 const beatsToSeconds=b=>Math.max(0,parseFloat(b)||0)*secondsPerBeat();
+const latencyMsAtBeat=(beat,referenceBeat=S.recStartBeat)=>{
+  const base=Math.max(0,parseFloat(S.latencyMs)||0);
+  const driftPerMin=parseFloat(S.latencyDriftMsPerMin)||0;
+  const elapsedBeats=Math.max(0,(parseFloat(beat)||0)-(parseFloat(referenceBeat)||0));
+  const elapsedMinutes=(elapsedBeats*secondsPerBeat())/60;
+  return Math.max(0,base+(driftPerMin*elapsedMinutes));
+};
 const formatTimelineSeconds=s=>{
   const total=Math.max(0,parseFloat(s)||0);
   if(total<60)return `${parseFloat(total.toFixed(2)).toString()}s`;
@@ -177,6 +217,15 @@ function normalizeImportedSpeed(raw){
     return clampSpeed(scaled);
   }
   return clampSpeed(n);
+}
+
+function ensureSlideShape(ev){
+  if(!ev)return ev;
+  ev.slide=ev.slide===1?1:0;
+  // TODO: keep placeholders for future independent slide-in / slide-out semantics.
+  ev.slideIn=ev.slideIn===1?1:0;
+  ev.slideOut=ev.slideOut===1?1:0;
+  return ev;
 }
 
 function beatLabel(b){

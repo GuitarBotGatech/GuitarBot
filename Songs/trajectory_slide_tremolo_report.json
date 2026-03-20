@@ -1,0 +1,59 @@
+{
+  "pass": true,
+  "analyses": {
+    "payload_fidelity": {
+      "pass": true,
+      "python_events": 3,
+      "json_events": 3,
+      "mismatch_count": 0,
+      "mismatch_examples": [],
+      "python_slide_events": 1,
+      "json_slide_events": 1
+    },
+    "trajectory_diff": {
+      "pass": true,
+      "tolerance": 1e-06,
+      "python_shape": [
+        1500,
+        15
+      ],
+      "json_shape": [
+        1500,
+        15
+      ],
+      "overlap_shape": [
+        1500,
+        15
+      ],
+      "max_abs_diff": 0.0,
+      "mean_abs_diff": 0.0
+    },
+    "slide_continuity": {
+      "pass": true,
+      "python": {
+        "label": "python",
+        "slide_events_checked": 1,
+        "violations": [],
+        "violation_count": 0,
+        "pass": true
+      },
+      "json": {
+        "label": "json",
+        "slide_events_checked": 1,
+        "violations": [],
+        "violation_count": 0,
+        "pass": true
+      }
+    }
+  },
+  "python_payload": {
+    "chords": 0,
+    "pluck": 3,
+    "midi": 0
+  },
+  "json_payload": {
+    "chords": 0,
+    "pluck": 3,
+    "midi": 0
+  }
+}

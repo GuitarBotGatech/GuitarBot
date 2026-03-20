@@ -33,7 +33,7 @@ function clampDurationToNext(beat,note,maxDur,excludeId){
 function addNote(b,n){
   const dur=clampDurationToNext(b,n,gridStep(),null);
   if(hasCollision(b,dur,n,null))return null;
-  const ev={id:S.nextId++,note:n,duration_b:dur,speed:SPEED_DEFAULT,slide:0,beat:beatLabel(b),string_index:null};
+  const ev=ensureSlideShape({id:S.nextId++,note:n,duration_b:dur,speed:SPEED_DEFAULT,slide:0,beat:beatLabel(b),string_index:null});
   S.pluck.push(ev); selPluck(ev.id); syncJSON(); return ev;
 }
 function rmPluck(id){
@@ -83,8 +83,9 @@ function openInsp(ev){
   document.getElementById('i-speed').value=ev.speed;
   document.getElementById('i-sv').textContent=ev.speed;
   document.getElementById('i-slide').checked=ev.slide===1;
-  document.getElementById('i-slide-lbl').textContent=ev.slide?'On':'Off';
+  document.getElementById('i-slide-lbl').textContent=ev.slide?'In':'Off';
   document.getElementById('i-str-ov').value=ev.string_index!==null?ev.string_index:'';
+  if(typeof updateInspectorAnalysis==='function') updateInspectorAnalysis();
 }
 function refreshInspNote(ev){
   const s=strOf(ev.note);
@@ -110,7 +111,7 @@ function updSpeed(v){
 function updSlide(c){
   const ev=S.pluck.find(e=>e.id===S.selPluck);if(!ev)return;
   ev.slide=c?1:0;
-  document.getElementById('i-slide-lbl').textContent=c?'On':'Off';
+  document.getElementById('i-slide-lbl').textContent=c?'In':'Off';
   syncJSON(); render();
 }
 function updDur(v){
@@ -128,6 +129,26 @@ function updStrOv(v){
   syncJSON();
 }
 function delSelNote(){if(S.selPluck!==null){rmPluck(S.selPluck);render()}}
+
+function toggleSlideForSelectedPluckEvents(){
+  const selected=getSelectedPluckEvents();
+  if(!selected.length)return false;
+  const allOn=selected.every(ev=>ev.slide===1);
+  const next=allOn?0:1;
+  for(const ev of selected)ev.slide=next;
+
+  if(S.selPluck!==null&&selected.length===1){
+    const sel=S.pluck.find(e=>e.id===S.selPluck);
+    if(sel){
+      document.getElementById('i-slide').checked=sel.slide===1;
+      document.getElementById('i-slide-lbl').textContent=sel.slide?'In':'Off';
+    }
+  }
+
+  syncJSON();
+  render();
+  return true;
+}
 
 function delSelectedPluckEvents(){
   const ids=S.selPluckIds.size?[...S.selPluckIds]:(S.selPluck!==null?[S.selPluck]:[]);
@@ -367,6 +388,8 @@ function copySelectedTimelineEvents(){
         duration_b:ev.duration_b,
         speed:ev.speed,
         slide:ev.slide,
+        slideIn:ev.slideIn,
+        slideOut:ev.slideOut,
         string_index:ev.string_index,
       }))
       .sort((a,b)=>a.beat-b.beat||a.note-b.note);
@@ -404,16 +427,18 @@ function pasteTimelineEvents(){
     for(const src of clipPluck.events){
       const b=targetBeat+(src.beat-clipPluck.originBeat);
       if(b<0||b>=totalBeats())continue;
-      const n=clamp(src.note,MIDI_MIN,MIDI_MAX);
-      const ev={
+      const n=clampNote(src.note);
+      const ev=ensureSlideShape({
         id:S.nextId++,
         note:n,
         duration_b:src.duration_b,
         speed:src.speed,
         slide:src.slide,
+        slideIn:src.slideIn,
+        slideOut:src.slideOut,
         beat:beatLabel(normalizeBeat(b)),
         string_index:src.string_index,
-      };
+      });
       S.pluck.push(ev);
       createdPluck.push(ev.id);
     }

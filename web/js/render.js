@@ -7,7 +7,13 @@ let CW=0;
 
 function resize(){
   CW=document.getElementById('roll-wrap').clientWidth;
-  canvas.width=CW; canvas.height=canvasH();
+  const h=canvasH();
+  const dpr=window.devicePixelRatio||1;
+  canvas.width=CW*dpr;
+  canvas.height=h*dpr;
+  canvas.style.width=CW+'px';
+  canvas.style.height=h+'px';
+  ctx.scale(dpr,dpr);
   render();
 }
 
@@ -18,7 +24,11 @@ function render(){
   if(!ctx)return;
   ctx.clearRect(0,0,CW,canvasH());
   drawBG(); drawGrid(); drawLabels();
-  drawCycleBar(); drawChordLane(); drawMidiLane(); drawTempoPointOverlay(); drawSlideLinks(); drawNotes(); drawPlayhead(); drawSelectionBox();
+  drawCycleBar(); drawChordLane(); drawMidiLane(); drawTempoPointOverlay(); drawSlideLinks();
+  if(S.spectrogramVisible) drawSpectrogram();
+  drawNotes();
+  if(S.noteAnalysis && Object.keys(S.noteAnalysis).length) drawNoteAnalysisOverlay();
+  drawPlayhead(); drawSelectionBox();
 }
 
 function drawTempoPointOverlay(){
@@ -76,6 +86,9 @@ function eventStringIndex(ev){
     const explicit=parseInt(ev.string_index,10);
     if(Number.isFinite(explicit)&&explicit>=0&&explicit<STRINGS.length)return explicit;
   }
+  if(ev.note===0) return 0;
+  if(ev.note===2) return 1;
+  if(ev.note===4) return 2;
   const inferred=STRINGS.findIndex(s=>ev.note>=s.min&&ev.note<=s.max);
   return inferred>=0?inferred:0;
 }
@@ -155,10 +168,10 @@ function drawSlideLinks(){
 
   for(const events of byString){
     events.sort((a,b)=>parseBeat(a.beat)-parseBeat(b.beat)||a.id-b.id);
-    for(let index=0;index<events.length-1;index++){
-      const from=events[index];
-      if(!from.slide)continue;
-      const to=events[index+1];
+    for(let index=1;index<events.length;index++){
+      const to=events[index];
+      if(!to.slide)continue;
+      const from=events[index-1];
 
       const fromBeat=parseBeat(from.beat);
       const toBeat=parseBeat(to.beat);
@@ -169,7 +182,7 @@ function drawSlideLinks(){
 
       if(toX<LABEL_W||fromX>CW)continue;
 
-      const color=strOf(from.note).color;
+      const color=strOf(to.note).color;
       ctx.strokeStyle=color;
       ctx.lineWidth=1.3;
       ctx.globalAlpha=0.85;
@@ -218,6 +231,14 @@ function drawBG(){
     const y=noteToY(n), s=strOf(n), isSharp=[1,3,6,8,10].includes(n%12);
     ctx.fillStyle=isSharp?'#08080e':s.dim; ctx.fillRect(LABEL_W,y,CW-LABEL_W,noteH);
     ctx.fillStyle='#14141e'; ctx.fillRect(LABEL_W,y+noteH-1,CW-LABEL_W,1);
+  }
+  // Sliderless lanes
+  const slTop = CHORD_H + rollH();
+  for(let i=0; i<3; i++){
+    const y=slTop + i*SLIDERLESS_H;
+    ctx.fillStyle=i%2===0?'#101018':'#0c0c14';
+    ctx.fillRect(LABEL_W,y,CW-LABEL_W,SLIDERLESS_H);
+    ctx.fillStyle='#14141e'; ctx.fillRect(LABEL_W,y+SLIDERLESS_H-1,CW-LABEL_W,1);
   }
   // MIDI lane
   const my=midiTopY();
@@ -282,7 +303,8 @@ function drawGrid(){
 
   // Zone separators
   ctx.strokeStyle='#232340'; ctx.lineWidth=1;
-  [[0,CHORD_H],[0,CHORD_H+rollH()]].forEach(([,y])=>{
+  const slTop = CHORD_H + rollH();
+  [[0,CHORD_H],[0,slTop],[0,slTop+SLIDERLESS_H],[0,slTop+SLIDERLESS_H*2],[0,slTop+SLIDERLESS_H*3],[0,midiTopY()]].forEach(([,y])=>{
     ctx.beginPath(); ctx.moveTo(0,y); ctx.lineTo(CW,y); ctx.stroke();
   });
   for(let lane=0;lane<MIDI_LANE_COUNT;lane++){
@@ -328,6 +350,15 @@ function drawLabels(){
     ctx.fillStyle=isC?'#5858a0':isSharp?'#1e1e38':'#303058';
     ctx.font=(isC?'600':'400')+' 9px "JetBrains Mono"';
     ctx.fillText(noteName(n),LABEL_W-4,y+noteH/2+3);
+  }
+  const slTop = CHORD_H + rollH();
+  const SLIDERLESS_NAMES = ['B String', 'D String', 'E String'];
+  const SLIDERLESS_STR_INDICES = [2, 1, 0];
+  for(let i=0; i<3; i++){
+    const y = slTop + i*SLIDERLESS_H;
+    ctx.fillStyle = STRINGS[SLIDERLESS_STR_INDICES[i]].color;
+    ctx.font = '600 9px "JetBrains Mono"';
+    ctx.fillText(SLIDERLESS_NAMES[i], LABEL_W-4, y+SLIDERLESS_H/2+3);
   }
   // String lanes + controls in left column
   STRINGS.forEach((s,index)=>{
@@ -490,6 +521,16 @@ function drawNotes(){
       for(let sx=x-noteH;sx<x+w+noteH;sx+=5){
         ctx.beginPath(); ctx.moveTo(sx,y+1); ctx.lineTo(sx+noteH-2,y+noteH-1); ctx.stroke();
       }
+
+      const markerX=Math.max(LABEL_W+3, x+4);
+      const markerY=y+(noteH/2);
+      ctx.beginPath();
+      ctx.moveTo(markerX+6,markerY-4);
+      ctx.lineTo(markerX,markerY);
+      ctx.lineTo(markerX+6,markerY+4);
+      ctx.strokeStyle='rgba(255,255,255,0.8)';
+      ctx.lineWidth=1.4;
+      ctx.stroke();
     }
     // Tremolo wave
     if(isTrem){
