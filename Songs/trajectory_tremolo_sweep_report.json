@@ -1,7 +1,7 @@
 {
   "total_cases": 72,
-  "failed_cases": 48,
-  "pass_rate": 0.3333,
+  "failed_cases": 0,
+  "pass_rate": 1.0,
   "cases": [
     {
       "note_a": 43,
@@ -261,28 +261,12 @@
         ]
       ],
       "result": {
-        "pass": false,
+        "pass": true,
         "checked": 1,
-        "python_violations": 1,
-        "json_violations": 1,
-        "python_examples": [
-          {
-            "motor_id": 0,
-            "note": 45,
-            "pick_timestamp": 5.0,
-            "ready_timestamp": 5.245,
-            "early_by_ms": 245.0
-          }
-        ],
-        "json_examples": [
-          {
-            "motor_id": 0,
-            "note": 45,
-            "pick_timestamp": 5.0,
-            "ready_timestamp": 5.245,
-            "early_by_ms": 245.0
-          }
-        ]
+        "python_violations": 0,
+        "json_violations": 0,
+        "python_examples": [],
+        "json_examples": []
       }
     },
     {
@@ -315,28 +299,12 @@
         ]
       ],
       "result": {
-        "pass": false,
+        "pass": true,
         "checked": 1,
-        "python_violations": 1,
-        "json_violations": 1,
-        "python_examples": [
-          {
-            "motor_id": 0,
-            "note": 45,
-            "pick_timestamp": 5.0,
-            "ready_timestamp": 5.245,
-            "early_by_ms": 245.0
-          }
-        ],
-        "json_examples": [
-          {
-            "motor_id": 0,
-            "note": 45,
-            "pick_timestamp": 5.0,
-            "ready_timestamp": 5.245,
-            "early_by_ms": 245.0
-          }
-        ]
+        "python_violations": 0,
+        "json_violations": 0,
+        "python_examples": [],
+        "json_examples": []
       }
     },
     {
@@ -369,28 +337,12 @@
         ]
       ],
       "result": {
-        "pass": false,
+        "pass": true,
         "checked": 1,
-        "python_violations": 1,
-        "json_violations": 1,
-        "python_examples": [
-          {
-            "motor_id": 0,
-            "note": 45,
-            "pick_timestamp": 5.0,
-            "ready_timestamp": 5.245,
-            "early_by_ms": 245.0
-          }
-        ],
-        "json_examples": [
-          {
-            "motor_id": 0,
-            "note": 45,
-            "pick_timestamp": 5.0,
-            "ready_timestamp": 5.245,
-            "early_by_ms": 245.0
-          }
-        ]
+        "python_violations": 0,
+        "json_violations": 0,
+        "python_examples": [],
+        "json_examples": []
       }
     },
     {
@@ -423,28 +375,12 @@
         ]
       ],
       "result": {
-        "pass": false,
+        "pass": true,
         "checked": 1,
-        "python_violations": 1,
-        "json_violations": 1,
-        "python_examples": [
-          {
-            "motor_id": 0,
-            "note": 45,
-            "pick_timestamp": 5.0,
-            "ready_timestamp": 5.245,
-            "early_by_ms": 245.0
-          }
-        ],
-        "json_examples": [
-          {
-            "motor_id": 0,
-            "note": 45,
-            "pick_timestamp": 5.0,
-            "ready_timestamp": 5.245,
-            "early_by_ms": 245.0
-          }
-        ]
+        "python_violations": 0,
+        "json_violations": 0,
+        "python_examples": [],
+        "json_examples": []
       }
     },
     {
@@ -477,28 +413,12 @@
         ]
       ],
       "result": {
-        "pass": false,
+        "pass": true,
         "checked": 1,
-        "python_violations": 1,
-        "json_violations": 1,
-        "python_examples": [
-          {
-            "motor_id": 0,
-            "note": 45,
-            "pick_timestamp": 5.0,
-            "ready_timestamp": 5.245,
-            "early_by_ms": 245.0
-          }
-        ],
-        "json_examples": [
-          {
-            "motor_id": 0,
-            "note": 45,
-            "pick_timestamp": 5.0,
-            "ready_timestamp": 5.245,
-            "early_by_ms": 245.0
-          }
-        ]
+        "python_violations": 0,
+        "json_violations": 0,
+        "python_examples": [],
+        "json_examples": []
       }
     },
     {
@@ -531,28 +451,12 @@
         ]
       ],
       "result": {
-        "pass": false,
+        "pass": true,
         "checked": 1,
-        "python_violations": 1,
-        "json_violations": 1,
-        "python_examples": [
-          {
-            "motor_id": 0,
-            "note": 45,
-            "pick_timestamp": 5.0,
-            "ready_timestamp": 5.245,
-            "early_by_ms": 245.0
-          }
-        ],
-        "json_examples": [
-          {
-            "motor_id": 0,
-            "note": 45,
-            "pick_timestamp": 5.0,
-            "ready_timestamp": 5.245,
-            "early_by_ms": 245.0
-          }
-        ]
+        "python_violations": 0,
+        "json_violations": 0,
+        "python_examples": [],
+        "json_examples": []
       }
     },
     {
@@ -585,28 +489,12 @@
         ]
       ],
       "result": {
-        "pass": false,
+        "pass": true,
         "checked": 1,
-        "python_violations": 1,
-        "json_violations": 1,
-        "python_examples": [
-          {
-            "motor_id": 0,
-            "note": 45,
-            "pick_timestamp": 5.5,
-            "ready_timestamp": 5.745,
-            "early_by_ms": 245.0
-          }
-        ],
-        "json_examples": [
-          {
-            "motor_id": 0,
-            "note": 45,
-            "pick_timestamp": 5.5,
-            "ready_timestamp": 5.745,
-            "early_by_ms": 245.0
-          }
-        ]
+        "python_violations": 0,
+        "json_violations": 0,
+        "python_examples": [],
+        "json_examples": []
       }
     },
     {
@@ -639,28 +527,12 @@
         ]
       ],
       "result": {
-        "pass": false,
+        "pass": true,
         "checked": 1,
-        "python_violations": 1,
-        "json_violations": 1,
-        "python_examples": [
-          {
-            "motor_id": 0,
-            "note": 45,
-            "pick_timestamp": 5.5,
-            "ready_timestamp": 5.745,
-            "early_by_ms": 245.0
-          }
-        ],
-        "json_examples": [
-          {
-            "motor_id": 0,
-            "note": 45,
-            "pick_timestamp": 5.5,
-            "ready_timestamp": 5.745,
-            "early_by_ms": 245.0
-          }
-        ]
+        "python_violations": 0,
+        "json_violations": 0,
+        "python_examples": [],
+        "json_examples": []
       }
     },
     {
@@ -693,28 +565,12 @@
         ]
       ],
       "result": {
-        "pass": false,
+        "pass": true,
         "checked": 1,
-        "python_violations": 1,
-        "json_violations": 1,
-        "python_examples": [
-          {
-            "motor_id": 0,
-            "note": 45,
-            "pick_timestamp": 5.5,
-            "ready_timestamp": 5.745,
-            "early_by_ms": 245.0
-          }
-        ],
-        "json_examples": [
-          {
-            "motor_id": 0,
-            "note": 45,
-            "pick_timestamp": 5.5,
-            "ready_timestamp": 5.745,
-            "early_by_ms": 245.0
-          }
-        ]
+        "python_violations": 0,
+        "json_violations": 0,
+        "python_examples": [],
+        "json_examples": []
       }
     },
     {
@@ -747,28 +603,12 @@
         ]
       ],
       "result": {
-        "pass": false,
+        "pass": true,
         "checked": 1,
-        "python_violations": 1,
-        "json_violations": 1,
-        "python_examples": [
-          {
-            "motor_id": 0,
-            "note": 45,
-            "pick_timestamp": 5.5,
-            "ready_timestamp": 5.745,
-            "early_by_ms": 245.0
-          }
-        ],
-        "json_examples": [
-          {
-            "motor_id": 0,
-            "note": 45,
-            "pick_timestamp": 5.5,
-            "ready_timestamp": 5.745,
-            "early_by_ms": 245.0
-          }
-        ]
+        "python_violations": 0,
+        "json_violations": 0,
+        "python_examples": [],
+        "json_examples": []
       }
     },
     {
@@ -801,28 +641,12 @@
         ]
       ],
       "result": {
-        "pass": false,
+        "pass": true,
         "checked": 1,
-        "python_violations": 1,
-        "json_violations": 1,
-        "python_examples": [
-          {
-            "motor_id": 0,
-            "note": 45,
-            "pick_timestamp": 5.5,
-            "ready_timestamp": 5.745,
-            "early_by_ms": 245.0
-          }
-        ],
-        "json_examples": [
-          {
-            "motor_id": 0,
-            "note": 45,
-            "pick_timestamp": 5.5,
-            "ready_timestamp": 5.745,
-            "early_by_ms": 245.0
-          }
-        ]
+        "python_violations": 0,
+        "json_violations": 0,
+        "python_examples": [],
+        "json_examples": []
       }
     },
     {
@@ -855,28 +679,12 @@
         ]
       ],
       "result": {
-        "pass": false,
+        "pass": true,
         "checked": 1,
-        "python_violations": 1,
-        "json_violations": 1,
-        "python_examples": [
-          {
-            "motor_id": 0,
-            "note": 45,
-            "pick_timestamp": 5.5,
-            "ready_timestamp": 5.745,
-            "early_by_ms": 245.0
-          }
-        ],
-        "json_examples": [
-          {
-            "motor_id": 0,
-            "note": 45,
-            "pick_timestamp": 5.5,
-            "ready_timestamp": 5.745,
-            "early_by_ms": 245.0
-          }
-        ]
+        "python_violations": 0,
+        "json_violations": 0,
+        "python_examples": [],
+        "json_examples": []
       }
     },
     {
@@ -1137,28 +945,12 @@
         ]
       ],
       "result": {
-        "pass": false,
+        "pass": true,
         "checked": 1,
-        "python_violations": 1,
-        "json_violations": 1,
-        "python_examples": [
-          {
-            "motor_id": 0,
-            "note": 43,
-            "pick_timestamp": 5.0,
-            "ready_timestamp": 5.245,
-            "early_by_ms": 245.0
-          }
-        ],
-        "json_examples": [
-          {
-            "motor_id": 0,
-            "note": 43,
-            "pick_timestamp": 5.0,
-            "ready_timestamp": 5.245,
-            "early_by_ms": 245.0
-          }
-        ]
+        "python_violations": 0,
+        "json_violations": 0,
+        "python_examples": [],
+        "json_examples": []
       }
     },
     {
@@ -1191,28 +983,12 @@
         ]
       ],
       "result": {
-        "pass": false,
+        "pass": true,
         "checked": 1,
-        "python_violations": 1,
-        "json_violations": 1,
-        "python_examples": [
-          {
-            "motor_id": 0,
-            "note": 43,
-            "pick_timestamp": 5.0,
-            "ready_timestamp": 5.245,
-            "early_by_ms": 245.0
-          }
-        ],
-        "json_examples": [
-          {
-            "motor_id": 0,
-            "note": 43,
-            "pick_timestamp": 5.0,
-            "ready_timestamp": 5.245,
-            "early_by_ms": 245.0
-          }
-        ]
+        "python_violations": 0,
+        "json_violations": 0,
+        "python_examples": [],
+        "json_examples": []
       }
     },
     {
@@ -1245,28 +1021,12 @@
         ]
       ],
       "result": {
-        "pass": false,
+        "pass": true,
         "checked": 1,
-        "python_violations": 1,
-        "json_violations": 1,
-        "python_examples": [
-          {
-            "motor_id": 0,
-            "note": 43,
-            "pick_timestamp": 5.0,
-            "ready_timestamp": 5.245,
-            "early_by_ms": 245.0
-          }
-        ],
-        "json_examples": [
-          {
-            "motor_id": 0,
-            "note": 43,
-            "pick_timestamp": 5.0,
-            "ready_timestamp": 5.245,
-            "early_by_ms": 245.0
-          }
-        ]
+        "python_violations": 0,
+        "json_violations": 0,
+        "python_examples": [],
+        "json_examples": []
       }
     },
     {
@@ -1299,28 +1059,12 @@
         ]
       ],
       "result": {
-        "pass": false,
+        "pass": true,
         "checked": 1,
-        "python_violations": 1,
-        "json_violations": 1,
-        "python_examples": [
-          {
-            "motor_id": 0,
-            "note": 43,
-            "pick_timestamp": 5.0,
-            "ready_timestamp": 5.245,
-            "early_by_ms": 245.0
-          }
-        ],
-        "json_examples": [
-          {
-            "motor_id": 0,
-            "note": 43,
-            "pick_timestamp": 5.0,
-            "ready_timestamp": 5.245,
-            "early_by_ms": 245.0
-          }
-        ]
+        "python_violations": 0,
+        "json_violations": 0,
+        "python_examples": [],
+        "json_examples": []
       }
     },
     {
@@ -1353,28 +1097,12 @@
         ]
       ],
       "result": {
-        "pass": false,
+        "pass": true,
         "checked": 1,
-        "python_violations": 1,
-        "json_violations": 1,
-        "python_examples": [
-          {
-            "motor_id": 0,
-            "note": 43,
-            "pick_timestamp": 5.0,
-            "ready_timestamp": 5.245,
-            "early_by_ms": 245.0
-          }
-        ],
-        "json_examples": [
-          {
-            "motor_id": 0,
-            "note": 43,
-            "pick_timestamp": 5.0,
-            "ready_timestamp": 5.245,
-            "early_by_ms": 245.0
-          }
-        ]
+        "python_violations": 0,
+        "json_violations": 0,
+        "python_examples": [],
+        "json_examples": []
       }
     },
     {
@@ -1407,28 +1135,12 @@
         ]
       ],
       "result": {
-        "pass": false,
+        "pass": true,
         "checked": 1,
-        "python_violations": 1,
-        "json_violations": 1,
-        "python_examples": [
-          {
-            "motor_id": 0,
-            "note": 43,
-            "pick_timestamp": 5.0,
-            "ready_timestamp": 5.245,
-            "early_by_ms": 245.0
-          }
-        ],
-        "json_examples": [
-          {
-            "motor_id": 0,
-            "note": 43,
-            "pick_timestamp": 5.0,
-            "ready_timestamp": 5.245,
-            "early_by_ms": 245.0
-          }
-        ]
+        "python_violations": 0,
+        "json_violations": 0,
+        "python_examples": [],
+        "json_examples": []
       }
     },
     {
@@ -1461,28 +1173,12 @@
         ]
       ],
       "result": {
-        "pass": false,
+        "pass": true,
         "checked": 1,
-        "python_violations": 1,
-        "json_violations": 1,
-        "python_examples": [
-          {
-            "motor_id": 0,
-            "note": 43,
-            "pick_timestamp": 5.5,
-            "ready_timestamp": 5.745,
-            "early_by_ms": 245.0
-          }
-        ],
-        "json_examples": [
-          {
-            "motor_id": 0,
-            "note": 43,
-            "pick_timestamp": 5.5,
-            "ready_timestamp": 5.745,
-            "early_by_ms": 245.0
-          }
-        ]
+        "python_violations": 0,
+        "json_violations": 0,
+        "python_examples": [],
+        "json_examples": []
       }
     },
     {
@@ -1515,28 +1211,12 @@
         ]
       ],
       "result": {
-        "pass": false,
+        "pass": true,
         "checked": 1,
-        "python_violations": 1,
-        "json_violations": 1,
-        "python_examples": [
-          {
-            "motor_id": 0,
-            "note": 43,
-            "pick_timestamp": 5.5,
-            "ready_timestamp": 5.745,
-            "early_by_ms": 245.0
-          }
-        ],
-        "json_examples": [
-          {
-            "motor_id": 0,
-            "note": 43,
-            "pick_timestamp": 5.5,
-            "ready_timestamp": 5.745,
-            "early_by_ms": 245.0
-          }
-        ]
+        "python_violations": 0,
+        "json_violations": 0,
+        "python_examples": [],
+        "json_examples": []
       }
     },
     {
@@ -1569,28 +1249,12 @@
         ]
       ],
       "result": {
-        "pass": false,
+        "pass": true,
         "checked": 1,
-        "python_violations": 1,
-        "json_violations": 1,
-        "python_examples": [
-          {
-            "motor_id": 0,
-            "note": 43,
-            "pick_timestamp": 5.5,
-            "ready_timestamp": 5.745,
-            "early_by_ms": 245.0
-          }
-        ],
-        "json_examples": [
-          {
-            "motor_id": 0,
-            "note": 43,
-            "pick_timestamp": 5.5,
-            "ready_timestamp": 5.745,
-            "early_by_ms": 245.0
-          }
-        ]
+        "python_violations": 0,
+        "json_violations": 0,
+        "python_examples": [],
+        "json_examples": []
       }
     },
     {
@@ -1623,28 +1287,12 @@
         ]
       ],
       "result": {
-        "pass": false,
+        "pass": true,
         "checked": 1,
-        "python_violations": 1,
-        "json_violations": 1,
-        "python_examples": [
-          {
-            "motor_id": 0,
-            "note": 43,
-            "pick_timestamp": 5.5,
-            "ready_timestamp": 5.745,
-            "early_by_ms": 245.0
-          }
-        ],
-        "json_examples": [
-          {
-            "motor_id": 0,
-            "note": 43,
-            "pick_timestamp": 5.5,
-            "ready_timestamp": 5.745,
-            "early_by_ms": 245.0
-          }
-        ]
+        "python_violations": 0,
+        "json_violations": 0,
+        "python_examples": [],
+        "json_examples": []
       }
     },
     {
@@ -1677,28 +1325,12 @@
         ]
       ],
       "result": {
-        "pass": false,
+        "pass": true,
         "checked": 1,
-        "python_violations": 1,
-        "json_violations": 1,
-        "python_examples": [
-          {
-            "motor_id": 0,
-            "note": 43,
-            "pick_timestamp": 5.5,
-            "ready_timestamp": 5.745,
-            "early_by_ms": 245.0
-          }
-        ],
-        "json_examples": [
-          {
-            "motor_id": 0,
-            "note": 43,
-            "pick_timestamp": 5.5,
-            "ready_timestamp": 5.745,
-            "early_by_ms": 245.0
-          }
-        ]
+        "python_violations": 0,
+        "json_violations": 0,
+        "python_examples": [],
+        "json_examples": []
       }
     },
     {
@@ -1731,28 +1363,12 @@
         ]
       ],
       "result": {
-        "pass": false,
+        "pass": true,
         "checked": 1,
-        "python_violations": 1,
-        "json_violations": 1,
-        "python_examples": [
-          {
-            "motor_id": 0,
-            "note": 43,
-            "pick_timestamp": 5.5,
-            "ready_timestamp": 5.745,
-            "early_by_ms": 245.0
-          }
-        ],
-        "json_examples": [
-          {
-            "motor_id": 0,
-            "note": 43,
-            "pick_timestamp": 5.5,
-            "ready_timestamp": 5.745,
-            "early_by_ms": 245.0
-          }
-        ]
+        "python_violations": 0,
+        "json_violations": 0,
+        "python_examples": [],
+        "json_examples": []
       }
     },
     {
@@ -2013,28 +1629,12 @@
         ]
       ],
       "result": {
-        "pass": false,
+        "pass": true,
         "checked": 1,
-        "python_violations": 1,
-        "json_violations": 1,
-        "python_examples": [
-          {
-            "motor_id": 0,
-            "note": 47,
-            "pick_timestamp": 5.0,
-            "ready_timestamp": 5.245,
-            "early_by_ms": 245.0
-          }
-        ],
-        "json_examples": [
-          {
-            "motor_id": 0,
-            "note": 47,
-            "pick_timestamp": 5.0,
-            "ready_timestamp": 5.245,
-            "early_by_ms": 245.0
-          }
-        ]
+        "python_violations": 0,
+        "json_violations": 0,
+        "python_examples": [],
+        "json_examples": []
       }
     },
     {
@@ -2067,28 +1667,12 @@
         ]
       ],
       "result": {
-        "pass": false,
+        "pass": true,
         "checked": 1,
-        "python_violations": 1,
-        "json_violations": 1,
-        "python_examples": [
-          {
-            "motor_id": 0,
-            "note": 47,
-            "pick_timestamp": 5.0,
-            "ready_timestamp": 5.245,
-            "early_by_ms": 245.0
-          }
-        ],
-        "json_examples": [
-          {
-            "motor_id": 0,
-            "note": 47,
-            "pick_timestamp": 5.0,
-            "ready_timestamp": 5.245,
-            "early_by_ms": 245.0
-          }
-        ]
+        "python_violations": 0,
+        "json_violations": 0,
+        "python_examples": [],
+        "json_examples": []
       }
     },
     {
@@ -2121,28 +1705,12 @@
         ]
       ],
       "result": {
-        "pass": false,
+        "pass": true,
         "checked": 1,
-        "python_violations": 1,
-        "json_violations": 1,
-        "python_examples": [
-          {
-            "motor_id": 0,
-            "note": 47,
-            "pick_timestamp": 5.0,
-            "ready_timestamp": 5.245,
-            "early_by_ms": 245.0
-          }
-        ],
-        "json_examples": [
-          {
-            "motor_id": 0,
-            "note": 47,
-            "pick_timestamp": 5.0,
-            "ready_timestamp": 5.245,
-            "early_by_ms": 245.0
-          }
-        ]
+        "python_violations": 0,
+        "json_violations": 0,
+        "python_examples": [],
+        "json_examples": []
       }
     },
     {
@@ -2175,28 +1743,12 @@
         ]
       ],
       "result": {
-        "pass": false,
+        "pass": true,
         "checked": 1,
-        "python_violations": 1,
-        "json_violations": 1,
-        "python_examples": [
-          {
-            "motor_id": 0,
-            "note": 47,
-            "pick_timestamp": 5.0,
-            "ready_timestamp": 5.245,
-            "early_by_ms": 245.0
-          }
-        ],
-        "json_examples": [
-          {
-            "motor_id": 0,
-            "note": 47,
-            "pick_timestamp": 5.0,
-            "ready_timestamp": 5.245,
-            "early_by_ms": 245.0
-          }
-        ]
+        "python_violations": 0,
+        "json_violations": 0,
+        "python_examples": [],
+        "json_examples": []
       }
     },
     {
@@ -2229,28 +1781,12 @@
         ]
       ],
       "result": {
-        "pass": false,
+        "pass": true,
         "checked": 1,
-        "python_violations": 1,
-        "json_violations": 1,
-        "python_examples": [
-          {
-            "motor_id": 0,
-            "note": 47,
-            "pick_timestamp": 5.0,
-            "ready_timestamp": 5.245,
-            "early_by_ms": 245.0
-          }
-        ],
-        "json_examples": [
-          {
-            "motor_id": 0,
-            "note": 47,
-            "pick_timestamp": 5.0,
-            "ready_timestamp": 5.245,
-            "early_by_ms": 245.0
-          }
-        ]
+        "python_violations": 0,
+        "json_violations": 0,
+        "python_examples": [],
+        "json_examples": []
       }
     },
     {
@@ -2283,28 +1819,12 @@
         ]
       ],
       "result": {
-        "pass": false,
+        "pass": true,
         "checked": 1,
-        "python_violations": 1,
-        "json_violations": 1,
-        "python_examples": [
-          {
-            "motor_id": 0,
-            "note": 47,
-            "pick_timestamp": 5.0,
-            "ready_timestamp": 5.245,
-            "early_by_ms": 245.0
-          }
-        ],
-        "json_examples": [
-          {
-            "motor_id": 0,
-            "note": 47,
-            "pick_timestamp": 5.0,
-            "ready_timestamp": 5.245,
-            "early_by_ms": 245.0
-          }
-        ]
+        "python_violations": 0,
+        "json_violations": 0,
+        "python_examples": [],
+        "json_examples": []
       }
     },
     {
@@ -2337,28 +1857,12 @@
         ]
       ],
       "result": {
-        "pass": false,
+        "pass": true,
         "checked": 1,
-        "python_violations": 1,
-        "json_violations": 1,
-        "python_examples": [
-          {
-            "motor_id": 0,
-            "note": 47,
-            "pick_timestamp": 5.5,
-            "ready_timestamp": 5.745,
-            "early_by_ms": 245.0
-          }
-        ],
-        "json_examples": [
-          {
-            "motor_id": 0,
-            "note": 47,
-            "pick_timestamp": 5.5,
-            "ready_timestamp": 5.745,
-            "early_by_ms": 245.0
-          }
-        ]
+        "python_violations": 0,
+        "json_violations": 0,
+        "python_examples": [],
+        "json_examples": []
       }
     },
     {
@@ -2391,28 +1895,12 @@
         ]
       ],
       "result": {
-        "pass": false,
+        "pass": true,
         "checked": 1,
-        "python_violations": 1,
-        "json_violations": 1,
-        "python_examples": [
-          {
-            "motor_id": 0,
-            "note": 47,
-            "pick_timestamp": 5.5,
-            "ready_timestamp": 5.745,
-            "early_by_ms": 245.0
-          }
-        ],
-        "json_examples": [
-          {
-            "motor_id": 0,
-            "note": 47,
-            "pick_timestamp": 5.5,
-            "ready_timestamp": 5.745,
-            "early_by_ms": 245.0
-          }
-        ]
+        "python_violations": 0,
+        "json_violations": 0,
+        "python_examples": [],
+        "json_examples": []
       }
     },
     {
@@ -2445,28 +1933,12 @@
         ]
       ],
       "result": {
-        "pass": false,
+        "pass": true,
         "checked": 1,
-        "python_violations": 1,
-        "json_violations": 1,
-        "python_examples": [
-          {
-            "motor_id": 0,
-            "note": 47,
-            "pick_timestamp": 5.5,
-            "ready_timestamp": 5.745,
-            "early_by_ms": 245.0
-          }
-        ],
-        "json_examples": [
-          {
-            "motor_id": 0,
-            "note": 47,
-            "pick_timestamp": 5.5,
-            "ready_timestamp": 5.745,
-            "early_by_ms": 245.0
-          }
-        ]
+        "python_violations": 0,
+        "json_violations": 0,
+        "python_examples": [],
+        "json_examples": []
       }
     },
     {
@@ -2499,28 +1971,12 @@
         ]
       ],
       "result": {
-        "pass": false,
+        "pass": true,
         "checked": 1,
-        "python_violations": 1,
-        "json_violations": 1,
-        "python_examples": [
-          {
-            "motor_id": 0,
-            "note": 47,
-            "pick_timestamp": 5.5,
-            "ready_timestamp": 5.745,
-            "early_by_ms": 245.0
-          }
-        ],
-        "json_examples": [
-          {
-            "motor_id": 0,
-            "note": 47,
-            "pick_timestamp": 5.5,
-            "ready_timestamp": 5.745,
-            "early_by_ms": 245.0
-          }
-        ]
+        "python_violations": 0,
+        "json_violations": 0,
+        "python_examples": [],
+        "json_examples": []
       }
     },
     {
@@ -2553,28 +2009,12 @@
         ]
       ],
       "result": {
-        "pass": false,
+        "pass": true,
         "checked": 1,
-        "python_violations": 1,
-        "json_violations": 1,
-        "python_examples": [
-          {
-            "motor_id": 0,
-            "note": 47,
-            "pick_timestamp": 5.5,
-            "ready_timestamp": 5.745,
-            "early_by_ms": 245.0
-          }
-        ],
-        "json_examples": [
-          {
-            "motor_id": 0,
-            "note": 47,
-            "pick_timestamp": 5.5,
-            "ready_timestamp": 5.745,
-            "early_by_ms": 245.0
-          }
-        ]
+        "python_violations": 0,
+        "json_violations": 0,
+        "python_examples": [],
+        "json_examples": []
       }
     },
     {
@@ -2607,28 +2047,12 @@
         ]
       ],
       "result": {
-        "pass": false,
+        "pass": true,
         "checked": 1,
-        "python_violations": 1,
-        "json_violations": 1,
-        "python_examples": [
-          {
-            "motor_id": 0,
-            "note": 47,
-            "pick_timestamp": 5.5,
-            "ready_timestamp": 5.745,
-            "early_by_ms": 245.0
-          }
-        ],
-        "json_examples": [
-          {
-            "motor_id": 0,
-            "note": 47,
-            "pick_timestamp": 5.5,
-            "ready_timestamp": 5.745,
-            "early_by_ms": 245.0
-          }
-        ]
+        "python_violations": 0,
+        "json_violations": 0,
+        "python_examples": [],
+        "json_examples": []
       }
     },
     {
@@ -2889,28 +2313,12 @@
         ]
       ],
       "result": {
-        "pass": false,
+        "pass": true,
         "checked": 1,
-        "python_violations": 1,
-        "json_violations": 1,
-        "python_examples": [
-          {
-            "motor_id": 0,
-            "note": 43,
-            "pick_timestamp": 5.0,
-            "ready_timestamp": 5.245,
-            "early_by_ms": 245.0
-          }
-        ],
-        "json_examples": [
-          {
-            "motor_id": 0,
-            "note": 43,
-            "pick_timestamp": 5.0,
-            "ready_timestamp": 5.245,
-            "early_by_ms": 245.0
-          }
-        ]
+        "python_violations": 0,
+        "json_violations": 0,
+        "python_examples": [],
+        "json_examples": []
       }
     },
     {
@@ -2943,28 +2351,12 @@
         ]
       ],
       "result": {
-        "pass": false,
+        "pass": true,
         "checked": 1,
-        "python_violations": 1,
-        "json_violations": 1,
-        "python_examples": [
-          {
-            "motor_id": 0,
-            "note": 43,
-            "pick_timestamp": 5.0,
-            "ready_timestamp": 5.245,
-            "early_by_ms": 245.0
-          }
-        ],
-        "json_examples": [
-          {
-            "motor_id": 0,
-            "note": 43,
-            "pick_timestamp": 5.0,
-            "ready_timestamp": 5.245,
-            "early_by_ms": 245.0
-          }
-        ]
+        "python_violations": 0,
+        "json_violations": 0,
+        "python_examples": [],
+        "json_examples": []
       }
     },
     {
@@ -2997,28 +2389,12 @@
         ]
       ],
       "result": {
-        "pass": false,
+        "pass": true,
         "checked": 1,
-        "python_violations": 1,
-        "json_violations": 1,
-        "python_examples": [
-          {
-            "motor_id": 0,
-            "note": 43,
-            "pick_timestamp": 5.0,
-            "ready_timestamp": 5.245,
-            "early_by_ms": 245.0
-          }
-        ],
-        "json_examples": [
-          {
-            "motor_id": 0,
-            "note": 43,
-            "pick_timestamp": 5.0,
-            "ready_timestamp": 5.245,
-            "early_by_ms": 245.0
-          }
-        ]
+        "python_violations": 0,
+        "json_violations": 0,
+        "python_examples": [],
+        "json_examples": []
       }
     },
     {
@@ -3051,28 +2427,12 @@
         ]
       ],
       "result": {
-        "pass": false,
+        "pass": true,
         "checked": 1,
-        "python_violations": 1,
-        "json_violations": 1,
-        "python_examples": [
-          {
-            "motor_id": 0,
-            "note": 43,
-            "pick_timestamp": 5.0,
-            "ready_timestamp": 5.245,
-            "early_by_ms": 245.0
-          }
-        ],
-        "json_examples": [
-          {
-            "motor_id": 0,
-            "note": 43,
-            "pick_timestamp": 5.0,
-            "ready_timestamp": 5.245,
-            "early_by_ms": 245.0
-          }
-        ]
+        "python_violations": 0,
+        "json_violations": 0,
+        "python_examples": [],
+        "json_examples": []
       }
     },
     {
@@ -3105,28 +2465,12 @@
         ]
       ],
       "result": {
-        "pass": false,
+        "pass": true,
         "checked": 1,
-        "python_violations": 1,
-        "json_violations": 1,
-        "python_examples": [
-          {
-            "motor_id": 0,
-            "note": 43,
-            "pick_timestamp": 5.0,
-            "ready_timestamp": 5.245,
-            "early_by_ms": 245.0
-          }
-        ],
-        "json_examples": [
-          {
-            "motor_id": 0,
-            "note": 43,
-            "pick_timestamp": 5.0,
-            "ready_timestamp": 5.245,
-            "early_by_ms": 245.0
-          }
-        ]
+        "python_violations": 0,
+        "json_violations": 0,
+        "python_examples": [],
+        "json_examples": []
       }
     },
     {
@@ -3159,28 +2503,12 @@
         ]
       ],
       "result": {
-        "pass": false,
+        "pass": true,
         "checked": 1,
-        "python_violations": 1,
-        "json_violations": 1,
-        "python_examples": [
-          {
-            "motor_id": 0,
-            "note": 43,
-            "pick_timestamp": 5.0,
-            "ready_timestamp": 5.245,
-            "early_by_ms": 245.0
-          }
-        ],
-        "json_examples": [
-          {
-            "motor_id": 0,
-            "note": 43,
-            "pick_timestamp": 5.0,
-            "ready_timestamp": 5.245,
-            "early_by_ms": 245.0
-          }
-        ]
+        "python_violations": 0,
+        "json_violations": 0,
+        "python_examples": [],
+        "json_examples": []
       }
     },
     {
@@ -3213,28 +2541,12 @@
         ]
       ],
       "result": {
-        "pass": false,
+        "pass": true,
         "checked": 1,
-        "python_violations": 1,
-        "json_violations": 1,
-        "python_examples": [
-          {
-            "motor_id": 0,
-            "note": 43,
-            "pick_timestamp": 5.5,
-            "ready_timestamp": 5.745,
-            "early_by_ms": 245.0
-          }
-        ],
-        "json_examples": [
-          {
-            "motor_id": 0,
-            "note": 43,
-            "pick_timestamp": 5.5,
-            "ready_timestamp": 5.745,
-            "early_by_ms": 245.0
-          }
-        ]
+        "python_violations": 0,
+        "json_violations": 0,
+        "python_examples": [],
+        "json_examples": []
       }
     },
     {
@@ -3267,28 +2579,12 @@
         ]
       ],
       "result": {
-        "pass": false,
+        "pass": true,
         "checked": 1,
-        "python_violations": 1,
-        "json_violations": 1,
-        "python_examples": [
-          {
-            "motor_id": 0,
-            "note": 43,
-            "pick_timestamp": 5.5,
-            "ready_timestamp": 5.745,
-            "early_by_ms": 245.0
-          }
-        ],
-        "json_examples": [
-          {
-            "motor_id": 0,
-            "note": 43,
-            "pick_timestamp": 5.5,
-            "ready_timestamp": 5.745,
-            "early_by_ms": 245.0
-          }
-        ]
+        "python_violations": 0,
+        "json_violations": 0,
+        "python_examples": [],
+        "json_examples": []
       }
     },
     {
@@ -3321,28 +2617,12 @@
         ]
       ],
       "result": {
-        "pass": false,
+        "pass": true,
         "checked": 1,
-        "python_violations": 1,
-        "json_violations": 1,
-        "python_examples": [
-          {
-            "motor_id": 0,
-            "note": 43,
-            "pick_timestamp": 5.5,
-            "ready_timestamp": 5.745,
-            "early_by_ms": 245.0
-          }
-        ],
-        "json_examples": [
-          {
-            "motor_id": 0,
-            "note": 43,
-            "pick_timestamp": 5.5,
-            "ready_timestamp": 5.745,
-            "early_by_ms": 245.0
-          }
-        ]
+        "python_violations": 0,
+        "json_violations": 0,
+        "python_examples": [],
+        "json_examples": []
       }
     },
     {
@@ -3375,28 +2655,12 @@
         ]
       ],
       "result": {
-        "pass": false,
+        "pass": true,
         "checked": 1,
-        "python_violations": 1,
-        "json_violations": 1,
-        "python_examples": [
-          {
-            "motor_id": 0,
-            "note": 43,
-            "pick_timestamp": 5.5,
-            "ready_timestamp": 5.745,
-            "early_by_ms": 245.0
-          }
-        ],
-        "json_examples": [
-          {
-            "motor_id": 0,
-            "note": 43,
-            "pick_timestamp": 5.5,
-            "ready_timestamp": 5.745,
-            "early_by_ms": 245.0
-          }
-        ]
+        "python_violations": 0,
+        "json_violations": 0,
+        "python_examples": [],
+        "json_examples": []
       }
     },
     {
@@ -3429,28 +2693,12 @@
         ]
       ],
       "result": {
-        "pass": false,
+        "pass": true,
         "checked": 1,
-        "python_violations": 1,
-        "json_violations": 1,
-        "python_examples": [
-          {
-            "motor_id": 0,
-            "note": 43,
-            "pick_timestamp": 5.5,
-            "ready_timestamp": 5.745,
-            "early_by_ms": 245.0
-          }
-        ],
-        "json_examples": [
-          {
-            "motor_id": 0,
-            "note": 43,
-            "pick_timestamp": 5.5,
-            "ready_timestamp": 5.745,
-            "early_by_ms": 245.0
-          }
-        ]
+        "python_violations": 0,
+        "json_violations": 0,
+        "python_examples": [],
+        "json_examples": []
       }
     },
     {
@@ -3483,28 +2731,12 @@
         ]
       ],
       "result": {
-        "pass": false,
+        "pass": true,
         "checked": 1,
-        "python_violations": 1,
-        "json_violations": 1,
-        "python_examples": [
-          {
-            "motor_id": 0,
-            "note": 43,
-            "pick_timestamp": 5.5,
-            "ready_timestamp": 5.745,
-            "early_by_ms": 245.0
-          }
-        ],
-        "json_examples": [
-          {
-            "motor_id": 0,
-            "note": 43,
-            "pick_timestamp": 5.5,
-            "ready_timestamp": 5.745,
-            "early_by_ms": 245.0
-          }
-        ]
+        "python_violations": 0,
+        "json_violations": 0,
+        "python_examples": [],
+        "json_examples": []
       }
     }
   ]

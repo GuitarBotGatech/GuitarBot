@@ -269,16 +269,18 @@ class TremoloReadinessAnalyzer:
 
     def _analyze_payload(self, label: str, payload: OscPayload, trajectory: np.ndarray) -> dict[str, Any]:
         pick_events, lh_pick_events = _derive_pick_and_lh_pick_events(payload, quiet=self.quiet_parser_output)
-        pick_by_timestamp = {round(float(ts), 3): event for event, ts in pick_events}
+        fretted_pick_events = [
+            (event, ts)
+            for event, ts in pick_events
+            if int(event[1]) > 5
+        ]
 
         checked = 0
         violations: list[dict[str, Any]] = []
 
-        for motor_id, target_slider_pos, _, lh_start_ts in lh_pick_events:
-            pick_ts = round(float(lh_start_ts) + float(tu.LH_PREP_TIME_BEFORE_PICK), 3)
-            pick_event = pick_by_timestamp.get(round(pick_ts, 3))
-            if pick_event is None:
-                continue
+        pairs = zip(lh_pick_events, fretted_pick_events)
+        for (motor_id, target_slider_pos, _, lh_start_ts), (pick_event, pick_ts_raw) in pairs:
+            pick_ts = float(pick_ts_raw)
 
             _, note, _, duration, _ = pick_event
             if float(duration) < float(tu.TREMOLO_DURATION_THRESHOLD):

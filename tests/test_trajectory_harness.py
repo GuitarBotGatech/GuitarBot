@@ -147,7 +147,7 @@ def test_tremolo_readiness_flags_early_pick_start():
         midi=[],
     )
 
-    analyzer = TremoloReadinessAnalyzer(presser_ready_pos=tu.LH_PRESSER_PRESSED_POS)
+    analyzer = TremoloReadinessAnalyzer(presser_ready_pos=tu.LH_PRESSER_PRESSED_POS + 200)
     result = analyzer.analyze(_build_context_from_payload(payload))
 
     assert result["pass"] is False

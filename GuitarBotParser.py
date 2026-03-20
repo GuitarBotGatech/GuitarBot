@@ -536,6 +536,31 @@ class GuitarBotParser:
     # Only strings 0, 2, 4 have physical pluckers.
     _CHORD_PLUCK_STRING_TO_PICKER = {0: 0, 2: 1, 4: 2}
 
+    def _lh_prep_time_for_event(self, prev_note, note, duration, slide_toggle):
+        base_prep = float(tu.LH_PREP_TIME_BEFORE_PICK)
+
+        if note <= 5:
+            return base_prep
+
+        same_note = prev_note is not None and int(prev_note) == int(note)
+        is_tremolo = float(duration) >= float(tu.TREMOLO_DURATION_THRESHOLD)
+        slide_on = int(slide_toggle) == 1
+
+        if same_note and not slide_on:
+            # Re-articulation on the same fret is cheaper than a full move.
+            motion_time = float(tu.LH_SINGLE_NOTE_MOTION_POINTS) * float(tu.TIME_STEP)
+        else:
+            # Full LH repositioning path.
+            motion_time = self.get_lh_note_movement_duration()
+            if prev_note is not None:
+                semitone_delta = abs(int(note) - int(prev_note))
+                motion_time += min(0.20, semitone_delta * 0.015)
+
+        if is_tremolo:
+            motion_time += float(tu.TIME_STEP)
+
+        return max(base_prep, motion_time)
+
     def parsePickMIDI(self, picks):
         """
         Parses picking MIDI commands and converts them into motor positions.
@@ -589,13 +614,12 @@ class GuitarBotParser:
             if duration < tu.TREMOLO_DURATION_THRESHOLD:
                 duration = tu.SHORT_NOTE_DEFAULT_DURATION
 
-            prep_time = (2 * tu.PRESSER_INTERPOLATION_POINTS + tu.LH_SINGLE_NOTE_MOTION_POINTS) * tu.TIME_STEP
-
             if specified_string is not None:
                 pickerID = specified_string - 1
                 if 0 <= pickerID < len(string_ranges_tuples):
                     low, high = string_ranges_tuples[pickerID]
                     if low <= note <= high:
+                        prep_time = self._lh_prep_time_for_event(last_notes[pickerID], note, duration, slide_toggle)
                         if last_notes[pickerID] == note or timestamp - prep_time >= active_pickers[pickerID]:
                             pick_events.append(["pick", [pickerID, note, duration, speed, timestamp]])
                             slide_toggles.append(slide_toggle)
@@ -611,6 +635,7 @@ class GuitarBotParser:
             if not assigned:
                 for pickerID, (low, high) in enumerate(string_ranges_tuples):
                     if low <= note <= high:
+                        prep_time = self._lh_prep_time_for_event(last_notes[pickerID], note, duration, slide_toggle)
                         if last_notes[pickerID] == note or timestamp - prep_time >= active_pickers[pickerID]:
                             pick_events.append(["pick", [pickerID, note, duration, speed, timestamp]])
                             slide_toggles.append(slide_toggle)
@@ -670,6 +695,7 @@ class GuitarBotParser:
         trajectory_array = np.full((num_rows, num_pickers), np.nan)
         trajectory_array[0, :] = initial_point_rh
         current_positions = list(initial_point_rh)
+        last_lh_note_by_picker = [None] * max(1, len(tu.PICKER_MOTOR_INFO))
 
         for i, (event_data, timestamp) in enumerate(pick_events):
             motor_id, note, _, duration, speed = event_data
@@ -718,7 +744,11 @@ class GuitarBotParser:
                 else:
                     s_dir = tu.STRING_MIDI_RANGES[motor_id][2]
                     lh_enc_val = ((tu.SLIDER_MM_PER_FRET[fret - 1] * 2048) / tu.MM_TO_ENCODER_CONVERSION_FACTOR + tu.SLIDER_ENCODER_OFFSET) * s_dir
-                lh_pick_events.append([motor_id, lh_enc_val, slide_toggles[i], timestamp - tu.LH_PREP_TIME_BEFORE_PICK])
+                prev_note = last_lh_note_by_picker[motor_id] if 0 <= motor_id < len(last_lh_note_by_picker) else None
+                prep_time = self._lh_prep_time_for_event(prev_note, note, duration, slide_toggles[i])
+                lh_pick_events.append([motor_id, lh_enc_val, slide_toggles[i], timestamp - prep_time])
+                if 0 <= motor_id < len(last_lh_note_by_picker):
+                    last_lh_note_by_picker[motor_id] = note
 
         df = pd.DataFrame(trajectory_array)
         df.ffill(inplace=True)
