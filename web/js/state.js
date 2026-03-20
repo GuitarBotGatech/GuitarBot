@@ -35,9 +35,31 @@ const bpm=()=>{const[n]=S.timeSig.split('/').map(Number);return n};
 const totalBeats=()=>S.measures*bpm();
 const beatToX=b=>LABEL_W+b*S.zoom-S.scrollX;
 const xToBeat=x=>(x-LABEL_W+S.scrollX)/S.zoom;
-const noteToY=n=>CHORD_H+(MIDI_MAX-n)*noteH;
-const yToNote=y=>MIDI_MAX-Math.floor((y-CHORD_H)/noteH);
-const midiTopY=()=>CHORD_H+rollH();
+const noteToY=n=>{
+  if(n===4) return CHORD_H + rollH() + 0*SLIDERLESS_H + (SLIDERLESS_H-noteH)/2;
+  if(n===2) return CHORD_H + rollH() + 1*SLIDERLESS_H + (SLIDERLESS_H-noteH)/2;
+  if(n===0) return CHORD_H + rollH() + 2*SLIDERLESS_H + (SLIDERLESS_H-noteH)/2;
+  return CHORD_H+(MIDI_MAX-n)*noteH;
+};
+const yToNote=y=>{
+  const slTop = CHORD_H + rollH();
+  if (y >= slTop && y < slTop + SLIDERLESS_TOTAL) {
+    const laneIndex = Math.floor((y - slTop) / SLIDERLESS_H);
+    if(laneIndex===0) return 4;
+    if(laneIndex===1) return 2;
+    if(laneIndex===2) return 0;
+  }
+  return Math.max(MIDI_MIN, Math.min(MIDI_MAX, MIDI_MAX-Math.floor((y-CHORD_H)/noteH)));
+};
+const clampNote = n => {
+  if (n <= 4) {
+    if (n < 1) return 0;
+    if (n < 3) return 2;
+    return 4;
+  }
+  return clamp(n, MIDI_MIN, MIDI_MAX);
+};
+const midiTopY=()=>CHORD_H+rollH()+SLIDERLESS_TOTAL;
 const hasFocusedCCLane=()=>Number.isInteger(S.focusedCCLane)&&S.focusedCCLane>=0&&S.focusedCCLane<MIDI_AUTOMATION_KEYS.length;
 const midiLaneVisible=index=>!hasFocusedCCLane()||index===S.focusedCCLane;
 const midiLaneTop=index=>{
