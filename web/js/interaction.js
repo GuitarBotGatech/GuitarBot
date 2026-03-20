@@ -53,7 +53,7 @@ canvas.addEventListener('pointerdown',e=>{
   const r=canvas.getBoundingClientRect();
   const cx=e.clientX-r.left, cy=e.clientY-r.top;
   closeCPop(); closeMPop(); closeMLPop();
-  const myY=midiTopY();
+  const myY=CHORD_H+rollH();
 
   if(cy<CHORD_H){chordDown(cx,cy,e);return}
   if(cy>=myY){midiDown(cx,cy,e);return}
@@ -92,14 +92,14 @@ canvas.addEventListener('pointerdown',e=>{
       selPluck(hit.id);
     } else if(cx>=LABEL_W){
       const b=normalizeBeat(Math.max(0,xToBeat(cx)));
-      const n=yToNote(cy);
+      const n=clamp(yToNote(cy),MIDI_MIN,MIDI_MAX);
       if(b<totalBeats())addNote(b,n);
       deselectAll();
     }
   } else {
     if(cx<LABEL_W)return;
     const clickedBeat=normalizeBeat(Math.max(0,xToBeat(cx)));
-    const clickedNote=yToNote(cy);
+    const clickedNote=clamp(yToNote(cy),MIDI_MIN,MIDI_MAX);
     S.pasteAnchor={
       beat:clickedBeat,
       note:clickedNote,
@@ -209,7 +209,7 @@ canvas.addEventListener('pointermove',e=>{
   }
   if(drag.type==='drag-group'){
     const beatDelta=normalizeBeat(xToBeat(cx)-drag.sxBeat);
-    const noteBase=yToNote(cy);
+    const noteBase=clamp(yToNote(cy),MIDI_MIN,MIDI_MAX);
     const dragSet=new Set(drag.ids);
     // Check all moves first; if any collide with non-group notes, skip entire move
     let blocked=false;
@@ -219,7 +219,7 @@ canvas.addEventListener('pointermove',e=>{
       const offs=drag.noteOffsets.find(o=>o.id===id);
       if(!ev||!start||!offs)continue;
       const nb=Math.max(0,start.beat+beatDelta);
-      const nn=clampNote(noteBase+offs.noteOffset);
+      const nn=clamp(noteBase+offs.noteOffset,MIDI_MIN,MIDI_MAX);
       for(const other of S.pluck){
         if(dragSet.has(other.id))continue;
         if(notesOverlap(nb,ev.duration_b,nn,parseBeat(other.beat),other.duration_b,other.note)){blocked=true;break;}
@@ -233,7 +233,7 @@ canvas.addEventListener('pointermove',e=>{
         const offs=drag.noteOffsets.find(o=>o.id===id);
         if(!ev||!start||!offs)continue;
         ev.beat=beatLabel(Math.max(0,start.beat+beatDelta));
-        ev.note=clampNote(noteBase+offs.noteOffset);
+        ev.note=clamp(noteBase+offs.noteOffset,MIDI_MIN,MIDI_MAX);
         if(S.selPluck===ev.id)refreshInspNote(ev);
       }
     }
@@ -244,7 +244,7 @@ canvas.addEventListener('pointermove',e=>{
   if(!ev)return;
   if(drag.type==='drag'){
     const newBeat=normalizeBeat(Math.max(0,xToBeat(cx)+drag.bo));
-    const newNote=clampNote(yToNote(cy)+drag.no);
+    const newNote=clamp(yToNote(cy)+drag.no,MIDI_MIN,MIDI_MAX);
     if(!hasCollision(newBeat,ev.duration_b,newNote,ev.id)){
       ev.beat=beatLabel(newBeat);
       ev.note=newNote;
@@ -322,7 +322,7 @@ canvas.addEventListener('dblclick',e=>{
   }
 
   if(S.editMode==='draw')return;
-  const myY=midiTopY();
+  const myY=CHORD_H+rollH();
   if(cx<LABEL_W||cy<CHORD_H||cy>=myY)return;
 
   const hit=hitPluck(cx,cy);
