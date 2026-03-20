@@ -29,6 +29,14 @@ let S={
   midiLaneMenuLane:null,
   focusedCCLane:null,
   selPluck:null, selChord:null, selMidi:null,
+  spectrogramFrames:[],
+  spectrogramParams:null,
+  noteAnalysis:{},
+  spectrogramVisible:false,
+  recordingActive:false,
+  latencyMs:80,
+  audioWavB64:null,
+  recStartBeat:0,
 };
 
 const bpm=()=>{const[n]=S.timeSig.split('/').map(Number);return n};

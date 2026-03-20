@@ -85,6 +85,7 @@ function openInsp(ev){
   document.getElementById('i-slide').checked=ev.slide===1;
   document.getElementById('i-slide-lbl').textContent=ev.slide?'On':'Off';
   document.getElementById('i-str-ov').value=ev.string_index!==null?ev.string_index:'';
+  if(typeof updateInspectorAnalysis==='function') updateInspectorAnalysis();
 }
 function refreshInspNote(ev){
   const s=strOf(ev.note);

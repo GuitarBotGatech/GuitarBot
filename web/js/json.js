@@ -234,7 +234,7 @@ document.getElementById('btn-export').addEventListener('click',()=>{
   a.click(); URL.revokeObjectURL(a.href);
 });
 
-document.getElementById('btn-upload').addEventListener('click',async()=>{
+async function uploadToBot(){
   const btn=document.getElementById('btn-upload');
   const original=btn.textContent;
   btn.disabled=true;
@@ -249,6 +249,7 @@ document.getElementById('btn-upload').addEventListener('click',async()=>{
     if(!res.ok||!data.ok)throw new Error(data.error||`HTTP ${res.status}`);
     btn.textContent='✓ Uploaded';
     setTimeout(()=>{btn.textContent=original;btn.disabled=false},900);
+    return true;
   }catch(err){
     alert(
       'Upload failed. Start the local uploader first:\n\n'
@@ -258,8 +259,11 @@ document.getElementById('btn-upload').addEventListener('click',async()=>{
     );
     btn.textContent=original;
     btn.disabled=false;
+    return false;
   }
-});
+}
+
+document.getElementById('btn-upload').addEventListener('click',()=>uploadToBot());
 
 document.getElementById('btn-reset-bot').addEventListener('click',async()=>{
   const btn=document.getElementById('btn-reset-bot');

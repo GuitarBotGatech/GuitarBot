@@ -100,6 +100,14 @@ input[type=range]::-webkit-slider-thumb:hover{transform:scale(1.2)}
 .del-btn:hover{background:var(--red);color:#fff}
 .insp-sep{height:1px;background:var(--border);margin:10px 0}
 
+/* ── RECORDING / SPECTROGRAM BUTTONS ── */
+@keyframes pulse-rec{0%,100%{opacity:1}50%{opacity:0.45}}
+.tbtn.rec{border-color:var(--red);color:var(--red)}
+.tbtn.rec.active{background:var(--red);color:#fff;animation:pulse-rec 1s ease-in-out infinite}
+.tbtn.spec{border-color:var(--teal);color:var(--teal)}
+.tbtn.spec.on{background:var(--teal);color:#000}
+.analyze-status{font-family:'JetBrains Mono',monospace;font-size:10px;font-weight:600;white-space:nowrap}
+
 /* ── JSON PANEL ── */
 #jp-bar{
   height:30px;background:var(--surface);border-top:1px solid var(--border);

@@ -24,7 +24,11 @@ function render(){
   if(!ctx)return;
   ctx.clearRect(0,0,CW,canvasH());
   drawBG(); drawGrid(); drawLabels();
-  drawCycleBar(); drawChordLane(); drawMidiLane(); drawTempoPointOverlay(); drawSlideLinks(); drawNotes(); drawPlayhead(); drawSelectionBox();
+  drawCycleBar(); drawChordLane(); drawMidiLane(); drawTempoPointOverlay(); drawSlideLinks();
+  if(S.spectrogramVisible) drawSpectrogram();
+  drawNotes();
+  if(S.noteAnalysis && Object.keys(S.noteAnalysis).length) drawNoteAnalysisOverlay();
+  drawPlayhead(); drawSelectionBox();
 }
 
 function drawTempoPointOverlay(){
