@@ -133,9 +133,9 @@ body{display:flex;align-items:center;justify-content:center;padding:24px}
 
         <div class="card">
           <h2>2) Open / Resume</h2>
-          <p>Load a saved arrangement from a local JSON file or resume your auto-saved session.</p>
+          <p>Load a saved arrangement from a local JSON or MIDI file, or resume your auto-saved session.</p>
           <div style="display:flex;gap:8px">
-            <button class="btn open" id="btn-open" style="flex:1">Open JSON</button>
+            <button class="btn open" id="btn-open" style="flex:1">Open File</button>
             <button class="btn recent" id="btn-recent" style="display:none;flex:1">Resume</button>
           </div>
         </div>
@@ -154,10 +154,20 @@ body{display:flex;align-items:center;justify-content:center;padding:24px}
     </div>
   </div>
 
-  <input type="file" id="hidden-file" accept=".json,application/json">
+  <input type="file" id="hidden-file" accept=".json,.mid,.midi,application/json,audio/midi,audio/x-midi">
 
 <script>
 const IMPORT_KEY='guitarbot_startup_import_json';
+
+function arrayBufferToBase64(buffer){
+  const bytes=new Uint8Array(buffer);
+  let binary='';
+  const chunk=0x8000;
+  for(let i=0;i<bytes.length;i+=chunk){
+    binary+=String.fromCharCode(...bytes.subarray(i,i+chunk));
+  }
+  return btoa(binary);
+}
 
 function go(mode){
   window.location.href=`sequencer.html?startup=${encodeURIComponent(mode)}`;
@@ -191,23 +201,42 @@ document.getElementById('btn-open').addEventListener('click',()=>{
 document.getElementById('hidden-file').addEventListener('change',e=>{
   const file=e.target.files?.[0];
   if(!file)return;
+  const ext=(file.name||'').toLowerCase().split('.').pop();
+  const isMidi=ext==='mid'||ext==='midi'||file.type==='audio/midi'||file.type==='audio/x-midi';
   const reader=new FileReader();
-  reader.onload=ev=>{
-    try{
-      const text=String(ev.target?.result||'');
-      const parsed=JSON.parse(text);
-      if(!parsed||typeof parsed!=='object'||!parsed.song){
-        throw new Error('Expected top-level "song" object');
+  if(isMidi){
+    reader.onload=ev=>{
+      try{
+        const buffer=ev.target?.result;
+        if(!(buffer instanceof ArrayBuffer))throw new Error('Unable to read MIDI bytes');
+        const payload={kind:'midi',name:file.name,data:arrayBufferToBase64(buffer)};
+        localStorage.setItem(IMPORT_KEY,JSON.stringify(payload));
+        go('import');
+      }catch(err){
+        alert(`Invalid MIDI file. ${err.message||err}`);
+      }finally{
+        e.target.value='';
       }
-      localStorage.setItem(IMPORT_KEY,text);
-      go('import');
-    }catch(err){
-      alert(`Invalid JSON file. ${err.message||err}`);
-    }finally{
-      e.target.value='';
-    }
-  };
-  reader.readAsText(file);
+    };
+    reader.readAsArrayBuffer(file);
+  }else{
+    reader.onload=ev=>{
+      try{
+        const text=String(ev.target?.result||'');
+        const parsed=JSON.parse(text);
+        if(!parsed||typeof parsed!=='object'||!parsed.song){
+          throw new Error('Expected top-level "song" object');
+        }
+        localStorage.setItem(IMPORT_KEY,JSON.stringify({kind:'json',name:file.name,data:text}));
+        go('import');
+      }catch(err){
+        alert(`Invalid JSON file. ${err.message||err}`);
+      }finally{
+        e.target.value='';
+      }
+    };
+    reader.readAsText(file);
+  }
 });
 </script>
 </body>

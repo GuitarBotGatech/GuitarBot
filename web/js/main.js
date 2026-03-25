@@ -160,7 +160,22 @@ function applyStartupMode(){
     const raw=localStorage.getItem(IMPORT_KEY);
     if(raw){
       try{
-        loadJSON(JSON.parse(raw));
+        const parsed=JSON.parse(raw);
+        if(parsed&&typeof parsed==='object'&&typeof parsed.kind==='string'){
+          if(parsed.kind==='json'){
+            loadJSON(JSON.parse(String(parsed.data||'{}')));
+          }else if(parsed.kind==='midi'){
+            const b64=String(parsed.data||'');
+            const binary=atob(b64);
+            const bytes=new Uint8Array(binary.length);
+            for(let i=0;i<binary.length;i++)bytes[i]=binary.charCodeAt(i);
+            importMidiFromArrayBuffer(bytes.buffer,parsed.name||'Imported.mid');
+          }else{
+            throw new Error('Unknown import payload type');
+          }
+        }else{
+          loadJSON(parsed);
+        }
         localStorage.removeItem(IMPORT_KEY);
         return;
       }catch(_e){

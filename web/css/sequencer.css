@@ -135,6 +135,10 @@ input[type=range]::-webkit-slider-thumb:hover{transform:scale(1.2)}
 .note-warn.warn:hover{background:rgba(251,191,36,0.12)}
 .note-warn.pulse{animation:note-warn-pulse .7s ease}
 
+#btn-fix-warnings{border-color:var(--yellow);color:var(--yellow);min-width:38px}
+#btn-fix-warnings:hover{background:var(--yellow);color:#000}
+#btn-fix-warnings:disabled{opacity:.4;cursor:default;background:transparent;color:var(--text-dim);border-color:var(--border)}
+
 .note-warn-popover{
   position:fixed;
   z-index:120;
@@ -230,6 +234,30 @@ input[type=range]::-webkit-slider-thumb:hover{transform:scale(1.2)}
 .mlbtn:hover{border-color:var(--purple);color:var(--purple);background:var(--surface3)}
 
 #settings-pop{min-width:280px;max-width:320px}
+
+#import-toast{
+  position:fixed;
+  right:14px;
+  bottom:14px;
+  z-index:130;
+  max-width:min(520px,calc(100vw - 24px));
+  padding:8px 10px;
+  border:1px solid var(--border);
+  border-radius:5px;
+  background:rgba(19,19,24,.96);
+  color:var(--text-dim);
+  font-family:'JetBrains Mono',monospace;
+  font-size:11px;
+  line-height:1.35;
+  pointer-events:none;
+  opacity:0;
+  transform:translateY(6px);
+  transition:opacity .22s ease,transform .22s ease;
+}
+#import-toast.on{
+  opacity:1;
+  transform:translateY(0);
+}
 
 ::-webkit-scrollbar{width:5px;height:5px}
 ::-webkit-scrollbar-track{background:var(--surface)}

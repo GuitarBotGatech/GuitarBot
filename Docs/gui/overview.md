@@ -14,7 +14,9 @@ Use this guide for day-to-day editing inside `sequencer.html`: layout, controls,
 - **Play / Stop** — Transport controls.
 - **Position Display** — Current playhead position (`bar.beat`).
 - **Zoom ±** — Expand or contract the timeline view.
-- **Import / Export** — Load or save JSON arrangements.
+- **Import** — Load JSON or MIDI (`.mid/.midi`) arrangements from one file dialog.
+- **Export** — Opens the OS save dialog with JSON/MIDI file type options (or a format dropdown fallback).
+- **Warnings / FIX** — Warning badge shows note-timing conflicts; **FIX** auto-adjusts octave and on/off timing to reduce overlap/too-close warnings.
 
 ### Canvas Regions (Left to Right)
 
@@ -86,15 +88,24 @@ Playback in the sequencer is visual only. Robot/MIDI output requires OSC or brid
 
 ### Export
 
-1. Click **↓ Export** to download a JSON file.
-2. Filename is generated from song name.
-3. File includes metadata (BPM, key, time signature) and all event tracks.
+1. Click **↓ Export**.
+2. Choose the file type in the save dialog (`.json` or `.mid/.midi`).
+3. Filename is generated from song name.
+4. JSON export includes metadata + all event tracks.
+
+### MIDI Export
+
+1. Click **↓ Export** and select MIDI file type.
+2. Pluck notes are exported as MIDI notes.
+3. MIDI lane `/cc` events are exported as MIDI CC data.
+4. Tempo automation is exported as tempo changes.
 
 ### Import
 
-1. Click **↑ Import** and select an exported `.json` file.
-2. Song metadata, notes, chords, and MIDI events are loaded.
-3. Existing events are replaced (no merge).
+1. Click **↑ Import** and select `.json`, `.mid`, or `.midi`.
+2. JSON loads song metadata + tracks directly.
+3. MIDI loads notes into the **Pluck Roll** and CC/program/pitch events into the **MIDI Lane**.
+4. Existing events are replaced (no merge).
 
 ### JSON Preview
 

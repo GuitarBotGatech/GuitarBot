@@ -70,6 +70,7 @@
     <button class="tbtn" id="btn-analyze" title="Analyze recording">ANALYZE</button>
     <span class="analyze-status" id="analyze-status"></span>
     <span class="note-warn ok" id="note-warn" title="No note timing warnings">✓ NOTES OK</span>
+    <button class="tbtn" id="btn-fix-warnings" title="Auto-fix note warnings">FIX</button>
     <button class="tbtn" id="btn-clear-recording" title="Clear recording">✕REC</button>
   </div>
   <div class="tr">
@@ -260,8 +261,17 @@
   <div class="pl" style="margin-top:4px">Quick = single test pluck, Long = multi-point drift fit.</div>
 </div>
 
-<input type="file" id="hidden-file" accept=".json">
+<!-- EXPORT FORMAT POPUP (fallback when native save picker is unavailable) -->
+<div class="popup" id="export-pop">
+  <div class="ph">Export Format <span class="pc" onclick="closeExportPop()">×</span></div>
+  <button class="mlbtn" id="btn-export-json" type="button">Save as JSON</button>
+  <button class="mlbtn" id="btn-export-midi" type="button">Save as MIDI</button>
+</div>
 
+<input type="file" id="hidden-file" accept=".json,.mid,.midi,application/json,audio/midi,audio/x-midi">
+<div id="import-toast" aria-live="polite"></div>
+
+<script src="https://cdn.jsdelivr.net/npm/@tonejs/midi@2.0.28/build/Midi.min.js"></script>
 <script src="js/constants.js"></script>
 <script src="js/state.js"></script>
 <script src="js/note_rules.js"></script>

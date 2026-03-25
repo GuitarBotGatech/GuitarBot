@@ -43,7 +43,7 @@ It can be useful to run each component individually for testing.
    ```
 2. Open your browser and navigate to: [http://localhost:8000/](http://localhost:8000/)
 
-3. You will be prompted to start a new project, open an example, or import a JSON file.
+3. You will be prompted to start a new project, open an example, or import a JSON/MIDI file.
 ### Start GUI → GuitarBot Bridge
 
 In a separate terminal, start the bridge that forwards arrangements from the sequencer to the robot via UDP/OSC:

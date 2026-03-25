@@ -305,41 +305,251 @@ function onNoteWarningsBadgeClick(event){
   jumpToFirstWarningNote();
 }
 
+function warningWeight(ruleId){
+  if(ruleId==='overlap')return 11;
+  if(ruleId==='too-close')return 8;
+  if(ruleId==='open-string-risk')return 6;
+  if(ruleId==='too-short')return 2;
+  return 4;
+}
+
+function warningScore(warnings){
+  let total=0;
+  for(const warning of warnings||[])total+=warningWeight(warning.ruleId);
+  return total;
+}
+
+function warningScoreForNote(noteId,warnings){
+  let total=0;
+  for(const warning of warnings||[]){
+    if(warning.noteId===noteId)total+=warningWeight(warning.ruleId);
+  }
+  return total;
+}
+
+function candidateOnsetSteps(){
+  const step=S.snapEnabled?Math.max(0.02,gridStep()/2):0.05;
+  return [-2*step,-step,0,step,2*step];
+}
+
+function candidateOffsetSteps(){
+  const step=S.snapEnabled?Math.max(0.02,gridStep()/2):0.05;
+  return [-2*step,-step,0,step,2*step];
+}
+
+function candidateOctaveShifts(){
+  return [0,-12,12,-24,24];
+}
+
+function noteFixState(ev){
+  return {
+    note:parseInt(ev.note,10)||52,
+    startBeat:parseBeat(ev.beat),
+    duration:Math.max(minDurationBeats(),parseFloat(ev.duration_b)||minDurationBeats()),
+  };
+}
+
+function applyNoteFixState(ev,state){
+  const start=Math.max(0,parseFloat(state.startBeat)||0);
+  const duration=Math.max(minDurationBeats(),parseFloat(state.duration)||minDurationBeats());
+  ev.note=clamp(parseInt(state.note,10)||52,MIDI_MIN,MIDI_MAX);
+  ev.beat=beatLabel(start);
+  ev.duration_b=trimBeatNumber(duration);
+}
+
+function movementPenalty(base,candidate){
+  const semitones=Math.abs((parseInt(candidate.note,10)||0)-(parseInt(base.note,10)||0));
+  const octaveMoves=semitones/12;
+  const onsetDelta=Math.abs((parseFloat(candidate.startBeat)||0)-(parseFloat(base.startBeat)||0));
+  const endBase=(parseFloat(base.startBeat)||0)+(parseFloat(base.duration)||0);
+  const endCand=(parseFloat(candidate.startBeat)||0)+(parseFloat(candidate.duration)||0);
+  const offsetDelta=Math.abs(endCand-endBase);
+  return (octaveMoves*0.9)+(onsetDelta*2.0)+(offsetDelta*1.6);
+}
+
+function ruleThresholdSeconds(ruleId,fallback=0){
+  const rule=NOTE_RULES.find(item=>item.id===ruleId);
+  const raw=rule?.thresholdS;
+  return Number.isFinite(parseFloat(raw))?parseFloat(raw):fallback;
+}
+
+function clampToPlayableOctave(noteRaw){
+  let note=parseInt(noteRaw,10);
+  if(!Number.isFinite(note))note=52;
+  while(note>MIDI_MAX)note-=12;
+  while(note<MIDI_MIN)note+=12;
+  return clamp(note,MIDI_MIN,MIDI_MAX);
+}
+
+function optimizeNoteWarningsLayout(){
+  if(!S.pluck.length)return {improved:false,before:0,after:0,moved:0};
+  const originalById=new Map(S.pluck.map(ev=>[ev.id,noteFixState(ev)]));
+  const initialWarnings=evaluatePluckNoteWarnings();
+  const initialCount=initialWarnings.length;
+
+  const spb=secondsPerBeat();
+  const closeGapBeats=ruleThresholdSeconds('too-close',0.12)/Math.max(1e-6,spb);
+  const minDurBeats=Math.max(minDurationBeats(),ruleThresholdSeconds('too-short',0.08)/Math.max(1e-6,spb));
+
+  const byString=[[],[],[]];
+  for(const ev of S.pluck){
+    const stringIndex=noteRuleStringIndex(ev);
+    byString[stringIndex].push(ev);
+  }
+
+  for(const events of byString){
+    events.sort((a,b)=>parseBeat(a.beat)-parseBeat(b.beat)||a.id-b.id);
+    let prevPlaced=null;
+
+    for(const ev of events){
+      const base=noteFixState(ev);
+      const baseEnd=base.startBeat+base.duration;
+
+      let requiredStart=0;
+      if(prevPlaced){
+        requiredStart=Math.max(requiredStart,prevPlaced.startBeat+closeGapBeats);
+        requiredStart=Math.max(requiredStart,prevPlaced.endBeat+1e-4);
+        const prevEvent=prevPlaced.ev;
+        const prevDurationS=(prevPlaced.endBeat-prevPlaced.startBeat)*spb;
+        const prevIsTremolo=prevDurationS>=0.5;
+        const curSlide=parseInt(ev.slide||0,10)===1;
+        if(prevIsTremolo&&!curSlide){
+          const prepS=noteRulePrepTimeSeconds(prevEvent,ev);
+          requiredStart=Math.max(requiredStart,prevPlaced.endBeat+(prepS/spb));
+        }
+      }
+
+      let best={
+        note:clampToPlayableOctave(base.note),
+        startBeat:Math.max(0,base.startBeat),
+        duration:Math.max(minDurBeats,base.duration),
+      };
+      let bestCost=Number.POSITIVE_INFINITY;
+
+      for(const oct of candidateOctaveShifts()){
+        const shifted=base.note+oct;
+        if(shifted<MIDI_MIN||shifted>MIDI_MAX)continue;
+        for(const onsetStep of candidateOnsetSteps()){
+          let start=Math.max(0,base.startBeat+onsetStep);
+          start=Math.max(start,requiredStart);
+          start=trimBeatNumber(start);
+
+          for(const offsetStep of candidateOffsetSteps()){
+            const targetEnd=Math.max(start+minDurBeats,baseEnd+offsetStep);
+            const duration=Math.max(minDurBeats,trimBeatNumber(targetEnd-start));
+            const candidate={note:shifted,startBeat:start,duration};
+            const cost=movementPenalty(base,candidate);
+            if(cost<bestCost-1e-6){
+              best=candidate;
+              bestCost=cost;
+            }
+          }
+        }
+      }
+
+      applyNoteFixState(ev,best);
+      prevPlaced={
+        ev,
+        startBeat:parseBeat(ev.beat),
+        endBeat:parseBeat(ev.beat)+Math.max(minDurBeats,parseFloat(ev.duration_b)||minDurBeats),
+      };
+    }
+  }
+
+  const currentWarnings=evaluatePluckNoteWarnings();
+  if(currentWarnings.length>initialCount){
+    for(const ev of S.pluck){
+      const original=originalById.get(ev.id);
+      if(!original)continue;
+      applyNoteFixState(ev,original);
+    }
+  }
+
+  const finalWarnings=evaluatePluckNoteWarnings();
+  S.noteWarnings=finalWarnings;
+  S.noteWarningsByNoteId=buildWarningIndex(finalWarnings);
+  const afterWarnings=finalWarnings.length;
+
+  let moved=0;
+  for(const ev of S.pluck){
+    const original=originalById.get(ev.id);
+    if(!original)continue;
+    const now=noteFixState(ev);
+    const changedPitch=original.note!==now.note;
+    const changedOnset=Math.abs(original.startBeat-now.startBeat)>1e-4;
+    const changedDur=Math.abs(original.duration-now.duration)>1e-4;
+    if(changedPitch||changedOnset||changedDur)moved++;
+  }
+
+  return {
+    improved:afterWarnings<initialCount,
+    before:initialCount,
+    after:afterWarnings,
+    moved,
+  };
+}
+
+function renderNoteWarningsAndGetCount(){
+  const warnings=evaluatePluckNoteWarnings();
+  S.noteWarnings=warnings;
+  S.noteWarningsByNoteId=buildWarningIndex(warnings);
+  const badge=document.getElementById('note-warn');
+  const fixBtn=document.getElementById('btn-fix-warnings');
+  const count=warnings.length;
+
+  if(badge){
+    if(!count){
+      badge.classList.remove('warn');
+      badge.classList.add('ok');
+      badge.textContent='✓ NOTES OK';
+      badge.title='No note timing warnings';
+      hideNoteWarningPopover();
+    }else{
+      badge.classList.remove('ok');
+      badge.classList.add('warn');
+      badge.textContent=`⚠ ${count} WARNINGS`;
+
+      const lines=warnings.slice(0,8).map((warning,index)=>{
+        const beatText=`@${warning.beat}`;
+        const strText=`S${warning.stringIndex+1}`;
+        return `${index+1}. ${beatText} ${strText} — ${warning.message}`;
+      });
+      if(warnings.length>lines.length)lines.push(`…and ${warnings.length-lines.length} more`);
+      badge.title=lines.join('\n');
+    }
+  }
+
+  if(fixBtn)fixBtn.disabled=!count;
+  return count;
+}
+
+function onFixWarningsClick(event){
+  event.preventDefault();
+  event.stopPropagation();
+  const before=(S.noteWarnings||[]).length;
+  if(!before)return;
+
+  const result=optimizeNoteWarningsLayout();
+  render();
+  syncJSON();
+
+  const message=result.after<before
+    ? `Auto-fix reduced warnings ${before} → ${result.after} (updated ${result.moved} notes).`
+    : `Auto-fix made no warning improvements (${before} warnings).`;
+  if(typeof showImportToast==='function')showImportToast(message,3600);
+}
+
 function bindNoteWarningUI(){
   if(S.noteWarningUIBound)return;
   const badge=document.getElementById('note-warn');
-  if(!badge)return;
+  const fixBtn=document.getElementById('btn-fix-warnings');
+  if(!badge||!fixBtn)return;
   badge.addEventListener('click',onNoteWarningsBadgeClick);
+  fixBtn.addEventListener('click',onFixWarningsClick);
   S.noteWarningUIBound=true;
 }
 
 function renderNoteWarnings(){
   bindNoteWarningUI();
-  const badge=document.getElementById('note-warn');
-  if(!badge)return;
-  const warnings=evaluatePluckNoteWarnings();
-  S.noteWarnings=warnings;
-  S.noteWarningsByNoteId=buildWarningIndex(warnings);
-  const count=warnings.length;
-
-  if(!count){
-    badge.classList.remove('warn');
-    badge.classList.add('ok');
-    badge.textContent='✓ NOTES OK';
-    badge.title='No note timing warnings';
-    hideNoteWarningPopover();
-    return;
-  }
-
-  badge.classList.remove('ok');
-  badge.classList.add('warn');
-  badge.textContent=`⚠ ${count} WARNINGS`;
-
-  const lines=warnings.slice(0,8).map((warning,index)=>{
-    const beatText=`@${warning.beat}`;
-    const strText=`S${warning.stringIndex+1}`;
-    return `${index+1}. ${beatText} ${strText} — ${warning.message}`;
-  });
-  if(warnings.length>lines.length)lines.push(`…and ${warnings.length-lines.length} more`);
-  badge.title=lines.join('\n');
+  renderNoteWarningsAndGetCount();
 }
