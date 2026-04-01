@@ -239,6 +239,7 @@ canvas.addEventListener('pointermove',e=>{
         if(!ev||!start||!offs)continue;
         ev.beat=beatLabel(Math.max(0,start.beat+beatDelta));
         ev.note=clampNote(noteBase+offs.noteOffset);
+        ensureSlideShape(ev);
         if(S.selPluck===ev.id)refreshInspNote(ev);
       }
     }
@@ -253,6 +254,7 @@ canvas.addEventListener('pointermove',e=>{
     if(!hasCollision(newBeat,ev.duration_b,newNote,ev.id)){
       ev.beat=beatLabel(newBeat);
       ev.note=newNote;
+      ensureSlideShape(ev);
     }
     if(S.selPluck===ev.id)refreshInspNote(ev);
   } else {

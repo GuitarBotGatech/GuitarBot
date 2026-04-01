@@ -234,10 +234,14 @@ class GuitarBotParser:
         single_note_duration = self.get_lh_note_movement_duration()
 
         filtered_lh_pick_pos = []
-        for motor_id, position, slide_toggle, timestamp in lh_pick_pos:
+        for lh_event in lh_pick_pos:
+            motor_id = lh_event[0]
+            position = lh_event[1]
+            slide_toggle = lh_event[2]
+            timestamp = lh_event[3]
             # Check if the motor is available at the required start time
             if timestamp >= motor_available_time.get(motor_id, 0.0):
-                filtered_lh_pick_pos.append([motor_id, position, slide_toggle, timestamp])
+                filtered_lh_pick_pos.append(list(lh_event))
 
                 # Update the time this motor will next be available
                 motor_available_time[motor_id] = timestamp + single_note_duration
@@ -254,7 +258,8 @@ class GuitarBotParser:
                 all_events_for_sizing.append({'timestamp': timestamp, 'type': 'chord'})
 
         if lh_pick_pos:
-            for _, _, _, timestamp in lh_pick_pos:
+            for lh_event in lh_pick_pos:
+                timestamp = lh_event[3]
                 if timestamp >= 0:
                     all_events_for_sizing.append({'timestamp': timestamp, 'type': 'note'})
 
@@ -292,10 +297,12 @@ class GuitarBotParser:
         full_LH = []
         for motor_pos, timestamp in lh_motor_positions:
             full_LH.append({'type': 'chord', 'positions': motor_pos, 'timestamp': timestamp})
-        for motor_id, position, slide_toggle, timestamp in lh_pick_pos:
+        for lh_event in lh_pick_pos:
+            motor_id, position, slide_toggle, timestamp = lh_event[:4]
+            presser_torque = lh_event[4] if len(lh_event) >= 5 else None
             full_LH.append(
                 {'type': 'note', 'motor_id': motor_id, 'position': position, 'slide_toggle': slide_toggle,
-                 'timestamp': timestamp})
+                 'timestamp': timestamp, 'presser_torque': presser_torque})
         full_LH.sort(key=lambda x: x['timestamp'])
 
         trajectory_array[0, :] = initial_point_lh
@@ -364,6 +371,8 @@ class GuitarBotParser:
                 qf_slider = int(event['position'])
                 qf1_presser = tu.LH_PRESSER_UNPRESSED_POS
                 qf2_presser = tu.LH_PRESSER_PRESSED_POS
+                if event.get('presser_torque') is not None:
+                    qf2_presser = int(max(0, min(tu.LH_PRESSER_PRESSED_POS, int(event['presser_torque']))))
                 # print((event['position']))
                 # print(current_encoder_position[slider_motor_ID])
                 # print("----------------")
@@ -589,11 +598,20 @@ class GuitarBotParser:
         last_notes = [None] * len(string_ranges_tuples)
 
         for pick_info in picks:
-            if len(pick_info) == 6:
+            presser_torque = None
+            target_fret_position = None
+            harmonic_prep_time_s = None
+            specified_string = None
+            if len(pick_info) == 7:
+                note, duration, speed, slide_toggle, specified_string, timestamp, presser_torque = pick_info
+            elif len(pick_info) == 8:
+                note, duration, speed, slide_toggle, specified_string, timestamp, presser_torque, target_fret_position = pick_info
+            elif len(pick_info) == 9:
+                note, duration, speed, slide_toggle, specified_string, timestamp, presser_torque, target_fret_position, harmonic_prep_time_s = pick_info
+            elif len(pick_info) == 6:
                 note, duration, speed, slide_toggle, specified_string, timestamp = pick_info
             else:
                 note, duration, speed, slide_toggle, timestamp = pick_info
-                specified_string = None
             assigned = False
             timestamp = round(timestamp * tu.TIMESTAMP_ROUNDING_FACTOR) / tu.TIMESTAMP_ROUNDING_FACTOR
 
@@ -604,7 +622,7 @@ class GuitarBotParser:
                 if pickerID is None:
                     print(f"Warning: String {note} has no plucker, skipping chord pluck at {timestamp}.")
                 elif timestamp >= active_pickers[pickerID]:
-                    pick_events.append(["pick", [pickerID, note, duration, speed, timestamp]])
+                    pick_events.append(["pick", [pickerID, note, duration, speed, timestamp, presser_torque, target_fret_position, harmonic_prep_time_s]])
                     slide_toggles.append(slide_toggle)
                     active_pickers[pickerID] = timestamp
                 else:
@@ -621,7 +639,7 @@ class GuitarBotParser:
                     if low <= note <= high:
                         prep_time = self._lh_prep_time_for_event(last_notes[pickerID], note, duration, slide_toggle)
                         if last_notes[pickerID] == note or timestamp - prep_time >= active_pickers[pickerID]:
-                            pick_events.append(["pick", [pickerID, note, duration, speed, timestamp]])
+                            pick_events.append(["pick", [pickerID, note, duration, speed, timestamp, presser_torque, target_fret_position, harmonic_prep_time_s]])
                             slide_toggles.append(slide_toggle)
                             active_pickers[pickerID] = timestamp
                             last_notes[pickerID] = note
@@ -637,7 +655,7 @@ class GuitarBotParser:
                     if low <= note <= high:
                         prep_time = self._lh_prep_time_for_event(last_notes[pickerID], note, duration, slide_toggle)
                         if last_notes[pickerID] == note or timestamp - prep_time >= active_pickers[pickerID]:
-                            pick_events.append(["pick", [pickerID, note, duration, speed, timestamp]])
+                            pick_events.append(["pick", [pickerID, note, duration, speed, timestamp, presser_torque, target_fret_position, harmonic_prep_time_s]])
                             slide_toggles.append(slide_toggle)
                             active_pickers[pickerID] = timestamp
                             last_notes[pickerID] = note
@@ -650,18 +668,44 @@ class GuitarBotParser:
 
         pick_motor_positions = []
         pickerStates = [True] * len(tu.PICKER_MOTOR_INFO)  # True = up, False = down
-        for _, (motor_id, note, duration, speed, timestamp) in pick_events:
+        for _, (motor_id, note, duration, speed, timestamp, presser_torque, target_fret_position, harmonic_prep_time_s) in pick_events:
             pick_state = pickerStates[motor_id]
             dest_key = 'down_pluck_mm' if pick_state else 'up_pluck_mm'
             qf_mm = tu.PICKER_MOTOR_INFO[motor_id][dest_key]
             res = tu.PICKER_MOTOR_INFO[motor_id]['resolution']
             pos2pulse = (qf_mm * res) / tu.MM_TO_ENCODER_CONVERSION_FACTOR
 
-            curr_event = [motor_id, note, round(pos2pulse, 3), duration, speed]
+            curr_event = [motor_id, note, round(pos2pulse, 3), duration, speed, presser_torque, target_fret_position, harmonic_prep_time_s]
             pick_motor_positions.append([curr_event, timestamp])
             if duration < tu.TREMOLO_DURATION_THRESHOLD:
                 pickerStates[motor_id] = not pick_state
         return pick_motor_positions, slide_toggles
+
+    def _fret_position_to_slider_encoder(self, motor_id, fret_position):
+        if fret_position <= 0.0:
+            return -1
+        max_fret = float(len(tu.SLIDER_MM_PER_FRET))
+        clamped_fret = max(0.0, min(max_fret, float(fret_position)))
+        fret_low = int(math.floor(clamped_fret))
+        fret_high = int(math.ceil(clamped_fret))
+
+        if fret_low <= 0:
+            mm_low = 0.0
+        else:
+            mm_low = float(tu.SLIDER_MM_PER_FRET[fret_low - 1])
+
+        if fret_high <= 0:
+            mm_high = 0.0
+        else:
+            mm_high = float(tu.SLIDER_MM_PER_FRET[fret_high - 1])
+
+        if fret_low == fret_high:
+            mm = mm_low
+        else:
+            mm = mm_low + (clamped_fret - fret_low) * (mm_high - mm_low)
+
+        s_dir = tu.STRING_MIDI_RANGES[motor_id][2]
+        return ((mm * 2048) / tu.MM_TO_ENCODER_CONVERSION_FACTOR + tu.SLIDER_ENCODER_OFFSET) * s_dir
 
     def prepPicker(self, lh_motor_positions, pick_motor_positions):
         pick_motor_positions_prepped = []
@@ -698,7 +742,7 @@ class GuitarBotParser:
         last_lh_note_by_picker = [None] * max(1, len(tu.PICKER_MOTOR_INFO))
 
         for i, (event_data, timestamp) in enumerate(pick_events):
-            motor_id, note, _, duration, speed = event_data
+            motor_id, note, _, duration, speed, presser_torque, target_fret_position, harmonic_prep_time_s = event_data
             start_index = int(timestamp / tu.TIME_STEP)
             is_pluck = duration < tu.TREMOLO_DURATION_THRESHOLD
 
@@ -738,15 +782,25 @@ class GuitarBotParser:
 
             # Chord plucks (note 0-5) activate the plucker without repositioning the slider.
             if note > 5:
-                fret = note - tu.STRING_MIDI_RANGES[motor_id][0]
-                if fret == 0:
-                    lh_enc_val = -1
+                if target_fret_position is not None:
+                    lh_enc_val = self._fret_position_to_slider_encoder(motor_id, target_fret_position)
                 else:
-                    s_dir = tu.STRING_MIDI_RANGES[motor_id][2]
-                    lh_enc_val = ((tu.SLIDER_MM_PER_FRET[fret - 1] * 2048) / tu.MM_TO_ENCODER_CONVERSION_FACTOR + tu.SLIDER_ENCODER_OFFSET) * s_dir
+                    fret = note - tu.STRING_MIDI_RANGES[motor_id][0]
+                    if fret == 0:
+                        lh_enc_val = -1
+                    else:
+                        s_dir = tu.STRING_MIDI_RANGES[motor_id][2]
+                        lh_enc_val = ((tu.SLIDER_MM_PER_FRET[fret - 1] * 2048) / tu.MM_TO_ENCODER_CONVERSION_FACTOR + tu.SLIDER_ENCODER_OFFSET) * s_dir
                 prev_note = last_lh_note_by_picker[motor_id] if 0 <= motor_id < len(last_lh_note_by_picker) else None
                 prep_time = self._lh_prep_time_for_event(prev_note, note, duration, slide_toggles[i])
-                lh_pick_events.append([motor_id, lh_enc_val, slide_toggles[i], timestamp - prep_time])
+                if presser_torque is not None:
+                    harmonic_settling = float(tu.TIME_STEP * 50)
+                    rlfret_like_prep = self.get_lh_note_movement_duration() + harmonic_settling
+                    prep_time = max(prep_time, rlfret_like_prep)
+                if harmonic_prep_time_s is not None:
+                    prep_time = max(prep_time, float(harmonic_prep_time_s))
+                lh_event_timestamp = max(0.0, timestamp - prep_time)
+                lh_pick_events.append([motor_id, lh_enc_val, slide_toggles[i], lh_event_timestamp, presser_torque])
                 if 0 <= motor_id < len(last_lh_note_by_picker):
                     last_lh_note_by_picker[motor_id] = note
 

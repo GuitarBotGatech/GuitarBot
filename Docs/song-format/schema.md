@@ -4,6 +4,7 @@ This schema is the **user-facing intermediary** for DAW-like composition.
 It maps to OSC payloads for:
 - `/Chords`
 - `/Pluck`
+- `/PluckHarm`
 - `/Midi`
 
 ## Top-level
@@ -25,6 +26,11 @@ It maps to OSC payloads for:
       {
         "name": "pluck_main",
         "type": "pluck",
+        "events": []
+      },
+      {
+        "name": "pluck_harm_main",
+        "type": "harmonic",
         "events": []
       }
     ]
@@ -57,6 +63,28 @@ Fields:
 - `timestamp` (float, sec): absolute arrangement time
 - `beat` (optional string): Ableton-style beat label (`bar.beat` or `bar.beat.sub`), alternative to `timestamp`
 - `string_index` (optional int): explicit string override
+
+### `harmonic` track events
+
+```json
+{
+  "string_index": 2,
+  "fret_position": 7.5,
+  "torque": 50,
+  "overshoot": 2.5,
+  "timestamp": 1.5,
+  "pluck_velocity": 80
+}
+```
+
+Fields:
+- `string_index` (int): playable string index used for the harmonic
+- `fret_position` (float): fractional fret target for the harmonic touch point
+- `torque` (optional float): presser torque used to form the harmonic; defaults via `tune.py` harmonic recipe table
+- `overshoot` (optional float): fractional fret overshoot used by the UI recipe; defaults via `tune.py` harmonic recipe table
+- `timestamp` (float, sec): absolute arrangement time
+- `pluck_velocity` (optional int): explicit pluck velocity for the harmonic
+- `note` (optional int): musical annotation only; not required for playback
 
 ### `chord` track events
 
@@ -113,6 +141,7 @@ So in `4/4 @ 120 BPM`, `3.2.2` is `0.125s` after `3.2.1`.
 ## OSC rendering (MVP)
 
 - `pluck` track -> list of rows for `/Pluck`
+- `harmonic` track -> list of rows for `/PluckHarm`
 - `chord` track -> list of rows for `/Chords`
 - `midi` track -> list of rows for `/Midi`
 

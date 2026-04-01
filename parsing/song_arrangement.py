@@ -6,9 +6,11 @@ import math
 from pathlib import Path
 from typing import Any
 
+import tune as tu
+
 
 TrackType = str
-EventType = "ChordEvent | PluckEvent | MidiEvent"
+EventType = "ChordEvent | PluckEvent | HarmonicEvent | MidiEvent"
 
 
 @dataclass
@@ -272,6 +274,84 @@ class PluckEvent:
 
 
 @dataclass
+class HarmonicEvent:
+    string_index: int
+    fret_position: float
+    torque: float
+    overshoot: float
+    timestamp: float
+    pluck_velocity: int | None = None
+    note: int | None = None
+
+    @classmethod
+    def from_dict(cls, data: dict[str, Any]) -> "HarmonicEvent":
+        string_index = int(data["string_index"])
+        fret_position = float(data["fret_position"])
+        recipe = tu.harmonic_touch_recipe(string_index, fret_position)
+        event = cls(
+            string_index=string_index,
+            fret_position=fret_position,
+            torque=float(data.get("torque", recipe["torque"])),
+            overshoot=float(data.get("overshoot", recipe["overshoot"])),
+            timestamp=float(data["timestamp"]),
+            pluck_velocity=(int(data["pluck_velocity"]) if "pluck_velocity" in data and data["pluck_velocity"] is not None else None),
+            note=(int(data["note"]) if "note" in data and data["note"] is not None else None),
+        )
+        event.validate()
+        return event
+
+    def validate(self) -> None:
+        if self.string_index < 0:
+            raise ValueError("HarmonicEvent.string_index must be >= 0")
+        if self.fret_position < 0:
+            raise ValueError("HarmonicEvent.fret_position must be >= 0")
+        if self.torque < 0:
+            raise ValueError("HarmonicEvent.torque must be >= 0")
+        if self.overshoot < 0:
+            raise ValueError("HarmonicEvent.overshoot must be >= 0")
+        if self.timestamp < 0:
+            raise ValueError("HarmonicEvent.timestamp must be >= 0")
+        if self.pluck_velocity is not None and self.pluck_velocity < 0:
+            raise ValueError("HarmonicEvent.pluck_velocity must be >= 0 when provided")
+
+    def to_dict(self) -> dict[str, Any]:
+        data: dict[str, Any] = {
+            "string_index": self.string_index,
+            "fret_position": self.fret_position,
+            "torque": self.torque,
+            "overshoot": self.overshoot,
+            "timestamp": self.timestamp,
+        }
+        if self.pluck_velocity is not None:
+            data["pluck_velocity"] = self.pluck_velocity
+        if self.note is not None:
+            data["note"] = self.note
+        return data
+
+    def to_osc_row(self) -> list[Any]:
+        row: list[Any] = [self.string_index, self.fret_position, self.torque, self.overshoot]
+        if self.pluck_velocity is not None:
+            row.append(self.pluck_velocity)
+        if self.note is not None:
+            row.append(self.note)
+        row.append(self.timestamp)
+        return row
+
+    def shifted(self, seconds: float) -> "HarmonicEvent":
+        shifted_event = HarmonicEvent(
+            string_index=self.string_index,
+            fret_position=self.fret_position,
+            torque=self.torque,
+            overshoot=self.overshoot,
+            timestamp=self.timestamp + seconds,
+            pluck_velocity=self.pluck_velocity,
+            note=self.note,
+        )
+        shifted_event.validate()
+        return shifted_event
+
+
+@dataclass
 class MidiEvent:
     address: str
     args: list[Any]
@@ -329,7 +409,7 @@ class MidiEvent:
 class Track:
     name: str
     type: TrackType
-    events: list[ChordEvent | PluckEvent | MidiEvent] = field(default_factory=list)
+    events: list[ChordEvent | PluckEvent | HarmonicEvent | MidiEvent] = field(default_factory=list)
 
     @classmethod
     def from_dict(cls, data: dict[str, Any], meta: SongMeta) -> "Track":
@@ -337,8 +417,8 @@ class Track:
         track_name = str(data["name"])
         raw_events = data.get("events", [])
 
-        events: list[ChordEvent | PluckEvent | MidiEvent] = []
-        if track_type not in ("chord", "pluck", "midi"):
+        events: list[ChordEvent | PluckEvent | HarmonicEvent | MidiEvent] = []
+        if track_type not in ("chord", "pluck", "harmonic", "midi"):
             raise ValueError(f"Unsupported track type: {track_type}")
 
         for event_index, raw_event in enumerate(raw_events):
@@ -349,6 +429,8 @@ class Track:
                 elif track_type == "pluck":
                     event_with_time = cls._resolve_pluck_duration(event_with_time, meta)
                     events.append(PluckEvent.from_dict(event_with_time))
+                elif track_type == "harmonic":
+                    events.append(HarmonicEvent.from_dict(event_with_time))
                 else:
                     events.append(MidiEvent.from_dict(event_with_time))
             except Exception as exc:
@@ -361,7 +443,7 @@ class Track:
         return track
 
     def validate(self) -> None:
-        if self.type not in ("chord", "pluck", "midi"):
+        if self.type not in ("chord", "pluck", "harmonic", "midi"):
             raise ValueError(f"Unsupported track type: {self.type}")
         if not self.name:
             raise ValueError("Track.name must be non-empty")
@@ -411,11 +493,11 @@ class Track:
         normalized["duration"] = duration_seconds
         return normalized
 
-    def sorted_events(self) -> list[ChordEvent | PluckEvent | MidiEvent]:
+    def sorted_events(self) -> list[ChordEvent | PluckEvent | HarmonicEvent | MidiEvent]:
         return sorted(self.events, key=lambda event: float(event.timestamp))
 
     @staticmethod
-    def _event_with_timestamp(event: ChordEvent | PluckEvent | MidiEvent, timestamp: float) -> ChordEvent | PluckEvent | MidiEvent:
+    def _event_with_timestamp(event: ChordEvent | PluckEvent | HarmonicEvent | MidiEvent, timestamp: float) -> ChordEvent | PluckEvent | HarmonicEvent | MidiEvent:
         if isinstance(event, ChordEvent):
             updated = ChordEvent(chord=event.chord, timestamp=timestamp)
         elif isinstance(event, PluckEvent):
@@ -426,6 +508,16 @@ class Track:
                 slide=event.slide,
                 timestamp=timestamp,
                 string_index=event.string_index,
+            )
+        elif isinstance(event, HarmonicEvent):
+            updated = HarmonicEvent(
+                string_index=event.string_index,
+                fret_position=event.fret_position,
+                torque=event.torque,
+                overshoot=event.overshoot,
+                timestamp=timestamp,
+                pluck_velocity=event.pluck_velocity,
+                note=event.note,
             )
         else:
             updated = MidiEvent(
@@ -438,7 +530,7 @@ class Track:
         return updated
 
     @staticmethod
-    def _event_scaled(event: ChordEvent | PluckEvent | MidiEvent, factor: float) -> ChordEvent | PluckEvent | MidiEvent:
+    def _event_scaled(event: ChordEvent | PluckEvent | HarmonicEvent | MidiEvent, factor: float) -> ChordEvent | PluckEvent | HarmonicEvent | MidiEvent:
         if isinstance(event, PluckEvent):
             updated = PluckEvent(
                 note=event.note,
@@ -447,6 +539,18 @@ class Track:
                 slide=event.slide,
                 timestamp=event.timestamp * factor,
                 string_index=event.string_index,
+            )
+            updated.validate()
+            return updated
+        if isinstance(event, HarmonicEvent):
+            updated = HarmonicEvent(
+                string_index=event.string_index,
+                fret_position=event.fret_position,
+                torque=event.torque,
+                overshoot=event.overshoot,
+                timestamp=event.timestamp * factor,
+                pluck_velocity=event.pluck_velocity,
+                note=event.note,
             )
             updated.validate()
             return updated
@@ -461,7 +565,7 @@ class Track:
     def copy_range(self, start_s: float, end_s: float) -> "Track":
         if end_s < start_s:
             raise ValueError("copy_range requires end_s >= start_s")
-        clip_events: list[ChordEvent | PluckEvent | MidiEvent] = []
+        clip_events: list[ChordEvent | PluckEvent | HarmonicEvent | MidiEvent] = []
         for event in self.events:
             if start_s <= event.timestamp <= end_s:
                 clip_events.append(event.shifted(-start_s))
@@ -475,7 +579,7 @@ class Track:
         if duration_policy not in ("preserve", "mirror_end"):
             raise ValueError("reverse_range duration_policy must be 'preserve' or 'mirror_end'")
 
-        reversed_events: list[ChordEvent | PluckEvent | MidiEvent] = []
+        reversed_events: list[ChordEvent | PluckEvent | HarmonicEvent | MidiEvent] = []
         for event in self.events:
             if start_s <= event.timestamp <= end_s:
                 mirrored_time = start_s + end_s - event.timestamp
@@ -505,7 +609,7 @@ class Track:
         if not (-1.0 <= swing <= 1.0):
             raise ValueError("quantize swing must be between -1.0 and 1.0")
 
-        quantized_events: list[ChordEvent | PluckEvent | MidiEvent] = []
+        quantized_events: list[ChordEvent | PluckEvent | HarmonicEvent | MidiEvent] = []
         for event in self.events:
             should_quantize = True
             if start_s is not None and event.timestamp < start_s:
@@ -765,7 +869,7 @@ class SongArrangement:
 
             return acc
 
-        def _warp_event(event: ChordEvent | PluckEvent | MidiEvent) -> ChordEvent | PluckEvent | MidiEvent:
+        def _warp_event(event: ChordEvent | PluckEvent | HarmonicEvent | MidiEvent) -> ChordEvent | PluckEvent | HarmonicEvent | MidiEvent:
             warped_start = _integral_scale(event.timestamp)
             if isinstance(event, PluckEvent):
                 warped_end = _integral_scale(event.timestamp + event.duration)
@@ -808,6 +912,7 @@ class SongArrangement:
 
         chord_rows: list[list[Any]] = []
         pluck_rows: list[list[Any]] = []
+        harmonic_rows: list[list[Any]] = []
         midi_rows: list[list[Any]] = []
 
         for track in source.tracks:
@@ -815,15 +920,19 @@ class SongArrangement:
                 chord_rows.extend(event.to_osc_row() for event in track.events if isinstance(event, ChordEvent))
             elif track.type == "pluck":
                 pluck_rows.extend(event.to_osc_row() for event in track.events if isinstance(event, PluckEvent))
+            elif track.type == "harmonic":
+                harmonic_rows.extend(event.to_osc_row() for event in track.events if isinstance(event, HarmonicEvent))
             elif track.type == "midi":
                 midi_rows.extend(event.to_osc_row() for event in track.events if isinstance(event, MidiEvent))
 
         chord_rows.sort(key=lambda row: float(row[-1]))
         pluck_rows.sort(key=lambda row: float(row[-1]))
+        harmonic_rows.sort(key=lambda row: float(row[-1]))
         midi_rows.sort(key=lambda row: float(row[-1]))
 
         return {
             "/Chords": chord_rows,
             "/Pluck": pluck_rows,
+            "/PluckHarm": harmonic_rows,
             "/Midi": midi_rows,
         }

@@ -114,7 +114,7 @@ def send_song_from_arrangement(arrangement: SongArrangement, ip: str = UDP_IP, p
 
     # Send /Midi first so the receiver has the full MIDI sequence buffered
     # before /Chords+/Pluck triggers song playback synchronisation.
-    for address in ("/Midi", "/Chords", "/Pluck"):
+    for address in ("/Midi", "/Chords", "/Pluck", "/PluckHarm"):
         payload = payloads.get(address, [])
         if payload:
             if address == "/Midi":
@@ -342,7 +342,7 @@ def run_upload_server(
                     self.wfile.write(json.dumps({"ok": False, "error": str(exc)}).encode("utf-8"))
                 return
 
-            elif self.path == "/reset":
+            elif self.path in ("/Reset", "/reset"):
                 try:
                     send_reset(ip=bot_ip, port=bot_port)
                     self._set_headers(200)
@@ -377,9 +377,15 @@ def run_upload_server(
 
     server = ThreadingHTTPServer((host, port), UploadHandler)
     print(f"Upload server listening on http://{host}:{port}/upload")
-    print(f"Reset endpoint at http://{host}:{port}/reset")
+    print(f"Reset endpoint at http://{host}:{port}/Reset")
     print(f"Forwarding songs to GuitarBot OSC at {bot_ip}:{bot_port}")
-    server.serve_forever()
+    try:
+        server.serve_forever()
+    except KeyboardInterrupt:
+        print("Upload server interrupted; shutting down cleanly.")
+    finally:
+        server.shutdown()
+        server.server_close()
 
 
 def _build_arg_parser() -> argparse.ArgumentParser:

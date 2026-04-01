@@ -34,6 +34,7 @@ const GRID_STEPS=[
 ];
 const SPEED_MIN=1, SPEED_MAX=10, SPEED_DEFAULT=6;
 const IMPORT_KEY='guitarbot_startup_import_json';
+const HARMONIC_FRETS=new Set([4,5,7,9]);
 
 const STRINGS=[
   {min:40,max:49,name:"E String",color:"#f59e0b",dim:"#3b200566"},

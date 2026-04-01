@@ -20,12 +20,43 @@ function buildJSON(){
       events:[...S.chord].sort((a,b)=>parseBeat(a.beat)-parseBeat(b.beat))
         .map(e=>({chord:e.chord,beat:e.beat}))});
   }
-  if(S.pluck.length){
+  const pluckEvents=[];
+  const harmonicFromPluck=[];
+  S.pluck.forEach(e=>{
+    if(e.harmonic===1){
+      const stringIndex=noteEventStringIndex(e);
+      const fret=noteEventFret(e);
+      if(Number.isFinite(stringIndex)&&Number.isFinite(fret)){
+        harmonicFromPluck.push({
+          string_index:stringIndex,
+          fret_position:fret,
+          pluck_velocity:speedToVelocity(e.speed),
+          note:e.note,
+          beat:e.beat,
+        });
+        return;
+      }
+    }
+    pluckEvents.push(e);
+  });
+
+  if(pluckEvents.length){
     tracks.push({name:"pluck_main",type:"pluck",
-      events:[...S.pluck].sort((a,b)=>parseBeat(a.beat)-parseBeat(b.beat))
+      events:[...pluckEvents].sort((a,b)=>parseBeat(a.beat)-parseBeat(b.beat))
         .map(e=>{
           const o={note:e.note,duration_b:e.duration_b,speed:e.speed,slide:e.slide,beat:e.beat};
           if(e.string_index!==null)o.string_index=e.string_index;
+          return o;
+        })});
+  }
+  const allHarmonic=[...harmonicFromPluck,...S.harmonic];
+  if(allHarmonic.length){
+    tracks.push({name:"pluck_harm_main",type:"harmonic",
+      events:[...allHarmonic].sort((a,b)=>parseBeat(a.beat)-parseBeat(b.beat))
+        .map(e=>{
+          const o={string_index:e.string_index,fret_position:e.fret_position,torque:e.torque,overshoot:e.overshoot,beat:e.beat};
+          if(e.pluck_velocity!==null&&e.pluck_velocity!==undefined)o.pluck_velocity=e.pluck_velocity;
+          if(e.note!==null&&e.note!==undefined)o.note=e.note;
           return o;
         })});
   }
@@ -147,6 +178,7 @@ function buildUploadJSON(){
     if(soloRange)return note>=soloRange.min&&note<=soloRange.max;
     return !mutedRanges.some(range=>note>=range.min&&note<=range.max);
   };
+  const allowHarmonicString=(stringIndexRaw)=>Number.isFinite(parseInt(stringIndexRaw,10));
 
   if(!getCycleRange()){
     if(!soloRange&&!mutedRanges.length)return full;
@@ -154,10 +186,10 @@ function buildUploadJSON(){
       song:{
         ...full.song,
         tracks:(full.song.tracks||[]).map(track=>{
-          if(track.type!=='pluck')return track;
+          if(track.type!=='pluck'&&track.type!=='harmonic')return track;
           return {
             ...track,
-            events:(track.events||[]).filter(ev=>allowPluckNote(ev.note)),
+            events:(track.events||[]).filter(ev=>track.type==='pluck'?allowPluckNote(ev.note):allowHarmonicString(ev.string_index)),
           };
         }),
       },
@@ -180,6 +212,9 @@ function buildUploadJSON(){
       .filter(ev=>{
         if(track.type==='pluck'&&(soloRange||mutedRanges.length)){
           if(!allowPluckNote(ev.note))return false;
+        }
+        if(track.type==='harmonic'&&(soloRange||mutedRanges.length)){
+          if(!allowHarmonicString(ev.string_index))return false;
         }
         const beat=eventBeat(ev);
         return beat>=startBeat&&beat<endBeat;
@@ -204,6 +239,12 @@ function buildUploadJSON(){
         }
         if(track.type==='chord'){
           return {chord:ev.chord,timestamp:toTimestamp(beat)};
+        }
+        if(track.type==='harmonic'){
+          const out={string_index:ev.string_index,fret_position:ev.fret_position,torque:ev.torque,overshoot:ev.overshoot,timestamp:toTimestamp(beat)};
+          if(ev.pluck_velocity!==undefined&&ev.pluck_velocity!==null)out.pluck_velocity=ev.pluck_velocity;
+          if(ev.note!==undefined&&ev.note!==null)out.note=ev.note;
+          return out;
         }
         if(track.type==='midi'){
           return {address:ev.address,args:ev.args,interp:ev.interp,timestamp:toTimestamp(beat)};
@@ -818,7 +859,7 @@ function loadJSON(data){
       }
     }
   }
-  S.pluck=[]; S.chord=[]; S.midi=[]; S.midiCurves=createEmptyMidiCurves(); S.midiCurveMuted=createEmptyMidiCurveMuteState(); S.midiLaneMenuLane=null; S.focusedCCLane=null; S.nextId=1;
+  S.pluck=[]; S.harmonic=[]; S.chord=[]; S.midi=[]; S.midiCurves=createEmptyMidiCurves(); S.midiCurveMuted=createEmptyMidiCurveMuteState(); S.midiLaneMenuLane=null; S.focusedCCLane=null; S.nextId=1;
   S.selPluck=null; S.selPluckIds.clear(); S.selChord=null; S.selMidi=null; clearMidiCurveSelection(); S.clipboardPluck=null; S.clipboardMidiCurves=null; closeInsp();
   let maxB=0;
   (song.tracks||[]).forEach(tr=>{
@@ -836,10 +877,22 @@ function loadJSON(data){
         S.pluck.push(ensureSlideShape({id:S.nextId++,note:ev.note||52,
           duration_b:durationBeats,
           speed:normalizeImportedSpeed(ev.speed),slide:ev.slide??0,
+          harmonic:ev.harmonic??ev.is_harmonic??0,
           slideIn:ev.slideIn??ev.slide_in??0,
           slideOut:ev.slideOut??ev.slide_out??0,
           beat:hasBeat?ev.beat:beatLabel(b),
           string_index:ev.string_index??null}));
+      } else if(tr.type==='harmonic'){
+        S.harmonic.push({
+          id:S.nextId++,
+          string_index:ev.string_index??0,
+          fret_position:ev.fret_position??0,
+          torque:ev.torque??50,
+          overshoot:ev.overshoot??2.5,
+          pluck_velocity:ev.pluck_velocity??null,
+          note:ev.note??null,
+          beat:hasBeat?ev.beat:beatLabel(b),
+        });
       } else if(tr.type==='chord'){
         S.chord.push({id:S.nextId++,chord:ev.chord||'Em',beat:hasBeat?ev.beat:beatLabel(b)});
       } else if(tr.type==='midi'){

@@ -355,6 +355,7 @@ function applyNoteFixState(ev,state){
   ev.note=clamp(parseInt(state.note,10)||52,MIDI_MIN,MIDI_MAX);
   ev.beat=beatLabel(start);
   ev.duration_b=trimBeatNumber(duration);
+  ensureSlideShape(ev);
 }
 
 function movementPenalty(base,candidate){

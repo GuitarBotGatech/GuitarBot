@@ -1,0 +1,59 @@
+{
+  "song": {
+    "name": "Untitled Song",
+    "meta": {
+      "key": "E minor",
+      "time_signature": "4/4",
+      "bpm": 120,
+      "tempo_curve": [
+        {
+          "time": 0,
+          "bpm": 120
+        }
+      ],
+      "automation_lane_ranges": {
+        "1": {
+          "min": 0,
+          "max": 127
+        },
+        "2": {
+          "min": 0,
+          "max": 127
+        },
+        "3": {
+          "min": 0,
+          "max": 127
+        },
+        "4": {
+          "min": 0,
+          "max": 127
+        },
+        "7": {
+          "min": 0,
+          "max": 127
+        },
+        "tempo": {
+          "min": 20,
+          "max": 300
+        }
+      }
+    },
+    "tracks": [
+      {
+        "name": "pluck_harm_main",
+        "type": "harmonic",
+        "events": [
+          {
+            "string_index": 1,
+            "fret_position": 5,
+            "torque": 50,
+            "overshoot": 2.5,
+            "beat": "2.1.1",
+            "pluck_velocity": 71,
+            "note": 55
+          }
+        ]
+      }
+    ]
+  }
+}

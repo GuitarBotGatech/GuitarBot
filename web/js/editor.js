@@ -84,6 +84,7 @@ function openInsp(ev){
   document.getElementById('i-sv').textContent=ev.speed;
   document.getElementById('i-slide').checked=ev.slide===1;
   document.getElementById('i-slide-lbl').textContent=ev.slide?'In':'Off';
+  refreshInspHarmonic(ev);
   document.getElementById('i-str-ov').value=ev.string_index!==null?ev.string_index:'';
   if(typeof updateInspectorAnalysis==='function') updateInspectorAnalysis();
 }
@@ -94,10 +95,32 @@ function refreshInspNote(ev){
   document.getElementById('i-midi').textContent=ev.note;
   document.getElementById('i-str').textContent=s.name;
   document.getElementById('i-str').style.color=s.color;
+  refreshInspHarmonic(ev);
 }
 function refreshInspDur(ev){
   document.getElementById('i-dur').value=ev.duration_b;
   document.getElementById('i-trem').classList.toggle('on',hasTremolo(ev));
+}
+
+function refreshInspHarmonic(ev){
+  const canHarm=canEventBeHarmonic(ev);
+  const fret=noteEventFret(ev);
+  const harmInput=document.getElementById('i-harmonic');
+  const harmLabel=document.getElementById('i-harmonic-lbl');
+  const harmWrap=document.getElementById('i-harm-wrap');
+  if(!harmInput||!harmLabel||!harmWrap)return;
+
+  if(!canHarm&&ev.harmonic===1)ev.harmonic=0;
+
+  harmInput.disabled=!canHarm;
+  harmInput.checked=ev.harmonic===1;
+  harmWrap.style.opacity=canHarm?'1':'0.45';
+  harmWrap.style.cursor=canHarm?'pointer':'not-allowed';
+  if(canHarm){
+    harmLabel.textContent=ev.harmonic===1?'On':`Off (fret ${fret})`;
+  }else{
+    harmLabel.textContent='Unavailable on this fret';
+  }
 }
 function closeInsp(){document.getElementById('insp').classList.remove('open')}
 
@@ -114,6 +137,20 @@ function updSlide(c){
   document.getElementById('i-slide-lbl').textContent=c?'In':'Off';
   syncJSON(); render();
 }
+function updHarmonic(c){
+  const ev=S.pluck.find(e=>e.id===S.selPluck);if(!ev)return;
+  if(!canEventBeHarmonic(ev)){
+    ev.harmonic=0;
+    refreshInspHarmonic(ev);
+    syncJSON();
+    render();
+    return;
+  }
+  ev.harmonic=c?1:0;
+  refreshInspHarmonic(ev);
+  syncJSON();
+  render();
+}
 function updDur(v){
   const ev=S.pluck.find(e=>e.id===S.selPluck);if(!ev)return;
   const raw=Math.max(0.0625,parseFloat(v)||0.5);
@@ -126,7 +163,10 @@ function updDur(v){
 function updStrOv(v){
   const ev=S.pluck.find(e=>e.id===S.selPluck);if(!ev)return;
   ev.string_index=v===''?null:parseInt(v);
+  ensureSlideShape(ev);
+  refreshInspHarmonic(ev);
   syncJSON();
+  render();
 }
 function delSelNote(){if(S.selPluck!==null){rmPluck(S.selPluck);render()}}
 
@@ -388,6 +428,7 @@ function copySelectedTimelineEvents(){
         duration_b:ev.duration_b,
         speed:ev.speed,
         slide:ev.slide,
+        harmonic:ev.harmonic,
         slideIn:ev.slideIn,
         slideOut:ev.slideOut,
         string_index:ev.string_index,
@@ -434,6 +475,7 @@ function pasteTimelineEvents(){
         duration_b:src.duration_b,
         speed:src.speed,
         slide:src.slide,
+        harmonic:src.harmonic,
         slideIn:src.slideIn,
         slideOut:src.slideOut,
         beat:beatLabel(normalizeBeat(b)),

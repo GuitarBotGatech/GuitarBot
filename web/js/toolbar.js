@@ -34,11 +34,63 @@ function updateGridCtrl(){
   document.getElementById('grid-prev').disabled=S.gridIdx<=0;
   document.getElementById('grid-next').disabled=S.gridIdx>=GRID_STEPS.length-1;
 }
+function setGridIdx(nextIdx){
+  const clamped=clamp(nextIdx,0,GRID_STEPS.length-1);
+  if(clamped===S.gridIdx)return false;
+  S.gridIdx=clamped;
+  updateGridCtrl();
+  render();
+  return true;
+}
+function isTripletGridIndex(index){
+  const step=GRID_STEPS[index];
+  return !!step&&String(step.label).endsWith('t');
+}
+function getAdjacentGridIndex(direction,tripletOnly){
+  const current=GRID_STEPS[S.gridIdx];
+  if(!current)return S.gridIdx;
+  const targetDirection=direction<0?'smaller':'bigger';
+  const candidates=[];
+  for(let i=0;i<GRID_STEPS.length;i++){
+    if(i===S.gridIdx)continue;
+    const step=GRID_STEPS[i];
+    if(!step)continue;
+    const sameTriplet=isTripletGridIndex(i)===tripletOnly;
+    if(!sameTriplet)continue;
+    if(targetDirection==='smaller'&&step.beats<current.beats)candidates.push({index:i,beats:step.beats});
+    if(targetDirection==='bigger'&&step.beats>current.beats)candidates.push({index:i,beats:step.beats});
+  }
+  if(!candidates.length)return S.gridIdx;
+  if(targetDirection==='smaller'){
+    candidates.sort((a,b)=>b.beats-a.beats);
+  }else{
+    candidates.sort((a,b)=>a.beats-b.beats);
+  }
+  return candidates[0].index;
+}
+function makeGridSmaller(){
+  const nextIdx=getAdjacentGridIndex(-1,isTripletGridIndex(S.gridIdx));
+  return setGridIdx(nextIdx);
+}
+function makeGridBigger(){
+  const nextIdx=getAdjacentGridIndex(1,isTripletGridIndex(S.gridIdx));
+  return setGridIdx(nextIdx);
+}
+function makeGridTriplet(){
+  if(isTripletGridIndex(S.gridIdx))return false;
+  const current=GRID_STEPS[S.gridIdx];
+  if(!current)return false;
+  const baseLabel=String(current.label);
+  const tripletLabel=`${baseLabel}t`;
+  const nextIdx=GRID_STEPS.findIndex(step=>step.label===tripletLabel);
+  if(nextIdx<0)return false;
+  return setGridIdx(nextIdx);
+}
 document.getElementById('grid-prev').addEventListener('click',()=>{
-  if(S.gridIdx>0){S.gridIdx--;updateGridCtrl();render();}
+  if(S.gridIdx>0)setGridIdx(S.gridIdx-1);
 });
 document.getElementById('grid-next').addEventListener('click',()=>{
-  if(S.gridIdx<GRID_STEPS.length-1){S.gridIdx++;updateGridCtrl();render();}
+  if(S.gridIdx<GRID_STEPS.length-1)setGridIdx(S.gridIdx+1);
 });
 updateGridCtrl();
 

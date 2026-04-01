@@ -5,7 +5,7 @@ import contextlib
 import copy
 import io
 import json
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Protocol
 
@@ -21,7 +21,8 @@ from pluck_message_to_json import load_pluck_message_from_python_file
 class OscPayload:
     chords: list[list[Any]]
     pluck: list[list[Any]]
-    midi: list[list[Any]]
+    pluck_harm: list[list[Any]] = field(default_factory=list)
+    midi: list[list[Any]] = field(default_factory=list)
 
 
 @dataclass
@@ -50,8 +51,17 @@ def normalize_pluck_row(row: list[Any]) -> tuple[int, float, float, int, int | N
     elif len(row) == 6:
         note, duration, speed, slide, string_index, timestamp = row
         string_index = int(string_index)
+    elif len(row) == 7:
+        note, duration, speed, slide, string_index, timestamp, _presser_torque = row
+        string_index = int(string_index)
+    elif len(row) == 8:
+        note, duration, speed, slide, string_index, timestamp, _presser_torque, _target_fret_position = row
+        string_index = int(string_index)
+    elif len(row) == 9:
+        note, duration, speed, slide, string_index, timestamp, _presser_torque, _target_fret_position, _harmonic_prep_time_s = row
+        string_index = int(string_index)
     else:
-        raise ValueError(f"Expected pluck row with 5 or 6 elements, got {len(row)}: {row!r}")
+        raise ValueError(f"Expected pluck row with 5-9 elements, got {len(row)}: {row!r}")
 
     return (
         int(note),
@@ -68,20 +78,79 @@ def normalize_pluck_rows(rows: list[list[Any]]) -> list[tuple[int, float, float,
     return sorted(normalized, key=lambda row: (row[5], row[0], row[1], row[3], -1 if row[4] is None else row[4]))
 
 
+def _harmonic_row_to_pluck_row(row: list[Any]) -> list[Any]:
+    if len(row) < 5:
+        raise ValueError(f"Expected /PluckHarm row with at least 5 fields, got {len(row)}: {row!r}")
+
+    string_index = int(row[0])
+    fret_position = float(row[1])
+    torque = float(row[2])
+    overshoot = float(row[3])
+    timestamp = float(row[-1])
+    extras = row[4:-1]
+
+    note: int | None = None
+    pluck_velocity: int = 80
+    if len(extras) == 1:
+        candidate = int(float(extras[0]))
+        if tu.MIDI_MIN <= candidate <= tu.MIDI_MAX:
+            note = candidate
+        else:
+            pluck_velocity = candidate
+    elif len(extras) >= 2:
+        pluck_velocity = int(float(extras[0]))
+        note = int(float(extras[1]))
+
+    if note is None:
+        if string_index < 0 or string_index >= len(tu.STRING_MIDI_RANGES):
+            raise ValueError(f"/PluckHarm string_index out of range: {string_index}")
+        low, high, _dir = tu.STRING_MIDI_RANGES[string_index]
+        note = int(round(low + fret_position))
+        note = max(low, min(high, note))
+
+    speed = max(1, min(10, int(round((pluck_velocity / 127.0) * 9 + 1))))
+    duration = float(tu.SHORT_NOTE_DEFAULT_DURATION)
+    specified_string = int(string_index) + 1
+    presser_torque = int(round(max(0.0, min(float(tu.LH_PRESSER_PRESSED_POS), torque))))
+    target_fret_position = max(0.0, min(9.0, fret_position + overshoot))
+    harmonic_prep_time_s = float(tu.harmonic_touch_recipe(string_index).get("prep_time_s", 0.0))
+    return [
+        int(note),
+        duration,
+        speed,
+        0,
+        specified_string,
+        timestamp,
+        presser_torque,
+        target_fret_position,
+        harmonic_prep_time_s,
+    ]
+
+
+def harmonic_rows_to_pluck_rows(rows: list[list[Any]]) -> list[list[Any]]:
+    mapped = [_harmonic_row_to_pluck_row(row) for row in rows]
+    return sorted(mapped, key=lambda row: float(row[5]))
+
+
 def load_json_payload(path: str | Path) -> OscPayload:
     data = Path(path).read_text(encoding="utf-8")
     arrangement = SongArrangement.from_json_str(data)
     payload = arrangement.render_osc_payloads()
+    harmonic_rows = payload.get("/PluckHarm", [])
+    mapped_harmonic_pluck_rows = harmonic_rows_to_pluck_rows(harmonic_rows)
+    pluck_rows = payload.get("/Pluck", []) + mapped_harmonic_pluck_rows
+    pluck_rows.sort(key=lambda row: float(row[5] if len(row) >= 7 else row[-1]))
     return OscPayload(
         chords=payload.get("/Chords", []),
-        pluck=payload.get("/Pluck", []),
+        pluck=pluck_rows,
+        pluck_harm=harmonic_rows,
         midi=payload.get("/Midi", []),
     )
 
 
 def load_python_payload(path: str | Path, variable_name: str = "pluck_message") -> OscPayload:
     pluck_rows = load_pluck_message_from_python_file(path, variable_name=variable_name)
-    return OscPayload(chords=[], pluck=pluck_rows, midi=[])
+    return OscPayload(chords=[], pluck=pluck_rows, pluck_harm=[], midi=[])
 
 
 def compute_trajectory(payload: OscPayload, *, quiet: bool = True) -> np.ndarray:
@@ -207,7 +276,9 @@ class SlideContinuityAnalyzer:
         threshold = tu.LH_PRESSER_UNPRESSED_POS + self.unpress_tolerance
 
         for event in lh_pick_events:
-            motor_id, _, slide_toggle, timestamp = event
+            motor_id = event[0]
+            slide_toggle = event[2]
+            timestamp = event[3]
             if int(slide_toggle) != 1:
                 continue
             presser_column = int(motor_id) * 2 + 6
@@ -279,10 +350,10 @@ class TremoloReadinessAnalyzer:
         violations: list[dict[str, Any]] = []
 
         pairs = zip(lh_pick_events, fretted_pick_events)
-        for (motor_id, target_slider_pos, _, lh_start_ts), (pick_event, pick_ts_raw) in pairs:
+        for (motor_id, target_slider_pos, _, lh_start_ts, *_), (pick_event, pick_ts_raw) in pairs:
             pick_ts = float(pick_ts_raw)
 
-            _, note, _, duration, _ = pick_event
+            _, note, _, duration, _, *_ = pick_event
             if float(duration) < float(tu.TREMOLO_DURATION_THRESHOLD):
                 continue
             if int(note) <= 5:

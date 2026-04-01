@@ -4,7 +4,7 @@
 let S={
   songName:"Untitled Song", bpm:120, keyRoot:"E", keyMode:"minor",
   timeSig:"4/4", measures:8,
-  pluck:[], chord:[], midi:[],
+  pluck:[], harmonic:[], chord:[], midi:[],
   midiCurves:createEmptyMidiCurves(),
   midiCurveMuted:createEmptyMidiCurveMuteState(),
     selMidiCurvePoints:createEmptyMidiCurveSelection(),
@@ -219,12 +219,44 @@ function normalizeImportedSpeed(raw){
   return clampSpeed(n);
 }
 
+function noteEventStringIndex(ev){
+  if(ev&&ev.string_index!==null&&ev.string_index!==undefined){
+    const explicit=parseInt(ev.string_index,10);
+    if(Number.isFinite(explicit)&&explicit>=0&&explicit<STRINGS.length)return explicit;
+  }
+  const note=parseInt(ev?.note,10);
+  if(!Number.isFinite(note))return null;
+  if(note===0)return 0;
+  if(note===2)return 1;
+  if(note===4)return 2;
+  const inferred=STRINGS.findIndex(s=>note>=s.min&&note<=s.max);
+  return inferred>=0?inferred:null;
+}
+
+function noteEventFret(ev){
+  const note=parseInt(ev?.note,10);
+  if(!Number.isFinite(note)||note<MIDI_MIN||note>MIDI_MAX)return null;
+  const strIdx=noteEventStringIndex(ev);
+  if(!Number.isFinite(strIdx)||strIdx<0||strIdx>=STRINGS.length)return null;
+  const openMidi=STRINGS[strIdx].min;
+  const fret=note-openMidi;
+  return fret>=0?fret:null;
+}
+
+function canEventBeHarmonic(ev){
+  const fret=noteEventFret(ev);
+  return Number.isFinite(fret)&&HARMONIC_FRETS.has(fret);
+}
+
 function ensureSlideShape(ev){
   if(!ev)return ev;
   ev.slide=ev.slide===1?1:0;
   // TODO: keep placeholders for future independent slide-in / slide-out semantics.
   ev.slideIn=ev.slideIn===1?1:0;
   ev.slideOut=ev.slideOut===1?1:0;
+  const harmonicRaw=ev.harmonic;
+  ev.harmonic=(harmonicRaw===1||harmonicRaw===true||harmonicRaw==='1')?1:0;
+  if(ev.harmonic===1&&!canEventBeHarmonic(ev))ev.harmonic=0;
   return ev;
 }
 

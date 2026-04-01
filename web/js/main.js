@@ -30,6 +30,20 @@ document.addEventListener('keydown',e=>{
     render();
     return;
   }
+  if((e.ctrlKey||e.metaKey)&&!e.altKey&&!e.shiftKey){
+    if(e.code==='Digit1'){
+      if(makeGridSmaller())e.preventDefault();
+      return;
+    }
+    if(e.code==='Digit2'){
+      if(makeGridBigger())e.preventDefault();
+      return;
+    }
+    if(e.code==='Digit3'){
+      if(makeGridTriplet())e.preventDefault();
+      return;
+    }
+  }
   if(!e.ctrlKey&&!e.metaKey&&!e.altKey&&k==='s'){
     if(toggleSlideForSelectedPluckEvents()){
       e.preventDefault();
@@ -85,6 +99,7 @@ function applyNewProject(){
   S.stringSoloIndex=null;
   S.stringMuted=[false,false,false];
   S.pluck=[];
+  S.harmonic=[];
   S.chord=[];
   S.midi=[];
   S.midiCurves=createEmptyMidiCurves();

@@ -36,7 +36,7 @@ def test_render_osc_payloads_contains_expected_addresses_and_shapes():
     payloads = arrangement.render_osc_payloads()
     raw_payloads = arrangement.render_osc_payloads(apply_meta_tempo_curve=False)
 
-    assert set(payloads.keys()) == {"/Chords", "/Pluck", "/Midi"}
+    assert set(payloads.keys()) == {"/Chords", "/Pluck", "/PluckHarm", "/Midi"}
     assert payloads["/Chords"][0] == ["Em", 0.0]
 
     first_pluck = payloads["/Pluck"][0]
@@ -47,6 +47,80 @@ def test_render_osc_payloads_contains_expected_addresses_and_shapes():
     first_midi = payloads["/Midi"][0]
     assert first_midi[0] == "/cc"
     assert first_midi[-1] == pytest.approx(0.0)
+
+
+def test_harmonic_tracks_roundtrip_and_render_to_own_payload():
+    arrangement = SongArrangement.from_dict(
+        {
+            "song": {
+                "name": "harmonic-test",
+                "meta": {"key": "C", "time_signature": "4/4", "bpm": 120},
+                "tracks": [
+                    {
+                        "name": "pluck_harm_main",
+                        "type": "harmonic",
+                        "events": [
+                            {
+                                "string_index": 2,
+                                "fret_position": 7.5,
+                                "torque": 50,
+                                "overshoot": 2.5,
+                                "pluck_velocity": 80,
+                                "timestamp": 1.25,
+                            }
+                        ],
+                    },
+                    {
+                        "name": "pluck_main",
+                        "type": "pluck",
+                        "events": [
+                            {"note": 52, "duration_s": 0.25, "speed": 5, "slide": 0, "timestamp": 0.5},
+                        ],
+                    },
+                ],
+            }
+        }
+    )
+
+    payloads = arrangement.render_osc_payloads()
+    assert "/PluckHarm" in payloads
+    assert payloads["/PluckHarm"][0][0] == 2
+    assert payloads["/PluckHarm"][0][1] == pytest.approx(7.5)
+    assert payloads["/PluckHarm"][0][-1] == pytest.approx(1.25)
+
+    roundtrip = SongArrangement.from_dict(arrangement.to_dict())
+    assert roundtrip.to_dict() == arrangement.to_dict()
+
+
+def test_harmonic_defaults_resolve_from_tune_recipe_when_omitted():
+    arrangement = SongArrangement.from_dict(
+        {
+            "song": {
+                "name": "harmonic-defaults",
+                "meta": {"key": "C", "time_signature": "4/4", "bpm": 120},
+                "tracks": [
+                    {
+                        "name": "pluck_harm_main",
+                        "type": "harmonic",
+                        "events": [
+                            {
+                                "string_index": 1,
+                                "fret_position": 7.0,
+                                "timestamp": 0.5,
+                            }
+                        ],
+                    }
+                ],
+            }
+        }
+    )
+
+    payloads = arrangement.render_osc_payloads()
+    row = payloads["/PluckHarm"][0]
+    assert row[0] == 1
+    assert row[1] == pytest.approx(7.0)
+    assert row[2] == pytest.approx(50.0)
+    assert row[3] == pytest.approx(0.25)
 
 
 def test_meta_tempo_curve_is_applied_by_default_and_can_be_disabled():

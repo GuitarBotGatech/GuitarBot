@@ -82,15 +82,8 @@ function drawTempoPointOverlay(){
 }
 
 function eventStringIndex(ev){
-  if(ev&&ev.string_index!==null&&ev.string_index!==undefined){
-    const explicit=parseInt(ev.string_index,10);
-    if(Number.isFinite(explicit)&&explicit>=0&&explicit<STRINGS.length)return explicit;
-  }
-  if(ev.note===0) return 0;
-  if(ev.note===2) return 1;
-  if(ev.note===4) return 2;
-  const inferred=STRINGS.findIndex(s=>ev.note>=s.min&&ev.note<=s.max);
-  return inferred>=0?inferred:0;
+  const idx=noteEventStringIndex(ev);
+  return Number.isFinite(idx)?idx:0;
 }
 
 function normalizeMidiCurvePoints(points,key='1'){
@@ -505,6 +498,7 @@ function drawNotes(){
     const sel=ev.id===S.selPluck||S.selPluckIds.has(ev.id);
     const s=strOf(ev.note);
     const isTrem=hasTremolo(ev);
+    const isHarmonic=ev.harmonic===1;
     const cx2=Math.max(LABEL_W,x), cw2=Math.min(CW,x+w)-cx2;
     if(cw2<=0)return;
 
@@ -512,12 +506,14 @@ function drawNotes(){
     ctx.beginPath(); ctx.rect(cx2,y+1,cw2,noteH-2); ctx.clip();
 
     // Body
-    ctx.fillStyle=s.color+(sel?'ee':'bb');
-    ctx.fillRect(x,y+1,w,noteH-2);
+    if(!isHarmonic){
+      ctx.fillStyle=s.color+(sel?'ee':'bb');
+      ctx.fillRect(x,y+1,w,noteH-2);
+    }
 
     // Slide stripes
     if(ev.slide){
-      ctx.strokeStyle='rgba(255,255,255,0.22)'; ctx.lineWidth=1;
+      ctx.strokeStyle=isHarmonic?`${s.color}aa`:'rgba(255,255,255,0.22)'; ctx.lineWidth=1;
       for(let sx=x-noteH;sx<x+w+noteH;sx+=5){
         ctx.beginPath(); ctx.moveTo(sx,y+1); ctx.lineTo(sx+noteH-2,y+noteH-1); ctx.stroke();
       }
@@ -528,13 +524,13 @@ function drawNotes(){
       ctx.moveTo(markerX+6,markerY-4);
       ctx.lineTo(markerX,markerY);
       ctx.lineTo(markerX+6,markerY+4);
-      ctx.strokeStyle='rgba(255,255,255,0.8)';
+      ctx.strokeStyle=isHarmonic?`${s.color}dd`:'rgba(255,255,255,0.8)';
       ctx.lineWidth=1.4;
       ctx.stroke();
     }
     // Tremolo wave
     if(isTrem){
-      ctx.strokeStyle='rgba(0,0,0,0.45)'; ctx.lineWidth=1.5;
+      ctx.strokeStyle=isHarmonic?`${s.color}ee`:'rgba(0,0,0,0.45)'; ctx.lineWidth=1.5;
       const my2=y+noteH/2;
       ctx.beginPath();
       for(let tx=x;tx<x+w;tx+=2){

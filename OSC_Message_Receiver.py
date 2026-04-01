@@ -156,11 +156,87 @@ unpress_after_flag = True      # Default: release presser after pluck
 force_adjustment_only_flag = False  # Default: normal fretting behavior
 direct_press_flag = True       # Default: presser current→target direct (no -650 waypoint)
 
+
+def _pluckharm_row_to_pluck_row(row):
+    """Convert a /PluckHarm event row into a GuitarBotParser pluck row.
+
+    Output shape: [note, duration, speed, slide_toggle, specified_string, timestamp, presser_torque, target_fret_position, harmonic_prep_time_s]
+    """
+    if not isinstance(row, (list, tuple)) or len(row) < 5:
+        raise ValueError(f"/PluckHarm row must have at least 5 values, got: {row!r}")
+
+    raw_string_idx = int(row[0])
+    if 0 <= raw_string_idx < len(tu.STRING_MIDI_RANGES):
+        string_idx = raw_string_idx
+    else:
+        physical_to_playable = {0: 0, 2: 1, 4: 2}
+        if raw_string_idx in physical_to_playable:
+            string_idx = physical_to_playable[raw_string_idx]
+        else:
+            raise ValueError(f"/PluckHarm string_index out of range: {raw_string_idx}")
+
+    fret_position = float(row[1])
+    torque = float(row[2])
+    overshoot = float(row[3])
+    timestamp = float(row[-1])
+    extras = list(row[4:-1])
+
+    note = None
+    pluck_velocity = 80
+    if len(extras) == 1:
+        candidate = int(float(extras[0]))
+        if tu.MIDI_MIN <= candidate <= tu.MIDI_MAX:
+            note = candidate
+        else:
+            pluck_velocity = candidate
+    elif len(extras) >= 2:
+        pluck_velocity = int(float(extras[0]))
+        note = int(float(extras[1]))
+
+    low, high, _ = tu.STRING_MIDI_RANGES[string_idx]
+    if note is None:
+        note = int(round(low + fret_position))
+    note = max(low, min(high, int(note)))
+
+    speed = int(round((max(0, min(127, pluck_velocity)) / 127.0) * 9 + 1))
+    speed = max(1, min(10, speed))
+    presser_torque = int(round(max(0.0, min(float(tu.LH_PRESSER_PRESSED_POS), torque))))
+    specified_string = string_idx + 1
+    target_fret_position = max(0.0, min(9.0, fret_position + overshoot))
+    harmonic_prep_time_s = float(tu.harmonic_touch_recipe(string_idx).get("prep_time_s", 0.0))
+
+    return [
+        note,
+        float(tu.SHORT_NOTE_DEFAULT_DURATION),
+        speed,
+        0,
+        specified_string,
+        timestamp,
+        presser_torque,
+        target_fret_position,
+        harmonic_prep_time_s,
+    ]
+
+
+def _pluckharm_payload_to_pluck_rows(payload):
+    if not isinstance(payload, (list, tuple)):
+        raise ValueError(f"/PluckHarm payload must be a list, got {type(payload).__name__}")
+    if len(payload) == 0:
+        return []
+
+    if all(isinstance(event, (list, tuple)) for event in payload):
+        rows = [_pluckharm_row_to_pluck_row(event) for event in payload]
+    else:
+        rows = [_pluckharm_row_to_pluck_row(payload)]
+
+    rows.sort(key=lambda event: float(event[5]))
+    return rows
+
 def decode_osc_message(data):
     print("Message In")
     try:
         msg = OscMessage(data)
-        if msg.address in ["/Chords", "/Strum", "/Pluck", "/Dyn", "/Fret", "/RLFret", "/Reset", "/Config", "/Midi"]:
+        if msg.address in ["/Chords", "/Strum", "/Pluck", "/PluckHarm", "/Dyn", "/Fret", "/RLFret", "/Reset", "/Config", "/Midi"]:
             return msg.address[1:], msg.params  # Remove the leading '/'
     except Exception as exc:
         print(f"Failed to parse OSC message: {exc}")
@@ -197,6 +273,18 @@ def process_messages():
                 elif message_type == "Pluck":
                     pluck_queue.put(data)
                     print(f"  → Queued to pluck_queue (size: {pluck_queue.qsize()})")
+                elif message_type == "PluckHarm":
+                    try:
+                        mapped_rows = _pluckharm_payload_to_pluck_rows(data)
+                    except Exception as exc:
+                        print(f"  ✗ Invalid /PluckHarm payload: {exc}")
+                        mapped_rows = []
+                    if mapped_rows:
+                        pluck_queue.put(mapped_rows)
+                        print(
+                            f"  → Converted /PluckHarm ({len(mapped_rows)} events) "
+                            f"to pluck_queue (size: {pluck_queue.qsize()})"
+                        )
                 elif message_type == "Dyn":
                     dyn_queue.put(data)
                     print(f"  → Queued to dyn_queue (size: {dyn_queue.qsize()})")
@@ -293,8 +381,13 @@ def song_creator():
                                 # Supported row formats:
                                 #   [note, duration, speed, slide, timestamp]
                                 #   [note, duration, speed, slide, string_index, timestamp]
+                                #   [note, duration, speed, slide, string_index, timestamp, presser_torque]
+                                #   [note, duration, speed, slide, string_index, timestamp, presser_torque, target_fret_position]
                                 try:
-                                    event_time = float(pluck_event[-1])
+                                    if len(pluck_event) >= 7:
+                                        event_time = float(pluck_event[5])
+                                    else:
+                                        event_time = float(pluck_event[-1])
                                     event_dur = max(0.0, float(pluck_event[1]))
                                 except (TypeError, ValueError):
                                     continue

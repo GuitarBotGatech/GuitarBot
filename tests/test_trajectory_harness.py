@@ -1,4 +1,5 @@
 import copy
+import json
 
 import numpy as np
 import pytest
@@ -12,6 +13,7 @@ from trajectory_harness import (
     OscPayload,
     _derive_lh_pick_events,
     compute_trajectory,
+    load_json_payload,
 )
 
 
@@ -172,3 +174,154 @@ def test_tremolo_readiness_passes_with_sufficient_lead_time():
     assert result["pass"] is True
     assert result["python"]["checked_tremolo_events"] >= 1
     assert result["python"]["violation_count"] == 0
+
+
+def test_optional_presser_torque_controls_lh_target_force():
+    timestamp = 1.0
+    note = 44  # E string fret 4
+    duration = 0.2
+    speed = 5
+
+    default_payload = OscPayload(
+        chords=[],
+        pluck=[[note, duration, speed, 0, 1, timestamp]],
+        midi=[],
+    )
+    harmonic_payload = OscPayload(
+        chords=[],
+        pluck=[[note, duration, speed, 0, 1, timestamp, 50]],
+        midi=[],
+    )
+
+    default_traj = compute_trajectory(default_payload)
+    harmonic_traj = compute_trajectory(harmonic_payload)
+
+    presser_col = 6  # string 0 presser
+    start_idx = int(timestamp / tu.TIME_STEP)
+    end_idx = min(default_traj.shape[0], start_idx + 600)
+
+    default_peak = int(np.max(default_traj[start_idx:end_idx, presser_col]))
+    harmonic_peak = int(np.max(harmonic_traj[start_idx:end_idx, presser_col]))
+
+    assert default_peak >= int(tu.LH_PRESSER_PRESSED_POS)
+    assert 45 <= harmonic_peak <= 55
+
+
+def test_harmonic_track_json_maps_to_low_presser_force_in_harness(tmp_path):
+    arrangement = {
+        "song": {
+            "name": "harmonic-harness",
+            "meta": {"key": "E minor", "time_signature": "4/4", "bpm": 120},
+            "tracks": [
+                {
+                    "name": "pluck_harm_main",
+                    "type": "harmonic",
+                    "events": [
+                        {
+                            "string_index": 0,
+                            "fret_position": 4.0,
+                            "torque": 50,
+                            "overshoot": 0.25,
+                            "timestamp": 1.0,
+                        }
+                    ],
+                }
+            ],
+        }
+    }
+
+    path = tmp_path / "harmonic_arrangement.json"
+    path.write_text(json.dumps(arrangement), encoding="utf-8")
+
+    payload = load_json_payload(path)
+    assert payload.pluck_harm, "Expected /PluckHarm events from arrangement"
+    assert payload.pluck, "Expected mapped /Pluck rows for trajectory parsing"
+    assert len(payload.pluck[0]) == 9
+    assert int(payload.pluck[0][6]) == 50
+
+    traj = compute_trajectory(payload)
+    presser_col = 6
+    start_idx = int(1.0 / tu.TIME_STEP)
+    end_idx = min(traj.shape[0], start_idx + 600)
+    peak = int(np.max(traj[start_idx:end_idx, presser_col]))
+    assert 45 <= peak <= 55
+
+
+def test_harmonic_overshoot_offsets_fractional_fret_target(tmp_path):
+    arrangement = {
+        "song": {
+            "name": "harmonic-overshoot",
+            "meta": {"key": "E minor", "time_signature": "4/4", "bpm": 120},
+            "tracks": [
+                {
+                    "name": "pluck_harm_main",
+                    "type": "harmonic",
+                    "events": [
+                        {
+                            "string_index": 0,
+                            "fret_position": 4.0,
+                            "torque": 50,
+                            "overshoot": 0.25,
+                            "timestamp": 1.0,
+                        }
+                    ],
+                }
+            ],
+        }
+    }
+
+    path = tmp_path / "harmonic_overshoot.json"
+    path.write_text(json.dumps(arrangement), encoding="utf-8")
+
+    payload = load_json_payload(path)
+    mapped = payload.pluck[0]
+    assert mapped[7] == pytest.approx(4.25)
+    assert mapped[8] == pytest.approx(tu.harmonic_touch_recipe(0)["prep_time_s"])
+
+    lh_events = _derive_lh_pick_events(payload, quiet=True)
+    assert lh_events, "Expected LH pick events"
+    lh_slider_target = float(lh_events[0][1])
+
+    mm_low = float(tu.SLIDER_MM_PER_FRET[3])
+    mm_high = float(tu.SLIDER_MM_PER_FRET[4])
+    expected_mm = mm_low + 0.25 * (mm_high - mm_low)
+    expected_slider = ((expected_mm * 2048) / tu.MM_TO_ENCODER_CONVERSION_FACTOR + tu.SLIDER_ENCODER_OFFSET) * tu.STRING_MIDI_RANGES[0][2]
+
+    assert lh_slider_target == pytest.approx(expected_slider, rel=1e-4)
+
+
+def test_harmonic_profile_prep_time_is_applied_to_lh_event_start(tmp_path):
+    arrangement = {
+        "song": {
+            "name": "harmonic-prep-profile",
+            "meta": {"key": "E minor", "time_signature": "4/4", "bpm": 120},
+            "tracks": [
+                {
+                    "name": "pluck_harm_main",
+                    "type": "harmonic",
+                    "events": [
+                        {
+                            "string_index": 0,
+                            "fret_position": 4.0,
+                            "torque": 175,
+                            "overshoot": 0.25,
+                            "timestamp": 2.0,
+                        }
+                    ],
+                }
+            ],
+        }
+    }
+
+    path = tmp_path / "harmonic_prep_profile.json"
+    path.write_text(json.dumps(arrangement), encoding="utf-8")
+
+    payload = load_json_payload(path)
+    mapped = payload.pluck[0]
+    assert mapped[8] == pytest.approx(tu.harmonic_touch_recipe(0)["prep_time_s"])
+
+    lh_events = _derive_lh_pick_events(payload, quiet=True)
+    assert lh_events
+    lh_start = float(lh_events[0][3])
+    expected_latest_start = float(mapped[5]) - float(mapped[8])
+    assert lh_start <= expected_latest_start + 1e-6

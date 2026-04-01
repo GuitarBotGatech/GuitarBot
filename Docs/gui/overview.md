@@ -119,6 +119,9 @@ Playback in the sequencer is visual only. Robot/MIDI output requires OSC or brid
 |--------|----------|
 | Delete selected event | **Delete** or **Backspace** |
 | Close popup | **Escape** (or click outside) |
+| Grid smaller (finer) | **Ctrl/Cmd + 1** |
+| Grid bigger (coarser) | **Ctrl/Cmd + 2** |
+| Convert current grid to triplet | **Ctrl/Cmd + 3** |
 | Zoom in/out | **Ctrl/Cmd + Scroll Wheel** |
 | Scroll timeline horizontally | **Shift + Scroll Wheel** |
 | Deselect current selection | Click empty canvas area |

@@ -50,6 +50,36 @@ LH_PRESSER_PRESSED_POS = 500
 # Values over 1000 overwork the motor, which can result in overheating and stalling.
 LH_PRESSER_SLIDE_PRESS_POS = 400
 
+# Default harmonic touch profile used by /PluckHarm-style events.
+# One profile per playable string (0..len(STRING_MIDI_RANGES)-1).
+# - torque: presser target torque for harmonic touch
+# - overshoot: fractional fret delta added to fret_position (e.g., 4.0 -> 4.25)
+# - prep_time_s: minimum LH lead time before pluck for this string's harmonic profile
+HARMONIC_TOUCH_PROFILE_BY_STRING = {
+    0: {"torque": 175.0, "overshoot": 0.25, "prep_time_s": 2},
+    1: {"torque": 40.0, "overshoot": 0.35, "prep_time_s": 2},
+    2: {"torque": 70.0, "overshoot": 0.25, "prep_time_s": 2},
+}
+
+# Final fallback when no specific string profile exists.
+HARMONIC_TOUCH_PROFILE_DEFAULT = {"torque": 50.0, "overshoot": 0.25, "prep_time_s": 0.95}
+
+
+def harmonic_touch_recipe(string_index: int, fret_position: float | None = None) -> dict:
+    """Return harmonic touch defaults for a given string.
+
+    fret_position is accepted for backward compatibility with existing call sites.
+    """
+    _ = fret_position
+    recipe = HARMONIC_TOUCH_PROFILE_BY_STRING.get(int(string_index))
+    if recipe is None:
+        recipe = HARMONIC_TOUCH_PROFILE_DEFAULT
+    return {
+        "torque": float(recipe["torque"]),
+        "overshoot": float(recipe["overshoot"]),
+        "prep_time_s": float(recipe["prep_time_s"]),
+    }
+
 # ----------------------------------------------------------------------------
 # 2. Timing and Synchronization Parameters
 # ----------------------------------------------------------------------------

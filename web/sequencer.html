@@ -6,7 +6,7 @@
 <title>GuitarBot Sequencer</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;600;700&family=IBM+Plex+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="css/sequencer.css">
+<link rel="stylesheet" href="css/sequencer.css?v=20260401b">
 </head>
 <body>
 <div id="app">
@@ -130,6 +130,13 @@
         <div class="tog-row">
           <label class="tog"><input type="checkbox" id="i-slide" onchange="updSlide(this.checked)"><div class="tog-t"></div><div class="tog-k"></div></label>
           <span class="tog-lbl" id="i-slide-lbl">Off</span>
+        </div>
+      </div>
+      <div class="if">
+        <div class="il">Harmonic</div>
+        <div class="tog-row">
+          <label class="tog" id="i-harm-wrap"><input type="checkbox" id="i-harmonic" onchange="updHarmonic(this.checked)"><div class="tog-t"></div><div class="tog-k"></div></label>
+          <span class="tog-lbl" id="i-harmonic-lbl">Off</span>
         </div>
       </div>
       <div class="if">
@@ -272,18 +279,18 @@
 <div id="import-toast" aria-live="polite"></div>
 
 <script src="https://cdn.jsdelivr.net/npm/@tonejs/midi@2.0.28/build/Midi.min.js"></script>
-<script src="js/constants.js"></script>
-<script src="js/state.js"></script>
-<script src="js/note_rules.js"></script>
-<script src="js/render.js"></script>
-<script src="js/interaction.js"></script>
-<script src="js/editor.js"></script>
-<script src="js/transport.js"></script>
-<script src="js/toolbar.js"></script>
-<script src="js/json.js"></script>
-<script src="js/main.js"></script>
-<script src="js/audio_recorder.js"></script>
-<script src="js/spectrogram.js"></script>
-<script src="js/analysis.js"></script>
+<script src="js/constants.js?v=20260401b"></script>
+<script src="js/state.js?v=20260401b"></script>
+<script src="js/note_rules.js?v=20260401b"></script>
+<script src="js/render.js?v=20260401b"></script>
+<script src="js/interaction.js?v=20260401b"></script>
+<script src="js/editor.js?v=20260401b"></script>
+<script src="js/transport.js?v=20260401b"></script>
+<script src="js/toolbar.js?v=20260401b"></script>
+<script src="js/json.js?v=20260401b"></script>
+<script src="js/main.js?v=20260401b"></script>
+<script src="js/audio_recorder.js?v=20260401b"></script>
+<script src="js/spectrogram.js?v=20260401b"></script>
+<script src="js/analysis.js?v=20260401b"></script>
 </body>
 </html>
