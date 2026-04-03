@@ -13,7 +13,7 @@ TIME_STEP = .005
 
 #Graphing
 # Controls graphing the functions used on each motor. False turns off, true turns on.
-graph = True
+graph = False
 
 # Blend percentage for trajectory interpolation (0.0 to 1.0).
 # A higher value creates a more gradual acceleration and deceleration.
@@ -56,9 +56,9 @@ LH_PRESSER_SLIDE_PRESS_POS = 400
 # - overshoot: fractional fret delta added to fret_position (e.g., 4.0 -> 4.25)
 # - prep_time_s: minimum LH lead time before pluck for this string's harmonic profile
 HARMONIC_TOUCH_PROFILE_BY_STRING = {
-    0: {"torque": 175.0, "overshoot": 0.25, "prep_time_s": 2},
-    1: {"torque": 40.0, "overshoot": 0.35, "prep_time_s": 2},
-    2: {"torque": 70.0, "overshoot": 0.25, "prep_time_s": 2},
+    0: {"torque": 130.0, "overshoot": 0.25, "prep_time_s": 1},
+    1: {"torque": 40.0, "overshoot": 0.35, "prep_time_s": 1},
+    2: {"torque": 70.0, "overshoot": 0.25, "prep_time_s": 1},
 }
 
 # Final fallback when no specific string profile exists.
@@ -225,6 +225,13 @@ POS_CONTROL_PRESS = [200000, 905480, 2643, 507, 36]
 
 # Unit conversion
 MM_TO_ENC_CONVERSION_FACTOR = MM_TO_ENCODER_CONVERSION_FACTOR
+
+# Presser mode-switch stabilization for low-force harmonic control.
+# Used in firmware to avoid mode flapping near release/touch boundaries.
+PRESSER_HOME_ENTER_TICKS = 15
+PRESSER_HOME_EXIT_TICKS = 30
+PRESSER_TORQUE_ENABLE_THRESHOLD = 5
+PRESSER_TORQUE_DISABLE_THRESHOLD = 0
 
 
 if __name__ == "__main__":

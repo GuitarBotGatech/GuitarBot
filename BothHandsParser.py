@@ -602,12 +602,20 @@ class BothHandsParser:
                 rh_trajectory[:, pid] = self.right_hand.current_positions[pid]
         
         # Calculate pluck trajectory
+        motion_points = tu.PICKER_PLUCK_MOTION_POINTS
         if pluck_velocity is not None:
-            # Velocity-based plucking
-            target_pos = self.right_hand.velocity_to_position(picker_id, pluck_velocity)
+            # Backward-compatible handling: some RightHandParser versions expose
+            # velocity_to_position(), while others only support state-toggle target
+            # plus velocity_to_num_points() for movement speed.
+            if hasattr(self.right_hand, "velocity_to_position"):
+                target_pos = self.right_hand.velocity_to_position(picker_id, pluck_velocity)
+            else:
+                target_pos, _new_state = self.right_hand.get_next_state_position(picker_id)
+                if hasattr(self.right_hand, "velocity_to_num_points"):
+                    motion_points = self.right_hand.velocity_to_num_points(pluck_velocity)
         else:
             # State-based toggle plucking
-            target_pos, new_state = self.right_hand.get_next_state_position(picker_id)
+            target_pos, _new_state = self.right_hand.get_next_state_position(picker_id)
         
         if target_pos is None:
             print(f"Warning: Could not determine target position for picker {picker_id}")
@@ -615,7 +623,11 @@ class BothHandsParser:
         
         # Generate pluck motion
         start_pos = self.right_hand.current_positions[picker_id]
-        pluck_motion = self.right_hand.generate_pluck_trajectory(picker_id, target_pos)
+        pluck_motion = self.right_hand.generate_pluck_trajectory(
+            picker_id,
+            target_pos,
+            num_points=motion_points,
+        )
         
         # Insert pluck motion at correct timestamp
         pluck_start_idx = int(pluck_timestamp / tu.TIME_STEP)

@@ -66,6 +66,10 @@ def generate_tune_h(tune_py_path: Path | str = DEFAULT_TUNE_PY,
         "pos_control_PICK": ("POS_CONTROL_PICK", "uint32_t", True),
         "pos_control_PRESS": ("POS_CONTROL_PRESS", "uint32_t", True),
         "mm_to_enc_conversion_factor": ("MM_TO_ENC_CONVERSION_FACTOR", "float", False),
+        "presser_home_enter_ticks": ("PRESSER_HOME_ENTER_TICKS", "int", False),
+        "presser_home_exit_ticks": ("PRESSER_HOME_EXIT_TICKS", "int", False),
+        "presser_torque_enable_threshold": ("PRESSER_TORQUE_ENABLE_THRESHOLD", "int", False),
+        "presser_torque_disable_threshold": ("PRESSER_TORQUE_DISABLE_THRESHOLD", "int", False),
     }
 
     lines: list[str] = []

@@ -282,28 +282,36 @@ public:
         for (int x = 0; x < NUM_MOTORS; x++) {
             if (x < 17) {
                 if (x > 5 && x < 12) {
-                    int curr_pos;
-                    curr_pos = pInstance->m_striker[x + 1].getPosition_ticks();
-                    //Serial.print("Current pos at ");
-//                    Serial.print(x + 1);
-//                    Serial.print(" ");
-//                    Serial.print(curr_pos);
-                    if (curr_pos <= 15 && trajPoint[x] <= 0) {
-                        if (m_striker[x + 1].getPressState()) {
-                            m_striker[x + 1].setModePOSITION();
-                            //Serial.print(", Setting Position since ");
-                        }
-                        //Serial.println(", PRESS STATE FALSE");
-                        all_Trajs[x][0] = 0;
-                    } else {
-                        if (!m_striker[x + 1].getPressState()) {
-                            m_striker[x + 1].setModeTORQUE();
-                            //Serial.print(", Setting Torque since ");
-                        }
-                        //Serial.print(", is already in Torque mode; ");
+                    const int motor_id = x + 1;
+                    const int curr_pos = pInstance->m_striker[motor_id].getPosition_ticks();
+                    const float raw_cmd = trajPoint[x];
+                    float cmd = raw_cmd;
+                    const bool in_torque_mode = m_striker[motor_id].getPressState();
+
+                    // Small deadband around zero command removes noisy toggling.
+                    if (fabs(cmd) < presser_torque_enable_threshold) {
+                        cmd = 0.0f;
                     }
-                    all_Trajs[x][0] = trajPoint[x];
-                    //Serial.println(", PRESS STATE TRUE");
+
+                    if (in_torque_mode) {
+                        // Exit torque mode only when command requests release and the
+                        // presser is close enough to home (hysteresis enter threshold).
+                        if (cmd <= presser_torque_disable_threshold && curr_pos <= presser_home_enter_ticks) {
+                            m_striker[motor_id].setModePOSITION();
+                            all_Trajs[x][0] = 0;
+                        } else {
+                            all_Trajs[x][0] = cmd;
+                        }
+                    } else {
+                        // Enter torque mode only when command rises above threshold OR
+                        // the presser is away from home by the hysteresis exit threshold.
+                        if (cmd >= presser_torque_enable_threshold || curr_pos > presser_home_exit_ticks) {
+                            m_striker[motor_id].setModeTORQUE();
+                            all_Trajs[x][0] = cmd;
+                        } else {
+                            all_Trajs[x][0] = 0;
+                        }
+                    }
                 } else {
                     all_Trajs[x][0] = trajPoint[x];
                 }
