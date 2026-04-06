@@ -383,12 +383,8 @@ function applySelectionBox(box){
   S.selChord=null;
   S.selMidi=null;
   S.selMidiCurvePoints=selectedCurves;
-  if(ids.length===1&&!hasCurveSelection){
-    const ev=S.pluck.find(e=>e.id===ids[0]);
-    if(ev)openInsp(ev);
-  } else {
-    closeInsp();
-  }
+  if(ids.length)refreshInspectorForSelection();
+  else closeInsp();
 }
 
 function chordDown(cx,cy,e){

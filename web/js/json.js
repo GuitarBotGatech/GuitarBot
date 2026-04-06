@@ -28,7 +28,7 @@ function buildJSON(){
   const harmonicFromPluck=[];
   S.pluck.forEach(e=>{
     if(e.harmonic===1){
-      const stringIndex=noteEventStringIndex(e);
+      const stringIndex=eventStringIndex(e);
       const fret=noteEventFret(e);
       if(Number.isFinite(stringIndex)&&Number.isFinite(fret)){
         harmonicFromPluck.push({
@@ -53,7 +53,7 @@ function buildJSON(){
           return o;
         })});
   }
-  const allHarmonic=[...harmonicFromPluck,...S.harmonic];
+  const allHarmonic=[...harmonicFromPluck,...(Array.isArray(S.harmonic)?S.harmonic:[])];
   if(allHarmonic.length){
     tracks.push({name:"pluck_harm_main",type:"harmonic",
       events:[...allHarmonic].sort((a,b)=>parseBeat(a.beat)-parseBeat(b.beat))
@@ -853,7 +853,7 @@ function loadJSON(data){
       }
     }
   }
-  S.pluck=[]; S.chord=[]; S.midi=[]; S.midiCurves=createEmptyMidiCurves(); S.midiCurveMuted=createEmptyMidiCurveMuteState(); S.midiLaneMenuLane=null; S.focusedCCLane=null; S.nextId=1;
+  S.pluck=[]; S.harmonic=[]; S.chord=[]; S.midi=[]; S.midiCurves=createEmptyMidiCurves(); S.midiCurveMuted=createEmptyMidiCurveMuteState(); S.midiLaneMenuLane=null; S.focusedCCLane=null; S.nextId=1;
   S.selPluck=null; S.selPluckIds.clear(); S.selChord=null; S.selMidi=null; clearMidiCurveSelection(); S.clipboardPluck=null; S.clipboardMidiCurves=null; closeInsp();
   let maxB=0;
   (song.tracks||[]).forEach(tr=>{
@@ -875,6 +875,21 @@ function loadJSON(data){
           slideOut:ev.slideOut??ev.slide_out??0,
           beat:hasBeat?ev.beat:beatLabel(b),
           string_index:ev.string_index??null}));
+      } else if(tr.type==='harmonic'){
+        const stringIndexRaw=parseInt(ev.string_index,10);
+        const fretRaw=parseInt(ev.fret_position,10);
+        const velocityRaw=parseFloat(ev.pluck_velocity);
+        const noteRaw=parseInt(ev.note,10);
+        S.harmonic.push({
+          id:S.nextId++,
+          string_index:Number.isFinite(stringIndexRaw)?stringIndexRaw:null,
+          fret_position:Number.isFinite(fretRaw)?fretRaw:null,
+          torque:ev.torque,
+          overshoot:ev.overshoot,
+          pluck_velocity:Number.isFinite(velocityRaw)?velocityRaw:null,
+          note:Number.isFinite(noteRaw)?noteRaw:null,
+          beat:hasBeat?ev.beat:beatLabel(b),
+        });
       } else if(tr.type==='chord'){
         S.chord.push({id:S.nextId++,chord:ev.chord||'Em',beat:hasBeat?ev.beat:beatLabel(b)});
       } else if(tr.type==='midi'){

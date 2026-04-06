@@ -66,6 +66,12 @@ LH_PREP_TIME_MIN = 0.090
 # Delta values above this are clamped to the max prep window.
 LH_PREP_MAX_SEMITONE_DELTA = 9
 
+# Extra caution near the top of calibrated travel to avoid hard-stop impacts.
+# Fret numbers are 1-indexed (fret 9 is currently the highest calibrated fret).
+LH_HIGH_FRET_CAUTION_START_FRET = 9
+LH_HIGH_FRET_EXTRA_PREP_TIME = 0.250
+LH_HIGH_FRET_MAX_PREP_TIME = 0.700
+
 # The time window (in seconds) to check for overlaps between left-hand and picker movements.
 # If a pick event occurs within this window of a left-hand event, it may be adjusted or ignored.
 # Given in terms of seconds.

@@ -64,6 +64,11 @@ canvas{display:block}
 .ib{padding:14px;flex:1;overflow-y:auto}
 .if{margin-bottom:14px}
 .il{font-size:9px;font-weight:600;text-transform:uppercase;letter-spacing:1px;color:var(--text-dim);margin-bottom:5px;display:flex;align-items:center;justify-content:space-between}
+.iv-state{font-family:'JetBrains Mono',monospace;font-size:9px;font-weight:600;color:var(--text-dim);margin-left:auto;margin-right:8px;text-transform:uppercase;letter-spacing:.8px}
+.if.is-mixed .il{color:var(--yellow)}
+.if.is-mixed .iv-state{color:var(--yellow)}
+.if.is-mixed input[type=number],.if.is-mixed select{border-color:var(--yellow);color:var(--yellow)}
+.if.is-mixed input[type=range]::-webkit-slider-thumb{background:var(--yellow)}
 .note-big{font-family:'JetBrains Mono',monospace;font-size:22px;font-weight:700;letter-spacing:-1px}
 .note-sub{font-size:11px;color:var(--text-dim);margin-top:1px}
 .sc{display:flex;align-items:center;gap:7px}
@@ -88,6 +93,7 @@ input[type=range]::-webkit-slider-thumb:hover{transform:scale(1.2)}
   text-transform:uppercase;letter-spacing:1px;color:var(--purple)
 }
 .trem.on{display:flex}
+.trem.mixed{border-color:var(--yellow);color:var(--yellow);background:linear-gradient(135deg,#463109,#2f2208)}
 .trem svg path{animation:tw .35s infinite alternate}
 @keyframes tw{from{d:path("M1 7 Q3 4 5 7 Q7 10 9 7 Q11 4 13 7")}to{d:path("M1 7 Q3 10 5 7 Q7 4 9 7 Q11 10 13 7")}}
 .dur-in{width:75px}

@@ -106,7 +106,7 @@
   <!-- INSPECTOR -->
   <div id="insp">
     <div class="ih">
-      <span class="it">Note Inspector</span>
+      <span class="it" id="i-title">Note Inspector</span>
       <button class="ix" onclick="closeInsp()">×</button>
     </div>
     <div class="ib">
@@ -118,28 +118,29 @@
         <svg width="14" height="10" viewBox="0 0 14 10"><path d="M1 5 Q3 2 5 5 Q7 8 9 5 Q11 2 13 5" stroke="currentColor" stroke-width="1.5" fill="none" stroke-linecap="round"/></svg>
         TREMOLO
       </div>
-      <div class="if">
-        <div class="il">Speed <span class="sv" id="i-sv">6</span></div>
+      <div class="if" id="i-speed-row">
+        <div class="il">Speed <span class="iv-state" id="i-speed-state"></span><span class="sv" id="i-sv">6</span></div>
         <div class="sc">
           <input type="range" id="i-speed" min="1" max="10" step="1" value="6" oninput="updSpeed(this.value)">
         </div>
         <div style="display:flex;justify-content:space-between;font-size:9px;color:var(--text-dim);margin-top:3px"><span>slow</span><span>fast</span></div>
       </div>
-      <div class="if">
-        <div class="il">Slide In</div>
+      <div class="if" id="i-slide-row">
+        <div class="il">Slide In <span class="iv-state" id="i-slide-state"></span></div>
         <div class="tog-row">
           <label class="tog"><input type="checkbox" id="i-slide" onchange="updSlide(this.checked)"><div class="tog-t"></div><div class="tog-k"></div></label>
           <span class="tog-lbl" id="i-slide-lbl">Off</span>
         </div>
       </div>
-      <div class="if">
-        <div class="il">Duration (beats)</div>
+      <div class="if" id="i-dur-row">
+        <div class="il">Duration (beats) <span class="iv-state" id="i-dur-state"></span></div>
         <input type="number" class="dur-in" id="i-dur" min="0.0625" max="16" step="0.0625" value="0.5" oninput="updDur(this.value)">
       </div>
       <div class="insp-sep"></div>
-      <div class="if">
-        <div class="il">String Override</div>
+      <div class="if" id="i-str-ov-row">
+        <div class="il">String Override <span class="iv-state" id="i-str-ov-state"></span></div>
         <select id="i-str-ov" onchange="updStrOv(this.value)" style="width:100%">
+          <option value="__mixed__" disabled hidden>Mixed values</option>
           <option value="">Auto (by note)</option>
           <option value="0">0 — Low E</option>
           <option value="1">1 — D</option>
@@ -151,7 +152,7 @@
         <div id="i-hit-status" style="font-size:12px;font-weight:600;margin-bottom:3px"></div>
         <div id="i-tremolo-rate" style="font-size:11px;color:var(--purple)"></div>
       </div>
-      <button class="del-btn" onclick="delSelNote()">Delete Note</button>
+      <button class="del-btn" id="i-del-btn" onclick="delSelNote()">Delete Note</button>
     </div>
   </div>
 </div>

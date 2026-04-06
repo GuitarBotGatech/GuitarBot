@@ -4,7 +4,7 @@
 let S={
   songName:"Untitled Song", bpm:120, keyRoot:"E", keyMode:"minor",
   timeSig:"4/4", measures:8,
-  pluck:[], chord:[], midi:[],
+  pluck:[], harmonic:[], chord:[], midi:[],
   midiCurves:createEmptyMidiCurves(),
   midiCurveMuted:createEmptyMidiCurveMuteState(),
     selMidiCurvePoints:createEmptyMidiCurveSelection(),
@@ -295,7 +295,7 @@ function remapEventBeatsForTimeSigChange(fromTimeSig,toTimeSig){
     ev.beat=beatLabelWithTimeSig(absoluteBeat,toTimeSig);
   };
   S.pluck.forEach(remapEvent);
-  S.harmonic.forEach(remapEvent);
+  (S.harmonic||[]).forEach(remapEvent);
   S.chord.forEach(remapEvent);
   S.midi.forEach(remapEvent);
 }

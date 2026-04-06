@@ -563,24 +563,25 @@ class GuitarBotParser:
     # Only strings 0, 2, 4 have physical pluckers.
     _CHORD_PLUCK_STRING_TO_PICKER = {0: 0, 2: 1, 4: 2}
 
-    def _lh_prep_time_for_event(self, prev_note, note, duration, slide_toggle):
+    def _lh_prep_time_for_event(self, prev_note, note, duration, slide_toggle, picker_id=None):
         max_prep = float(tu.LH_PREP_TIME_BEFORE_PICK)
         min_prep = float(getattr(tu, "LH_PREP_TIME_MIN", max_prep * 0.2))
         min_prep = max(0.0, min(min_prep, max_prep))
         max_delta = int(getattr(tu, "LH_PREP_MAX_SEMITONE_DELTA", 9))
         max_delta = max(1, max_delta)
+        effective_max_prep = max_prep
 
         if note <= 5:
-            return max_prep
-
-        if prev_note is None:
             return max_prep
 
         same_note = prev_note is not None and int(prev_note) == int(note)
         is_tremolo = float(duration) >= float(tu.TREMOLO_DURATION_THRESHOLD)
         slide_on = int(slide_toggle) == 1
 
-        if same_note and not slide_on:
+        if prev_note is None:
+            # First fretted note after rest starts from baseline prep.
+            motion_time = max_prep
+        elif same_note and not slide_on:
             motion_time = min_prep
         else:
             semitone_delta = abs(int(note) - int(prev_note))
@@ -594,7 +595,25 @@ class GuitarBotParser:
         if is_tremolo:
             motion_time += float(tu.TIME_STEP)
 
-        return min(max_prep, max(min_prep, motion_time))
+        if picker_id is not None and note > 5:
+            try:
+                picker_idx = int(picker_id)
+                if 0 <= picker_idx < len(tu.STRING_MIDI_RANGES):
+                    string_low_note = int(tu.STRING_MIDI_RANGES[picker_idx][0])
+                    fret = int(note) - string_low_note
+                    caution_start_fret = int(getattr(tu, "LH_HIGH_FRET_CAUTION_START_FRET", len(tu.SLIDER_MM_PER_FRET)))
+                    high_fret_extra = max(0.0, float(getattr(tu, "LH_HIGH_FRET_EXTRA_PREP_TIME", 0.0)))
+                    high_fret_max = max(max_prep, float(getattr(tu, "LH_HIGH_FRET_MAX_PREP_TIME", max_prep)))
+
+                    if fret >= caution_start_fret:
+                        # Near end-stop frets, force at least baseline prep and add safety headroom.
+                        motion_time = max(motion_time, max_prep) + high_fret_extra
+                        effective_max_prep = high_fret_max
+            except Exception:
+                # If picker/fret inference fails, fall back to normal prep timing.
+                pass
+
+        return min(effective_max_prep, max(min_prep, motion_time))
 
     def parsePickMIDI(self, picks):
         """
@@ -623,6 +642,33 @@ class GuitarBotParser:
         active_pickers = [-.5] * len(string_ranges_tuples)
         last_notes = [None] * len(string_ranges_tuples)
 
+        def _is_note_playable_on_picker(note_value, picker_id):
+            if not (0 <= picker_id < len(string_ranges_tuples)):
+                return False
+            low, _high = string_ranges_tuples[picker_id]
+            max_note = low + len(tu.SLIDER_MM_PER_FRET)
+            return low <= note_value <= max_note
+
+        def _resolve_specified_picker_id(note_value, specified_string_value):
+            if specified_string_value is None:
+                return None
+            raw = int(specified_string_value)
+            candidates = []
+
+            # Preferred: 0-based index (UI uses 0,1,2)
+            if 0 <= raw < len(string_ranges_tuples):
+                candidates.append(raw)
+
+            # Backward compatibility: 1-based index
+            one_based = raw - 1
+            if 0 <= one_based < len(string_ranges_tuples) and one_based not in candidates:
+                candidates.append(one_based)
+
+            for candidate in candidates:
+                if _is_note_playable_on_picker(note_value, candidate):
+                    return candidate
+            return None
+
         for pick_info in picks:
             if len(pick_info) == 6:
                 note, duration, speed, slide_toggle, specified_string, timestamp = pick_info
@@ -650,27 +696,37 @@ class GuitarBotParser:
                 duration = tu.SHORT_NOTE_DEFAULT_DURATION
 
             if specified_string is not None:
-                pickerID = specified_string - 1
-                if 0 <= pickerID < len(string_ranges_tuples):
-                    low, high = string_ranges_tuples[pickerID]
-                    if low <= note <= high:
-                        prep_time = self._lh_prep_time_for_event(last_notes[pickerID], note, duration, slide_toggle)
-                        if last_notes[pickerID] == note or timestamp - prep_time >= active_pickers[pickerID]:
-                            pick_events.append(["pick", [pickerID, note, duration, speed, timestamp]])
-                            slide_toggles.append(slide_toggle)
-                            active_pickers[pickerID] = timestamp
-                            last_notes[pickerID] = note
-                            assigned = True
+                pickerID = _resolve_specified_picker_id(note, specified_string)
+                if pickerID is not None:
+                    prep_time = self._lh_prep_time_for_event(
+                        last_notes[pickerID],
+                        note,
+                        duration,
+                        slide_toggle,
+                        picker_id=pickerID,
+                    )
+                    if last_notes[pickerID] == note or timestamp - prep_time >= active_pickers[pickerID]:
+                        pick_events.append(["pick", [pickerID, note, duration, speed, timestamp]])
+                        slide_toggles.append(slide_toggle)
+                        active_pickers[pickerID] = timestamp
+                        last_notes[pickerID] = note
+                        assigned = True
                     else:
-                        print(f"Warning: Note {note} is not playable on specified string {specified_string}. Falling back to auto-assignment.")
+                        print(f"Warning: Specified picker {pickerID} busy for note {note} at {timestamp}. Falling back to auto-assignment.")
                 else:
-                    print(f"Warning: Invalid string {specified_string} specified. Falling back to auto-assignment.")
+                    print(f"Warning: Note {note} is not playable on specified string {specified_string}. Falling back to auto-assignment.")
 
             # 2. Fallback to automatic assignment if no string was specified or if the specified one failed
             if not assigned:
                 for pickerID, (low, high) in enumerate(string_ranges_tuples):
                     if low <= note <= high:
-                        prep_time = self._lh_prep_time_for_event(last_notes[pickerID], note, duration, slide_toggle)
+                        prep_time = self._lh_prep_time_for_event(
+                            last_notes[pickerID],
+                            note,
+                            duration,
+                            slide_toggle,
+                            picker_id=pickerID,
+                        )
                         if last_notes[pickerID] == note or timestamp - prep_time >= active_pickers[pickerID]:
                             pick_events.append(["pick", [pickerID, note, duration, speed, timestamp]])
                             slide_toggles.append(slide_toggle)
@@ -780,7 +836,13 @@ class GuitarBotParser:
                     s_dir = tu.STRING_MIDI_RANGES[motor_id][2]
                     lh_enc_val = ((tu.SLIDER_MM_PER_FRET[fret - 1] * 2048) / tu.MM_TO_ENCODER_CONVERSION_FACTOR + tu.SLIDER_ENCODER_OFFSET) * s_dir
                 prev_note = last_lh_note_by_picker[motor_id] if 0 <= motor_id < len(last_lh_note_by_picker) else None
-                prep_time = self._lh_prep_time_for_event(prev_note, note, duration, slide_toggles[i])
+                prep_time = self._lh_prep_time_for_event(
+                    prev_note,
+                    note,
+                    duration,
+                    slide_toggles[i],
+                    picker_id=motor_id,
+                )
                 lh_pick_events.append([motor_id, lh_enc_val, slide_toggles[i], timestamp - prep_time, prep_time])
                 if 0 <= motor_id < len(last_lh_note_by_picker):
                     last_lh_note_by_picker[motor_id] = note

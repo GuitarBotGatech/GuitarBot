@@ -85,6 +85,7 @@ function applyNewProject(){
   S.stringSoloIndex=null;
   S.stringMuted=[false,false,false];
   S.pluck=[];
+  S.harmonic=[];
   S.chord=[];
   S.midi=[];
   S.midiCurves=createEmptyMidiCurves();

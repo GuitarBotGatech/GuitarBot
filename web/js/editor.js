@@ -39,7 +39,8 @@ function addNote(b,n){
 function rmPluck(id){
   S.pluck=S.pluck.filter(e=>e.id!==id);
   S.selPluckIds.delete(id);
-  if(S.selPluck===id){S.selPluck=null;closeInsp()}
+  if(S.selPluck===id)S.selPluck=null;
+  refreshInspectorForSelection();
   syncJSON();
 }
 function addChord(b){
@@ -77,7 +78,104 @@ function deselectAll(){S.selPluck=null;S.selPluckIds.clear();S.selChord=null;S.s
 // ═══════════════════════════════════════════════
 // INSPECTOR
 // ═══════════════════════════════════════════════
+function mixedValueInfo(events,getter){
+  if(!events.length)return {mixed:false,value:null};
+  const first=getter(events[0]);
+  for(let i=1;i<events.length;i++){
+    if(getter(events[i])!==first)return {mixed:true,value:first};
+  }
+  return {mixed:false,value:first};
+}
+
+function setInspectorMixedState(rowId,stateId,mixed){
+  const row=document.getElementById(rowId);
+  const state=document.getElementById(stateId);
+  if(row)row.classList.toggle('is-mixed',!!mixed);
+  if(state)state.textContent=mixed?'Mixed':'';
+}
+
+function resetInspectorMixedState(){
+  document.getElementById('insp').classList.remove('multi');
+  document.getElementById('i-title').textContent='Note Inspector';
+  document.getElementById('i-slide').indeterminate=false;
+  document.getElementById('i-dur').placeholder='';
+  document.getElementById('i-trem').classList.remove('mixed');
+  document.getElementById('i-del-btn').textContent='Delete Note';
+  setInspectorMixedState('i-speed-row','i-speed-state',false);
+  setInspectorMixedState('i-slide-row','i-slide-state',false);
+  setInspectorMixedState('i-dur-row','i-dur-state',false);
+  setInspectorMixedState('i-str-ov-row','i-str-ov-state',false);
+}
+
+function openInspMulti(events){
+  if(!events.length){
+    closeInsp();
+    return;
+  }
+
+  const count=events.length;
+  const speedInfo=mixedValueInfo(events,ev=>clampSpeed(ev.speed));
+  const slideInfo=mixedValueInfo(events,ev=>ev.slide===1?1:0);
+  const durInfo=mixedValueInfo(events,ev=>ev.duration_b);
+  const strOvInfo=mixedValueInfo(events,ev=>ev.string_index===null?'':String(ev.string_index));
+  const anyTrem=events.some(ev=>hasTremolo(ev));
+  const allTrem=events.every(ev=>hasTremolo(ev));
+
+  document.getElementById('insp').classList.add('open');
+  document.getElementById('insp').classList.add('multi');
+  document.getElementById('i-title').textContent='Multi-Note Inspector';
+
+  document.getElementById('i-note').textContent=`${count} Notes`;
+  document.getElementById('i-note').style.color='var(--text)';
+  document.getElementById('i-midi').textContent='mixed MIDI';
+  document.getElementById('i-str').textContent='mixed strings';
+  document.getElementById('i-str').style.color='var(--text-dim)';
+
+  document.getElementById('i-speed').value=speedInfo.value??SPEED_DEFAULT;
+  document.getElementById('i-sv').textContent=speedInfo.mixed?'Mixed':String(speedInfo.value);
+  setInspectorMixedState('i-speed-row','i-speed-state',speedInfo.mixed);
+
+  const slideInput=document.getElementById('i-slide');
+  slideInput.indeterminate=slideInfo.mixed;
+  slideInput.checked=!slideInfo.mixed&&slideInfo.value===1;
+  document.getElementById('i-slide-lbl').textContent=slideInfo.mixed?'Mixed':(slideInfo.value===1?'In':'Off');
+  setInspectorMixedState('i-slide-row','i-slide-state',slideInfo.mixed);
+
+  const durInput=document.getElementById('i-dur');
+  if(durInfo.mixed){
+    durInput.value='';
+    durInput.placeholder='Mixed';
+  }else{
+    durInput.value=durInfo.value;
+  }
+  setInspectorMixedState('i-dur-row','i-dur-state',durInfo.mixed);
+
+  document.getElementById('i-str-ov').value=strOvInfo.mixed?'__mixed__':strOvInfo.value;
+  setInspectorMixedState('i-str-ov-row','i-str-ov-state',strOvInfo.mixed);
+
+  document.getElementById('i-trem').classList.toggle('on',anyTrem);
+  document.getElementById('i-trem').classList.toggle('mixed',anyTrem&&!allTrem);
+  document.getElementById('i-analysis-row').style.display='none';
+  document.getElementById('i-del-btn').textContent='Delete Selected';
+}
+
+function refreshInspectorForSelection(){
+  const selected=getSelectedPluckEvents();
+  if(!selected.length){
+    closeInsp();
+    return;
+  }
+  if(selected.length===1){
+    S.selPluck=selected[0].id;
+    openInsp(selected[0]);
+    return;
+  }
+  S.selPluck=null;
+  openInspMulti(selected);
+}
+
 function openInsp(ev){
+  resetInspectorMixedState();
   document.getElementById('insp').classList.add('open');
   refreshInspNote(ev); refreshInspDur(ev);
   document.getElementById('i-speed').value=ev.speed;
@@ -88,7 +186,10 @@ function openInsp(ev){
   if(typeof updateInspectorAnalysis==='function') updateInspectorAnalysis();
 }
 function refreshInspNote(ev){
-  const s=strOf(ev.note);
+  const stringIdx=eventStringIndex(ev);
+  const s=(Number.isFinite(stringIdx)&&stringIdx>=0&&stringIdx<STRINGS.length)
+    ? STRINGS[stringIdx]
+    : strOf(ev.note);
   document.getElementById('i-note').textContent=noteName(ev.note);
   document.getElementById('i-note').style.color=s.color;
   document.getElementById('i-midi').textContent=ev.note;
@@ -99,36 +200,70 @@ function refreshInspDur(ev){
   document.getElementById('i-dur').value=ev.duration_b;
   document.getElementById('i-trem').classList.toggle('on',hasTremolo(ev));
 }
-function closeInsp(){document.getElementById('insp').classList.remove('open')}
+function closeInsp(){resetInspectorMixedState();document.getElementById('insp').classList.remove('open')}
 
 function updSpeed(v){
-  const ev=S.pluck.find(e=>e.id===S.selPluck);if(!ev)return;
-  ev.speed=clampSpeed(v);
-  document.getElementById('i-speed').value=ev.speed;
-  document.getElementById('i-sv').textContent=ev.speed;
-  syncJSON(); render();
+  const selected=getSelectedPluckEvents();if(!selected.length)return;
+  const speed=clampSpeed(v);
+  for(const ev of selected)ev.speed=speed;
+  syncJSON();
+  render();
+  refreshInspectorForSelection();
 }
 function updSlide(c){
-  const ev=S.pluck.find(e=>e.id===S.selPluck);if(!ev)return;
-  ev.slide=c?1:0;
-  document.getElementById('i-slide-lbl').textContent=c?'In':'Off';
-  syncJSON(); render();
+  const selected=getSelectedPluckEvents();if(!selected.length)return;
+  const slide=c?1:0;
+  for(const ev of selected)ev.slide=slide;
+  syncJSON();
+  render();
+  refreshInspectorForSelection();
 }
 function updDur(v){
-  const ev=S.pluck.find(e=>e.id===S.selPluck);if(!ev)return;
+  const selected=getSelectedPluckEvents();if(!selected.length)return;
   const raw=Math.max(0.0625,parseFloat(v)||0.5);
-  const beat=parseBeat(ev.beat);
-  ev.duration_b=clampDurationToNext(beat,ev.note,raw,ev.id);
-  document.getElementById('i-dur').value=ev.duration_b;
-  document.getElementById('i-trem').classList.toggle('on',hasTremolo(ev));
-  syncJSON(); render();
+  for(const ev of selected){
+    const beat=parseBeat(ev.beat);
+    ev.duration_b=clampDurationToNext(beat,ev.note,raw,ev.id);
+  }
+  syncJSON();
+  render();
+  refreshInspectorForSelection();
 }
 function updStrOv(v){
-  const ev=S.pluck.find(e=>e.id===S.selPluck);if(!ev)return;
-  ev.string_index=v===''?null:parseInt(v);
+  if(v==='__mixed__')return;
+  const selected=getSelectedPluckEvents();if(!selected.length)return;
+  const parsed=v===''?null:parseInt(v,10);
+  if(v!==''&&!Number.isFinite(parsed))return;
+  for(const ev of selected)ev.string_index=parsed;
   syncJSON();
+  render();
+  refreshInspectorForSelection();
 }
-function delSelNote(){if(S.selPluck!==null){rmPluck(S.selPluck);render()}}
+
+function physicalStringCodeToOverrideIndex(code){
+  if(code===0)return 0; // E
+  if(code===2)return 1; // D
+  if(code===4)return 2; // B
+  return null;
+}
+
+function setStringOverrideForSelected(physicalStringCode){
+  const overrideIndex=physicalStringCodeToOverrideIndex(physicalStringCode);
+  if(overrideIndex===null)return false;
+
+  const selected=getSelectedPluckEvents();
+  if(!selected.length)return false;
+
+  for(const ev of selected){
+    ev.string_index=overrideIndex;
+  }
+
+  syncJSON();
+  render();
+  refreshInspectorForSelection();
+  return true;
+}
+function delSelNote(){delSelectedPluckEvents()}
 
 function toggleSlideForSelectedPluckEvents(){
   const selected=getSelectedPluckEvents();
@@ -137,16 +272,9 @@ function toggleSlideForSelectedPluckEvents(){
   const next=allOn?0:1;
   for(const ev of selected)ev.slide=next;
 
-  if(S.selPluck!==null&&selected.length===1){
-    const sel=S.pluck.find(e=>e.id===S.selPluck);
-    if(sel){
-      document.getElementById('i-slide').checked=sel.slide===1;
-      document.getElementById('i-slide-lbl').textContent=sel.slide?'In':'Off';
-    }
-  }
-
   syncJSON();
   render();
+  refreshInspectorForSelection();
   return true;
 }
 
@@ -462,12 +590,7 @@ function pasteTimelineEvents(){
   S.selMidi=null;
   S.selMidiCurvePoints=createdCurveSelection;
 
-  if(S.selPluck!==null&&!hasMidiCurveSelection()){
-    const ev=S.pluck.find(e=>e.id===S.selPluck);
-    if(ev)openInsp(ev);
-  }else{
-    closeInsp();
-  }
+  refreshInspectorForSelection();
 
   syncJSON();
   render();
@@ -487,7 +610,7 @@ function selectAllEditableEvents(){
     }
   }
   S.selMidiCurvePoints=allCurveSelection;
-  closeInsp();
+  refreshInspectorForSelection();
   render();
   return true;
 }

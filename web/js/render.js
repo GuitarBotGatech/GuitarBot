@@ -182,7 +182,8 @@ function drawSlideLinks(){
 
       if(toX<LABEL_W||fromX>CW)continue;
 
-      const color=strOf(to.note).color;
+      const toStringIdx=eventStringIndex(to);
+      const color=STRINGS[toStringIdx]?.color||strOf(to.note).color;
       ctx.strokeStyle=color;
       ctx.lineWidth=1.3;
       ctx.globalAlpha=0.85;
@@ -503,7 +504,8 @@ function drawNotes(){
     const w=Math.max(8,ev.duration_b*S.zoom);
     if(x+w<LABEL_W||x>CW)return;
     const sel=ev.id===S.selPluck||S.selPluckIds.has(ev.id);
-    const s=strOf(ev.note);
+    const stringIdx=eventStringIndex(ev);
+    const s=STRINGS[stringIdx]||strOf(ev.note);
     const isTrem=hasTremolo(ev);
     const cx2=Math.max(LABEL_W,x), cw2=Math.min(CW,x+w)-cx2;
     if(cw2<=0)return;
