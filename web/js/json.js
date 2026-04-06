@@ -691,38 +691,87 @@ function closeExportPop(){
   document.getElementById('export-pop')?.classList.remove('on');
 }
 
-async function exportUsingNativePicker(){
-  if(typeof window.showSaveFilePicker!=='function')return false;
+let lastExportHandle=null;
+
+function exportBlobAndName(formatHint='auto'){
   const base=(S.songName.replace(/[^a-z0-9_\-]/gi,'_').toLowerCase()||'song');
-  let handle;
-  try{
-    handle=await window.showSaveFilePicker({
+  const fmt=String(formatHint||'auto').toLowerCase();
+  if(fmt==='midi'){
+    const bytes=exportMidiFile();
+    if(!bytes)return null;
+    return {
+      blob:new Blob([bytes],{type:'audio/midi'}),
+      suggestedName:`${base}.mid`,
+    };
+  }
+  if(fmt==='json'){
+    return {
+      blob:new Blob([JSON.stringify(buildJSON(),null,2)],{type:'application/json'}),
       suggestedName:`${base}.json`,
-      types:[
-        {
-          description:'JSON Arrangement',
-          accept:{'application/json':['.json']},
-        },
-        {
-          description:'MIDI File',
-          accept:{'audio/midi':['.mid','.midi']},
-        },
-      ],
-    });
+    };
+  }
+  return {
+    blob:new Blob([JSON.stringify(buildJSON(),null,2)],{type:'application/json'}),
+    suggestedName:`${base}.json`,
+  };
+}
+
+async function exportUsingNativePicker(formatHint='auto'){
+  if(typeof window.showSaveFilePicker!=='function')return false;
+  const payload=exportBlobAndName(formatHint);
+  if(!payload)return true;
+
+  let handle;
+  const pickerOpts={
+    id:'guitarbot-export',
+    suggestedName:payload.suggestedName,
+    types:[
+      {
+        description:'JSON Arrangement',
+        accept:{'application/json':['.json']},
+      },
+      {
+        description:'MIDI File',
+        accept:{'audio/midi':['.mid','.midi']},
+      },
+    ],
+  };
+  if(lastExportHandle)pickerOpts.startIn=lastExportHandle;
+
+  try{
+    handle=await window.showSaveFilePicker(pickerOpts);
   }catch(err){
     if(err&&err.name==='AbortError')return true;
     return false;
   }
 
-  const name=String(handle?.name||'').toLowerCase();
-  const asMidi=name.endsWith('.mid')||name.endsWith('.midi');
-  const blob=asMidi
-    ? new Blob([exportMidiFile()],{type:'audio/midi'})
-    : new Blob([JSON.stringify(buildJSON(),null,2)],{type:'application/json'});
-  const writable=await handle.createWritable();
-  await writable.write(blob);
-  await writable.close();
-  return true;
+  try{
+    let exists=false;
+    try{
+      await handle.getFile();
+      exists=true;
+    }catch(_err){
+      exists=false;
+    }
+
+    if(exists){
+      const ok=window.confirm(`"${handle.name}" already exists. Overwrite it?`);
+      if(!ok)return true;
+    }
+
+    const name=String(handle?.name||'').toLowerCase();
+    const asMidi=name.endsWith('.mid')||name.endsWith('.midi');
+    const finalPayload=asMidi?exportBlobAndName('midi'):exportBlobAndName('json');
+    if(!finalPayload)return true;
+
+    const writable=await handle.createWritable();
+    await writable.write(finalPayload.blob);
+    await writable.close();
+    lastExportHandle=handle;
+    return true;
+  }catch(_err){
+    return false;
+  }
 }
 
 document.getElementById('btn-export').addEventListener('click',async()=>{
@@ -734,12 +783,16 @@ document.getElementById('btn-export').addEventListener('click',async()=>{
 
 document.getElementById('btn-export-json').addEventListener('click',()=>{
   closeExportPop();
-  exportJsonFile();
+  exportUsingNativePicker('json').then(usedNative=>{
+    if(!usedNative)exportJsonFile();
+  });
 });
 
 document.getElementById('btn-export-midi').addEventListener('click',()=>{
   closeExportPop();
-  exportMidiViaAnchor();
+  exportUsingNativePicker('midi').then(usedNative=>{
+    if(!usedNative)exportMidiViaAnchor();
+  });
 });
 
 document.addEventListener('pointerdown',e=>{
