@@ -40,7 +40,12 @@ let S={
   recStartBeat:0,
 };
 
-const bpm=()=>{const[n]=S.timeSig.split('/').map(Number);return n};
+function beatsPerMeasureFromTimeSig(timeSigRaw){
+  const parts=String(timeSigRaw||'4/4').split('/');
+  const numerator=parseInt(parts[0],10);
+  return Math.max(1,Number.isFinite(numerator)?numerator:4);
+}
+const bpm=()=>beatsPerMeasureFromTimeSig(S.timeSig);
 const totalBeats=()=>S.measures*bpm();
 const beatToX=b=>LABEL_W+b*S.zoom-S.scrollX;
 const xToBeat=x=>(x-LABEL_W+S.scrollX)/S.zoom;
@@ -228,36 +233,71 @@ function ensureSlideShape(ev){
   return ev;
 }
 
-function beatLabel(b){
+function beatLabelWithTimeSig(b,timeSigRaw){
   const normalized=Math.max(0,trimBeatNumber(b));
-  const m=bpm();
-  const bar=Math.floor(normalized/m)+1;
-  const inBar=normalized-((bar-1)*m);
-  const beatWhole=Math.floor(inBar)+1;
+  const m=beatsPerMeasureFromTimeSig(timeSigRaw);
+  let barIndex=Math.floor(normalized/m);
+  let inBar=normalized-(barIndex*m);
+  if(Math.abs(inBar-m)<1e-4){
+    barIndex+=1;
+    inBar=0;
+  }
+  let beatWhole=Math.floor(inBar)+1;
   const frac=inBar-Math.floor(inBar);
   const subFloat=frac*SUBDIV;
   const subRounded=Math.round(subFloat);
   const isGrid=Math.abs(subFloat-subRounded)<1e-4;
   if(isGrid){
-    return `${bar}.${beatWhole}.${subRounded+1}`;
+    let subIndex=subRounded+1;
+    if(subIndex>SUBDIV){
+      beatWhole+=1;
+      subIndex=1;
+    }
+    if(beatWhole>m){
+      barIndex+=1;
+      beatWhole=1;
+    }
+    return `${barIndex+1}.${beatWhole}.${subIndex}`;
   }
   // Non-SUBDIV position (e.g. triplets): store as raw beat with sentinel
   // to avoid dot-collision in parseBeat (e.g. "1.1.1667" misread as 3-part)
   return `~${trimBeatNumber(normalized)}`;
 }
-function parseBeat(s){
+function beatLabel(b){
+  return beatLabelWithTimeSig(b,S.timeSig);
+}
+function parseBeatWithTimeSig(s,timeSigRaw){
   if(!s)return 0;
   const str=String(s);
   if(str.startsWith('~'))return parseFloat(str.slice(1))||0;
   const p=str.split('.');
   const bar=parseInt(p[0])||1;
+  const beatsPerBar=beatsPerMeasureFromTimeSig(timeSigRaw);
   if(p.length>=3){
     const beat=parseInt(p[1])||1;
     const sub=parseInt(p[2])||1;
-    return (bar-1)*bpm()+(beat-1)+(sub-1)/SUBDIV;
+    return (bar-1)*beatsPerBar+(beat-1)+(sub-1)/SUBDIV;
   }
   const beat=parseFloat(p[1])||1;
-  return (bar-1)*bpm()+(beat-1);
+  return (bar-1)*beatsPerBar+(beat-1);
+}
+function parseBeat(s){
+  return parseBeatWithTimeSig(s,S.timeSig);
+}
+
+function remapEventBeatsForTimeSigChange(fromTimeSig,toTimeSig){
+  if(String(fromTimeSig||'')===String(toTimeSig||''))return;
+  const remapEvent=ev=>{
+    if(!ev||ev.beat===undefined||ev.beat===null)return;
+    const current=String(ev.beat).trim();
+    if(!current)return;
+    const absoluteBeat=parseBeatWithTimeSig(current,fromTimeSig);
+    ev.beat=beatLabelWithTimeSig(absoluteBeat,toTimeSig);
+  };
+  S.pluck.forEach(remapEvent);
+  S.harmonic.forEach(remapEvent);
+  S.chord.forEach(remapEvent);
+  S.midi.forEach(remapEvent);
 }
 
 function getCycleRange(){

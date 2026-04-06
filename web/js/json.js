@@ -1,6 +1,10 @@
 // ═══════════════════════════════════════════════
 // JSON PREVIEW
 // ═══════════════════════════════════════════════
+function canonicalBeatLabel(rawBeat){
+  return beatLabel(parseBeat(rawBeat));
+}
+
 function buildJSON(){
   const tempoPoints=normalizeMidiCurvePoints(S.midiCurves[TEMPO_AUTOMATION_KEY]||[],TEMPO_AUTOMATION_KEY);
   const tempoCurve=[];
@@ -18,19 +22,50 @@ function buildJSON(){
   if(S.chord.length){
     tracks.push({name:"chords_main",type:"chord",
       events:[...S.chord].sort((a,b)=>parseBeat(a.beat)-parseBeat(b.beat))
-        .map(e=>({chord:e.chord,beat:e.beat}))});
+        .map(e=>({chord:e.chord,beat:canonicalBeatLabel(e.beat)}))});
   }
-  if(S.pluck.length){
+  const pluckEvents=[];
+  const harmonicFromPluck=[];
+  S.pluck.forEach(e=>{
+    if(e.harmonic===1){
+      const stringIndex=noteEventStringIndex(e);
+      const fret=noteEventFret(e);
+      if(Number.isFinite(stringIndex)&&Number.isFinite(fret)){
+        harmonicFromPluck.push({
+          string_index:stringIndex,
+          fret_position:fret,
+          pluck_velocity:speedToVelocity(e.speed),
+          note:e.note,
+          beat:canonicalBeatLabel(e.beat),
+        });
+        return;
+      }
+    }
+    pluckEvents.push(e);
+  });
+
+  if(pluckEvents.length){
     tracks.push({name:"pluck_main",type:"pluck",
-      events:[...S.pluck].sort((a,b)=>parseBeat(a.beat)-parseBeat(b.beat))
+      events:[...pluckEvents].sort((a,b)=>parseBeat(a.beat)-parseBeat(b.beat))
         .map(e=>{
-          const o={note:e.note,duration_b:e.duration_b,speed:e.speed,slide:e.slide,beat:e.beat};
+          const o={note:e.note,duration_b:e.duration_b,speed:e.speed,slide:e.slide,beat:canonicalBeatLabel(e.beat)};
           if(e.string_index!==null)o.string_index=e.string_index;
           return o;
         })});
   }
+  const allHarmonic=[...harmonicFromPluck,...S.harmonic];
+  if(allHarmonic.length){
+    tracks.push({name:"pluck_harm_main",type:"harmonic",
+      events:[...allHarmonic].sort((a,b)=>parseBeat(a.beat)-parseBeat(b.beat))
+        .map(e=>{
+          const o={string_index:e.string_index,fret_position:e.fret_position,torque:e.torque,overshoot:e.overshoot,beat:canonicalBeatLabel(e.beat)};
+          if(e.pluck_velocity!==null&&e.pluck_velocity!==undefined)o.pluck_velocity=e.pluck_velocity;
+          if(e.note!==null&&e.note!==undefined)o.note=e.note;
+          return o;
+        })});
+  }
   const combinedMidi=[
-    ...S.midi.map(e=>({address:e.address,args:e.args,interp:e.interp,beat:e.beat})),
+    ...S.midi.map(e=>({address:e.address,args:e.args,interp:e.interp,beat:canonicalBeatLabel(e.beat)})),
     ...midiAutomationEvents(),
   ].sort((a,b)=>parseBeat(a.beat)-parseBeat(b.beat));
   if(combinedMidi.length){

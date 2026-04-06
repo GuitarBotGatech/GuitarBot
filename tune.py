@@ -56,9 +56,15 @@ LH_PRESSER_SLIDE_PRESS_POS = 400
 # These variables control delays between actions and thresholds for interpreting MIDI data.
 
 # Time (in seconds) the left hand needs to prepare before a picker plucks a new note.
-# This ensures the fretting hand is in position before the string is struck.
-# Given in terms of seconds.
+# This is the maximum prep window; semitone-scaled moves can use less.
 LH_PREP_TIME_BEFORE_PICK = 0.450
+
+# Minimum prep time for very small/zero-distance fret transitions.
+LH_PREP_TIME_MIN = 0.090
+
+# Semitone delta that maps to full LH_PREP_TIME_BEFORE_PICK.
+# Delta values above this are clamped to the max prep window.
+LH_PREP_MAX_SEMITONE_DELTA = 9
 
 # The time window (in seconds) to check for overlaps between left-hand and picker movements.
 # If a pick event occurs within this window of a left-hand event, it may be adjusted or ignored.

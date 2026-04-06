@@ -230,17 +230,41 @@ class GuitarBotParser:
                               tb_cent=tu.TRAJECTORY_BLEND_PERCENT, plot=False):
         motor_available_time = {i: 0.0 for i in range(6)}
 
-        # Calculate how long a single fretting motion takes
-        single_note_duration = self.get_lh_note_movement_duration()
+        def unpack_lh_pick_event(raw_event):
+            motor_id = int(raw_event[0])
+            position = raw_event[1]
+            slide_toggle = raw_event[2]
+            timestamp = float(raw_event[3])
+            prep_time = (
+                float(raw_event[4])
+                if len(raw_event) >= 5
+                else float(self.get_lh_note_movement_duration())
+            )
+            prep_time = max(float(tu.TIME_STEP), prep_time)
+            return motor_id, position, slide_toggle, timestamp, prep_time
+
+        def split_note_phase_points(prep_time_s: float) -> tuple[int, int, int]:
+            total_points = max(3, int(round(prep_time_s / float(tu.TIME_STEP))))
+            phase1 = max(1, total_points // 3)
+            phase2 = max(1, total_points // 3)
+            phase3 = total_points - phase1 - phase2
+            if phase3 < 1:
+                phase3 = 1
+                if phase2 > 1:
+                    phase2 -= 1
+                elif phase1 > 1:
+                    phase1 -= 1
+            return phase1, phase2, phase3
 
         filtered_lh_pick_pos = []
-        for motor_id, position, slide_toggle, timestamp in lh_pick_pos:
+        for raw_event in lh_pick_pos:
+            motor_id, position, slide_toggle, timestamp, prep_time = unpack_lh_pick_event(raw_event)
             # Check if the motor is available at the required start time
             if timestamp >= motor_available_time.get(motor_id, 0.0):
-                filtered_lh_pick_pos.append([motor_id, position, slide_toggle, timestamp])
+                filtered_lh_pick_pos.append([motor_id, position, slide_toggle, timestamp, prep_time])
 
                 # Update the time this motor will next be available
-                motor_available_time[motor_id] = timestamp + single_note_duration
+                motor_available_time[motor_id] = timestamp + prep_time
             else:
                 # This event is too close to the previous one for the same finger, so we skip it.
                 print(f"Skipping overlapping LH note event for motor {motor_id} at timestamp {timestamp}")
@@ -254,9 +278,10 @@ class GuitarBotParser:
                 all_events_for_sizing.append({'timestamp': timestamp, 'type': 'chord'})
 
         if lh_pick_pos:
-            for _, _, _, timestamp in lh_pick_pos:
+            for raw_event in lh_pick_pos:
+                _, _, _, timestamp, prep_time = unpack_lh_pick_event(raw_event)
                 if timestamp >= 0:
-                    all_events_for_sizing.append({'timestamp': timestamp, 'type': 'note'})
+                    all_events_for_sizing.append({'timestamp': timestamp, 'type': 'note', 'duration_s': prep_time})
 
         max_required_time = 0
         if all_events_for_sizing:
@@ -270,9 +295,7 @@ class GuitarBotParser:
                 num_generated_points = (2 * tu.PRESSER_INTERPOLATION_POINTS) + tu.LH_SLIDER_MOTION_POINTS
                 duration_of_last_event = num_generated_points * tu.TIME_STEP
             elif latest_event['type'] == 'note':
-                # A single note movement consists of 3 interpolation stages
-                num_generated_points = tu.PRESSER_INTERPOLATION_POINTS + tu.LH_SINGLE_NOTE_MOTION_POINTS + tu.PRESSER_INTERPOLATION_POINTS
-                duration_of_last_event = num_generated_points * tu.TIME_STEP
+                duration_of_last_event = float(latest_event.get('duration_s', self.get_lh_note_movement_duration()))
 
             # The total time needed is the start of the last event plus its duration
             max_required_time = latest_start_time + duration_of_last_event
@@ -292,10 +315,11 @@ class GuitarBotParser:
         full_LH = []
         for motor_pos, timestamp in lh_motor_positions:
             full_LH.append({'type': 'chord', 'positions': motor_pos, 'timestamp': timestamp})
-        for motor_id, position, slide_toggle, timestamp in lh_pick_pos:
+        for raw_event in lh_pick_pos:
+            motor_id, position, slide_toggle, timestamp, prep_time = unpack_lh_pick_event(raw_event)
             full_LH.append(
                 {'type': 'note', 'motor_id': motor_id, 'position': position, 'slide_toggle': slide_toggle,
-                 'timestamp': timestamp})
+                 'timestamp': timestamp, 'prep_time': prep_time})
         full_LH.sort(key=lambda x: x['timestamp'])
 
         trajectory_array[0, :] = initial_point_lh
@@ -357,6 +381,8 @@ class GuitarBotParser:
 
             elif event['type'] == 'note':
                 slider_points, presser_points = [], []
+                prep_time_s = float(event.get('prep_time', self.get_lh_note_movement_duration()))
+                phase1_points, phase2_points, phase3_points = split_note_phase_points(prep_time_s)
                 motor_index = event['motor_id']
                 slider_motor_ID, presser_motor_ID = motor_index * 2, motor_index * 2 + 6
                 q0_slider_motor, q0_presser_motor = current_encoder_position[slider_motor_ID], current_encoder_position[
@@ -377,44 +403,45 @@ class GuitarBotParser:
                         event['type'] == prev_type and prev_position == event['position'] and prev_motor_id == event[
                     'motor_id']):
                     if event['slide_toggle']:
-                        s1 = self.interp_with_blend(q0_slider_motor, q0_slider_motor, num_points, tb_cent)
-                        p1 = self.interp_with_blend(q0_presser_motor, tu.LH_PRESSER_SLIDE_PRESS_POS, num_points,
+                        s1 = self.interp_with_blend(q0_slider_motor, q0_slider_motor, phase1_points, tb_cent)
+                        p1 = self.interp_with_blend(q0_presser_motor, tu.LH_PRESSER_SLIDE_PRESS_POS, phase1_points,
                                                     tb_cent)
                         slider_points.extend(s1)
                         presser_points.extend(p1)
 
-                        s2 = self.interp_with_blend(q0_slider_motor, qf_slider, tu.LH_SINGLE_NOTE_MOTION_POINTS,
+                        s2 = self.interp_with_blend(q0_slider_motor, qf_slider, phase2_points,
                                                     tb_cent)
                         p2 = self.interp_with_blend(tu.LH_PRESSER_SLIDE_PRESS_POS, tu.LH_PRESSER_SLIDE_PRESS_POS,
-                                                    tu.LH_SINGLE_NOTE_MOTION_POINTS, tb_cent)
+                                                    phase2_points, tb_cent)
                         slider_points.extend(s2)
                         presser_points.extend(p2)
 
-                        s3 = self.interp_with_blend(qf_slider, qf_slider, num_points, tb_cent)
-                        p3 = self.interp_with_blend(tu.LH_PRESSER_SLIDE_PRESS_POS, qf2_presser, num_points, tb_cent)
+                        s3 = self.interp_with_blend(qf_slider, qf_slider, phase3_points, tb_cent)
+                        p3 = self.interp_with_blend(tu.LH_PRESSER_SLIDE_PRESS_POS, qf2_presser, phase3_points, tb_cent)
                         slider_points.extend(s3)
                         presser_points.extend(p3)
                     else:
-                        s1 = self.interp_with_blend(q0_slider_motor, q0_slider_motor, num_points, tb_cent)
-                        p1 = self.interp_with_blend(q0_presser_motor, qf1_presser, num_points, tb_cent)
+                        s1 = self.interp_with_blend(q0_slider_motor, q0_slider_motor, phase1_points, tb_cent)
+                        p1 = self.interp_with_blend(q0_presser_motor, qf1_presser, phase1_points, tb_cent)
                         slider_points.extend(s1)
                         presser_points.extend(p1)
 
-                        s2 = self.interp_with_blend(q0_slider_motor, qf_slider, tu.LH_SINGLE_NOTE_MOTION_POINTS,
+                        s2 = self.interp_with_blend(q0_slider_motor, qf_slider, phase2_points,
                                                     tb_cent)
                         p2 = self.interp_with_blend(qf1_presser, qf1_presser,
-                                                    tu.LH_SINGLE_NOTE_MOTION_POINTS, tb_cent)
+                                                    phase2_points, tb_cent)
                         slider_points.extend(s2)
                         presser_points.extend(p2)
 
-                        s3 = self.interp_with_blend(qf_slider, qf_slider, num_points, tb_cent)
-                        p3 = self.interp_with_blend(qf1_presser, qf2_presser, num_points, tb_cent)
+                        s3 = self.interp_with_blend(qf_slider, qf_slider, phase3_points, tb_cent)
+                        p3 = self.interp_with_blend(qf1_presser, qf2_presser, phase3_points, tb_cent)
                         slider_points.extend(s3)
                         presser_points.extend(p3)
                 else:
-                    s3 = self.interp_with_blend(q0_slider_motor, qf_slider, tu.LH_SINGLE_NOTE_MOTION_POINTS,
+                    total_points = max(phase1_points + phase2_points + phase3_points, 1)
+                    s3 = self.interp_with_blend(q0_slider_motor, qf_slider, total_points,
                                                 tb_cent)
-                    p3 = self.interp_with_blend(q0_presser_motor, qf2_presser, tu.LH_SINGLE_NOTE_MOTION_POINTS,
+                    p3 = self.interp_with_blend(q0_presser_motor, qf2_presser, total_points,
                                                 tb_cent)
                     slider_points.extend(s3)
                     presser_points.extend(p3)
@@ -537,29 +564,37 @@ class GuitarBotParser:
     _CHORD_PLUCK_STRING_TO_PICKER = {0: 0, 2: 1, 4: 2}
 
     def _lh_prep_time_for_event(self, prev_note, note, duration, slide_toggle):
-        base_prep = float(tu.LH_PREP_TIME_BEFORE_PICK)
+        max_prep = float(tu.LH_PREP_TIME_BEFORE_PICK)
+        min_prep = float(getattr(tu, "LH_PREP_TIME_MIN", max_prep * 0.2))
+        min_prep = max(0.0, min(min_prep, max_prep))
+        max_delta = int(getattr(tu, "LH_PREP_MAX_SEMITONE_DELTA", 9))
+        max_delta = max(1, max_delta)
 
         if note <= 5:
-            return base_prep
+            return max_prep
+
+        if prev_note is None:
+            return max_prep
 
         same_note = prev_note is not None and int(prev_note) == int(note)
         is_tremolo = float(duration) >= float(tu.TREMOLO_DURATION_THRESHOLD)
         slide_on = int(slide_toggle) == 1
 
         if same_note and not slide_on:
-            # Re-articulation on the same fret is cheaper than a full move.
-            motion_time = float(tu.LH_SINGLE_NOTE_MOTION_POINTS) * float(tu.TIME_STEP)
+            motion_time = min_prep
         else:
-            # Full LH repositioning path.
-            motion_time = self.get_lh_note_movement_duration()
-            if prev_note is not None:
-                semitone_delta = abs(int(note) - int(prev_note))
-                motion_time += min(0.20, semitone_delta * 0.015)
+            semitone_delta = abs(int(note) - int(prev_note))
+            ratio = min(1.0, float(semitone_delta) / float(max_delta))
+            motion_time = min_prep + (max_prep - min_prep) * ratio
+
+            if slide_on:
+                # Sliding transitions benefit from a small extra buffer, still capped by max_prep.
+                motion_time += float(tu.TIME_STEP)
 
         if is_tremolo:
             motion_time += float(tu.TIME_STEP)
 
-        return max(base_prep, motion_time)
+        return min(max_prep, max(min_prep, motion_time))
 
     def parsePickMIDI(self, picks):
         """
@@ -746,7 +781,7 @@ class GuitarBotParser:
                     lh_enc_val = ((tu.SLIDER_MM_PER_FRET[fret - 1] * 2048) / tu.MM_TO_ENCODER_CONVERSION_FACTOR + tu.SLIDER_ENCODER_OFFSET) * s_dir
                 prev_note = last_lh_note_by_picker[motor_id] if 0 <= motor_id < len(last_lh_note_by_picker) else None
                 prep_time = self._lh_prep_time_for_event(prev_note, note, duration, slide_toggles[i])
-                lh_pick_events.append([motor_id, lh_enc_val, slide_toggles[i], timestamp - prep_time])
+                lh_pick_events.append([motor_id, lh_enc_val, slide_toggles[i], timestamp - prep_time, prep_time])
                 if 0 <= motor_id < len(last_lh_note_by_picker):
                     last_lh_note_by_picker[motor_id] = note
 
@@ -780,9 +815,8 @@ class GuitarBotParser:
         return tremoloArray
 
     def get_lh_note_movement_duration(self):
-        # Calculates the time it takes for a finger to fret a single note
-        num_points = tu.PRESSER_INTERPOLATION_POINTS + tu.LH_SINGLE_NOTE_MOTION_POINTS + tu.PRESSER_INTERPOLATION_POINTS
-        return num_points * tu.TIME_STEP
+        # Legacy fallback duration when per-event prep metadata is unavailable.
+        return float(tu.LH_PREP_TIME_BEFORE_PICK)
 
     def scaleAmplitude(self, max_amplitude, min_amplitude, speed):
         low_speed, high_speed = 1, 10

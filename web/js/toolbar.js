@@ -90,5 +90,14 @@ document.getElementById('song-name').addEventListener('input',e=>{S.songName=e.t
 document.getElementById('bpm').addEventListener('input',e=>{S.bpm=Math.max(1,parseFloat(e.target.value)||120);syncJSON()});
 document.getElementById('key-root').addEventListener('change',e=>{S.keyRoot=e.target.value;syncJSON()});
 document.getElementById('key-mode').addEventListener('change',e=>{S.keyMode=e.target.value;syncJSON()});
-document.getElementById('time-sig').addEventListener('change',e=>{S.timeSig=e.target.value;render();syncJSON()});
+document.getElementById('time-sig').addEventListener('change',e=>{
+  const nextTimeSig=e.target.value;
+  const prevTimeSig=S.timeSig;
+  if(String(nextTimeSig)===String(prevTimeSig))return;
+  remapEventBeatsForTimeSigChange(prevTimeSig,nextTimeSig);
+  S.timeSig=nextTimeSig;
+  syncCycleControls();
+  render();
+  syncJSON();
+});
 document.getElementById('measures').addEventListener('input',e=>{S.measures=clamp(parseInt(e.target.value)||8,1,64);syncCycleControls();render();syncJSON()});

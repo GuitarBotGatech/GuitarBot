@@ -207,7 +207,9 @@ class SlideContinuityAnalyzer:
         threshold = tu.LH_PRESSER_UNPRESSED_POS + self.unpress_tolerance
 
         for event in lh_pick_events:
-            motor_id, _, slide_toggle, timestamp = event
+            motor_id = int(event[0])
+            slide_toggle = int(event[2])
+            timestamp = float(event[3])
             if int(slide_toggle) != 1:
                 continue
             presser_column = int(motor_id) * 2 + 6
@@ -279,7 +281,10 @@ class TremoloReadinessAnalyzer:
         violations: list[dict[str, Any]] = []
 
         pairs = zip(lh_pick_events, fretted_pick_events)
-        for (motor_id, target_slider_pos, _, lh_start_ts), (pick_event, pick_ts_raw) in pairs:
+        for lh_event, (pick_event, pick_ts_raw) in pairs:
+            motor_id = int(lh_event[0])
+            target_slider_pos = lh_event[1]
+            lh_start_ts = float(lh_event[3])
             pick_ts = float(pick_ts_raw)
 
             _, note, _, duration, _ = pick_event
