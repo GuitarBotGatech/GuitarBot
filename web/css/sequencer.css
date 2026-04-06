@@ -13,7 +13,6 @@ html,body{height:100%;background:var(--bg);color:var(--text);font-family:'IBM Pl
 #toolbar{min-height:50px;padding:8px 10px;background:var(--surface);border-bottom:1px solid var(--border);display:flex;flex-wrap:wrap;align-items:center;gap:6px;flex-shrink:0}
 .logo{font-family:'JetBrains Mono',monospace;font-weight:700;font-size:15px;color:var(--amber);letter-spacing:-1px;white-space:nowrap;margin-right:4px}
 .logo em{color:var(--text-dim);font-style:normal;font-weight:300}
-.sep{width:1px;height:26px;background:var(--border);margin:0 2px;flex-shrink:0}
 .tg{display:flex;align-items:center;gap:5px;flex-shrink:0}
 .tl{font-size:9px;font-weight:600;text-transform:uppercase;letter-spacing:1px;color:var(--text-dim);white-space:nowrap}
 input[type=text],input[type=number],select{
@@ -41,6 +40,11 @@ select{cursor:pointer;background-image:none}
 .tbtn.cycle.on{background:var(--purple);color:#000}
 .pos-disp{font-family:'JetBrains Mono',monospace;font-size:12px;font-weight:600;color:var(--cyan);min-width:44px;text-align:center}
 .tr{margin-left:auto;display:flex;flex-wrap:wrap;justify-content:flex-end;align-items:center;gap:6px;flex-shrink:0;padding-left:6px}
+.tab-btns{display:flex;background:var(--surface2);border:1px solid var(--border);border-radius:4px;padding:2px;gap:2px;flex-shrink:0}
+.tab-btn{height:24px;padding:0 12px;border:none;border-radius:3px;background:transparent;color:var(--text-dim);cursor:pointer;font-family:'JetBrains Mono',monospace;font-size:10px;font-weight:600;letter-spacing:.8px;text-transform:uppercase;transition:all .1s}
+.tab-btn:hover{color:var(--text)}
+.tab-btn.active{background:var(--surface3);color:var(--amber);box-shadow:0 1px 3px rgba(0,0,0,0.3)}
+.tab-content{display:flex;align-items:center;gap:12px;flex-shrink:0}
 
 /* ── LAYOUT ── */
 #app{display:flex;flex-direction:column;height:100vh}

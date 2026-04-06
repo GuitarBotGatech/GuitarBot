@@ -14,65 +14,71 @@
 <!-- TOOLBAR -->
 <div id="toolbar">
   <div class="logo">GUITAR<em>BOT</em></div>
-  <div class="sep"></div>
-  <div class="tg"><input type="text" id="song-name" value="Untitled Song" placeholder="Song name…"></div>
-  <div class="sep"></div>
-  <div class="tg"><span class="tl">BPM</span><input type="number" id="bpm" value="120" min="20" max="300" step="0.5"></div>
-  <div class="sep"></div>
-  <div class="tg">
-    <span class="tl">Key</span>
-    <select id="key-root">
-      <option>C</option><option>C#</option><option>D</option><option>D#</option>
-      <option value="E" selected>E</option><option>F</option><option>F#</option>
-      <option>G</option><option>G#</option><option>A</option><option>A#</option><option>B</option>
-    </select>
-    <select id="key-mode"><option value="minor" selected>min</option><option value="major">maj</option></select>
+
+  <!-- Tab buttons -->
+  <div class="tab-btns">
+    <button class="tab-btn active" data-tab="create">Create</button>
+    <button class="tab-btn" data-tab="record">Record</button>
   </div>
-  <div class="sep"></div>
-  <div class="tg">
-    <span class="tl">Sig</span>
-    <select id="time-sig">
-      <option value="4/4" selected>4/4</option><option value="3/4">3/4</option>
-      <option value="6/8">6/8</option><option value="2/4">2/4</option><option value="5/4">5/4</option>
-    </select>
-  </div>
-  <div class="sep"></div>
-  <div class="tg"><span class="tl">Bars</span><input type="number" id="measures" value="8" min="1" max="64"></div>
-  <div class="sep"></div>
+
+  <!-- Transport (always visible) -->
   <div class="tg">
     <button class="tbtn stop" id="btn-stop" title="Stop">■</button>
     <button class="tbtn play" id="btn-play" title="Play">▶</button>
     <div class="pos-disp" id="pos">1.1</div>
   </div>
-  <div class="sep"></div>
-  <div class="tg">
-    <button class="tbtn cycle" id="btn-cycle" title="Cycle bar (off)">CYCLE</button>
-    <span class="tl">Bars</span>
-    <input type="number" id="cycle-start" value="1" min="1" max="64" step="0.25" style="width:48px;text-align:center">
-    <span class="tl">→</span>
-    <input type="number" id="cycle-end" value="2" min="1" max="64" step="0.25" style="width:48px;text-align:center">
+
+  <!-- CREATE TAB -->
+  <div class="tab-content" id="tab-create">
+    <div class="tg"><input type="text" id="song-name" value="Untitled Song" placeholder="Song name…"></div>
+    <div class="tg"><span class="tl">BPM</span><input type="number" id="bpm" value="120" min="20" max="300" step="0.5"></div>
+    <div class="tg">
+      <span class="tl">Key</span>
+      <select id="key-root">
+        <option>C</option><option>C#</option><option>D</option><option>D#</option>
+        <option value="E" selected>E</option><option>F</option><option>F#</option>
+        <option>G</option><option>G#</option><option>A</option><option>A#</option><option>B</option>
+      </select>
+      <select id="key-mode"><option value="minor" selected>min</option><option value="major">maj</option></select>
+    </div>
+    <div class="tg">
+      <span class="tl">Sig</span>
+      <select id="time-sig">
+        <option value="4/4" selected>4/4</option><option value="3/4">3/4</option>
+        <option value="6/8">6/8</option><option value="2/4">2/4</option><option value="5/4">5/4</option>
+      </select>
+    </div>
+    <div class="tg"><span class="tl">Bars</span><input type="number" id="measures" value="8" min="1" max="64"></div>
+    <div class="tg">
+      <button class="tbtn cycle" id="btn-cycle" title="Cycle bar (off)">CYCLE</button>
+      <span class="tl">Bars</span>
+      <input type="number" id="cycle-start" value="1" min="1" max="64" step="0.25" style="width:48px;text-align:center">
+      <span class="tl">→</span>
+      <input type="number" id="cycle-end" value="2" min="1" max="64" step="0.25" style="width:48px;text-align:center">
+    </div>
+    <div class="tg">
+      <button class="tbtn pen on" id="btn-mode-draw" title="Draw mode (pen on)">✎</button>
+      <button class="tbtn snap on" id="btn-snap" title="Snap to grid (on)">SNAP</button>
+    </div>
+    <div class="tg">
+      <span class="note-warn ok" id="note-warn" title="No note timing warnings">✓ NOTES OK</span>
+      <button class="tbtn" id="btn-fix-warnings" title="Auto-fix note warnings">FIX</button>
+    </div>
   </div>
-  <div class="sep"></div>
-  <div class="tg">
-    <button class="tbtn pen on" id="btn-mode-draw" title="Draw mode (pen on)">✎</button>
-    <button class="tbtn snap on" id="btn-snap" title="Snap to grid (on)">SNAP</button>
+
+  <!-- RECORD TAB -->
+  <div class="tab-content" id="tab-record" style="display:none">
+    <div class="tg">
+      <button class="tbtn rec" id="btn-record" title="Upload to bot + record audio">⏺</button>
+      <button class="tbtn gear" id="btn-settings" title="Latency settings">⚙</button>
+      <button class="tbtn spec" id="btn-spectrogram" title="Toggle spectrogram">SPEC</button>
+      <button class="tbtn" id="btn-analyze" title="Analyze recording">ANALYZE</button>
+      <span class="analyze-status" id="analyze-status"></span>
+      <button class="tbtn" id="btn-clear-recording" title="Clear recording">✕REC</button>
+    </div>
   </div>
-  <div class="sep"></div>
-  <div class="tg">
-    <button class="tbtn" id="zoom-out" title="Zoom out">−</button>
-    <button class="tbtn" id="zoom-in" title="Zoom in">+</button>
-  </div>
-  <div class="sep"></div>
-  <div class="tg">
-    <button class="tbtn rec" id="btn-record" title="Upload to bot + record audio">⏺</button>
-    <button class="tbtn gear" id="btn-settings" title="Latency settings">⚙</button>
-    <button class="tbtn spec" id="btn-spectrogram" title="Toggle spectrogram">SPEC</button>
-    <button class="tbtn" id="btn-analyze" title="Analyze recording">ANALYZE</button>
-    <span class="analyze-status" id="analyze-status"></span>
-    <span class="note-warn ok" id="note-warn" title="No note timing warnings">✓ NOTES OK</span>
-    <button class="tbtn" id="btn-fix-warnings" title="Auto-fix note warnings">FIX</button>
-    <button class="tbtn" id="btn-clear-recording" title="Clear recording">✕REC</button>
-  </div>
+
+  <!-- Always visible: bot actions + file I/O -->
   <div class="tr">
     <button class="tbtn act" id="btn-upload">⇪ Upload to Bot</button>
     <button class="tbtn stop" id="btn-reset-bot">↺ Reset Bot</button>
@@ -87,6 +93,13 @@
     <div id="roll-wrap">
       <canvas id="roll"></canvas>
       <div id="grid-ctrl">
+        <button class="gcbtn" id="zoom-out" title="Zoom out" style="width:26px">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line><line x1="8" y1="11" x2="14" y2="11"></line></svg>
+        </button>
+        <button class="gcbtn" id="zoom-in" title="Zoom in" style="width:26px">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line><line x1="11" y1="8" x2="11" y2="14"></line><line x1="8" y1="11" x2="14" y2="11"></line></svg>
+        </button>
+        <div style="width:1px;height:16px;background:var(--border);margin:0 4px"></div>
         <span id="grid-ctrl-lbl">GRID</span>
         <button class="gcbtn" id="grid-prev" title="Finer grid">‹</button>
         <span id="grid-label">1/16</span>

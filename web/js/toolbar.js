@@ -1,4 +1,17 @@
 // ═══════════════════════════════════════════════
+// TABS
+// ═══════════════════════════════════════════════
+document.querySelectorAll('.tab-btn').forEach(btn=>{
+  btn.addEventListener('click',()=>{
+    const tab=btn.dataset.tab;
+    document.querySelectorAll('.tab-btn').forEach(b=>b.classList.toggle('active',b===btn));
+    document.querySelectorAll('.tab-content').forEach(c=>{
+      c.style.display=c.id===`tab-${tab}`?'flex':'none';
+    });
+  });
+});
+
+// ═══════════════════════════════════════════════
 // ZOOM BUTTONS
 // ═══════════════════════════════════════════════
 document.getElementById('zoom-in').addEventListener('click',()=>{S.zoom=clamp(S.zoom*1.25,18,320);render()});
