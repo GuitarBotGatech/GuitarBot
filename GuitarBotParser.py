@@ -601,12 +601,16 @@ class GuitarBotParser:
                 if 0 <= picker_idx < len(tu.STRING_MIDI_RANGES):
                     string_low_note = int(tu.STRING_MIDI_RANGES[picker_idx][0])
                     fret = int(note) - string_low_note
+                    prev_fret = (int(prev_note) - string_low_note) if prev_note is not None else None
                     caution_start_fret = int(getattr(tu, "LH_HIGH_FRET_CAUTION_START_FRET", len(tu.SLIDER_MM_PER_FRET)))
                     high_fret_extra = max(0.0, float(getattr(tu, "LH_HIGH_FRET_EXTRA_PREP_TIME", 0.0)))
                     high_fret_max = max(max_prep, float(getattr(tu, "LH_HIGH_FRET_MAX_PREP_TIME", max_prep)))
 
-                    if fret >= caution_start_fret:
-                        # Near end-stop frets, force at least baseline prep and add safety headroom.
+                    near_high_fret_target = fret >= caution_start_fret
+                    near_high_fret_source = prev_fret is not None and prev_fret >= caution_start_fret
+
+                    if near_high_fret_target or near_high_fret_source:
+                        # Add safety headroom whenever a move starts from or lands near end-stop frets.
                         motion_time = max(motion_time, max_prep) + high_fret_extra
                         effective_max_prep = high_fret_max
             except Exception:

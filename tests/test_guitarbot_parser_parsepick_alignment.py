@@ -73,3 +73,14 @@ def test_lh_prep_time_from_rest_to_9th_fret_uses_high_fret_cap():
     # First D-string 9th-fret attack should use the high-fret safety cap.
     prep_from_rest = parser._lh_prep_time_for_event(None, 59, 0.025, 0, picker_id=1)
     assert prep_from_rest == pytest.approx(float(tu.LH_HIGH_FRET_MAX_PREP_TIME))
+
+
+def test_lh_prep_time_from_9th_fret_to_open_uses_high_fret_cap():
+    parser = GuitarBotParser(initial_point=copy.deepcopy(tu.initial_point), graph=False)
+
+    # D-string picker 1: note 59 is fret 9, note 50 is open.
+    prep_from_high_to_open = parser._lh_prep_time_for_event(59, 50, 0.025, 0, picker_id=1)
+    prep_from_mid_to_open = parser._lh_prep_time_for_event(57, 50, 0.025, 0, picker_id=1)
+
+    assert prep_from_high_to_open == pytest.approx(float(tu.LH_HIGH_FRET_MAX_PREP_TIME))
+    assert prep_from_high_to_open > prep_from_mid_to_open
