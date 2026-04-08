@@ -14,6 +14,14 @@ let S={
   cycleEnabled:false,
   cycleStartBar:1,
   cycleEndBar:2,
+  activeTab:'create',
+  sections:[],
+  sectionTimeline:[],
+  sectionNextId:1,
+  sectionNextTimelineId:1,
+  sectionSelectedTimelineItemId:null,
+  sectionSelectedTimelineItemIds:[],
+  sectionClipboard:null,
   editMode:'select',
   snapEnabled:true,
   gridIdx:1,
@@ -311,6 +319,27 @@ function getCycleRange(){
   return {startBar,endBar,startBeat,endBeat};
 }
 
+function setCycleRangeFromBeats(startBeatRaw,endBeatRaw,enable=true){
+  const m=bpm();
+  const maxBeat=Math.max(0,S.measures*m);
+  let startBeat=clamp(parseFloat(startBeatRaw)||0,0,maxBeat);
+  let endBeat=clamp(parseFloat(endBeatRaw)||0,0,maxBeat);
+  if(endBeat<startBeat){
+    const tmp=startBeat;
+    startBeat=endBeat;
+    endBeat=tmp;
+  }
+  const minDur=minDurationBeats();
+  if(endBeat-startBeat<minDur)endBeat=Math.min(maxBeat,startBeat+minDur);
+  if(endBeat<=startBeat)return false;
+
+  S.cycleStartBar=(startBeat/m)+1;
+  S.cycleEndBar=endBeat/m;
+  if(enable)S.cycleEnabled=true;
+  syncCycleControls();
+  return true;
+}
+
 function syncCycleControls(){
   const maxBars=Math.max(1,S.measures);
   const roundVal=v=>Math.round(parseFloat(v)*100)/100;
@@ -330,4 +359,6 @@ function syncCycleControls(){
   inEnd.max=maxBars;
   inStart.value=S.cycleStartBar;
   inEnd.value=S.cycleEndBar;
+
+  if(typeof syncSectionControls==='function')syncSectionControls();
 }

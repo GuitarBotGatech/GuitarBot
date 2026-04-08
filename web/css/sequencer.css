@@ -38,6 +38,8 @@ select{cursor:pointer;background-image:none}
 .tbtn.snap.on{background:var(--purple);color:#000}
 .tbtn.cycle{border-color:var(--purple);color:var(--purple)}
 .tbtn.cycle.on{background:var(--purple);color:#000}
+.tbtn.section{border-color:var(--teal);color:var(--teal)}
+.tbtn.section:hover{background:var(--teal);color:#000}
 .pos-disp{font-family:'JetBrains Mono',monospace;font-size:12px;font-weight:600;color:var(--cyan);min-width:44px;text-align:center}
 .tr{margin-left:auto;display:flex;flex-wrap:wrap;justify-content:flex-end;align-items:center;gap:6px;flex-shrink:0;padding-left:6px}
 .tab-btns{display:flex;background:var(--surface2);border:1px solid var(--border);border-radius:4px;padding:2px;gap:2px;flex-shrink:0}
@@ -52,6 +54,122 @@ select{cursor:pointer;background-image:none}
 #seq{flex:1;display:flex;flex-direction:column;overflow:hidden;min-width:0}
 #roll-wrap{flex:1;overflow-x:hidden;overflow-y:auto;position:relative;cursor:default}
 canvas{display:block}
+
+/* ── SECTION VIEW ── */
+#section-view{
+  flex:1;
+  display:flex;
+  flex-direction:column;
+  gap:10px;
+  padding:12px;
+  overflow:auto;
+  background:linear-gradient(180deg,#0d0d14 0%,#0a0a12 100%);
+}
+.section-head{display:flex;align-items:center;justify-content:space-between;gap:8px}
+.section-title{font-family:'JetBrains Mono',monospace;font-size:13px;font-weight:700;letter-spacing:.6px;color:var(--amber)}
+.section-meta{font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--text-dim)}
+.section-timeline{
+  min-height:116px;
+  border:1px solid var(--border);
+  border-radius:6px;
+  background:repeating-linear-gradient(90deg,#11111b 0,#11111b 72px,#141421 72px,#141421 144px);
+  display:flex;
+  align-items:stretch;
+  gap:8px;
+  padding:10px;
+  overflow-x:auto;
+}
+.section-help{font-size:11px;color:var(--text-dim)}
+.section-library-head{font-family:'JetBrains Mono',monospace;font-size:10px;font-weight:700;letter-spacing:.9px;text-transform:uppercase;color:var(--text-dim)}
+.section-library{display:flex;flex-wrap:wrap;gap:8px}
+.section-card{
+  width:160px;
+  background:var(--surface2);
+  border:1px solid var(--border);
+  border-radius:6px;
+  padding:8px;
+  display:flex;
+  flex-direction:column;
+  gap:6px;
+}
+.section-card[draggable="true"]{cursor:grab}
+.section-card:active{cursor:grabbing}
+.section-card-top{display:flex;align-items:center;justify-content:space-between;gap:8px}
+.section-card-range{font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--text-dim)}
+.section-name{
+  width:100%;
+  background:var(--surface3);
+  border:1px solid var(--border);
+  color:var(--text);
+  border-radius:4px;
+  padding:4px 6px;
+  font-family:'JetBrains Mono',monospace;
+  font-size:12px;
+}
+.timeline-drop-slot{
+  width:14px;
+  min-width:14px;
+  border-radius:5px;
+  border:1px dashed transparent;
+  transition:all .1s;
+}
+.timeline-drop-slot.hot{
+  border-color:var(--cyan);
+  background:rgba(34,211,238,.16);
+}
+.timeline-item{
+  min-width:128px;
+  max-width:140px;
+  border:1px solid var(--purple);
+  border-radius:6px;
+  background:rgba(168,85,247,.12);
+  padding:8px;
+  display:flex;
+  flex-direction:column;
+  gap:6px;
+  cursor:pointer;
+}
+.timeline-item.selected{
+  border-color:var(--amber);
+  background:rgba(245,158,11,.16);
+}
+.timeline-item[draggable="true"]{cursor:grab}
+.timeline-item-head{display:flex;align-items:center;justify-content:space-between;gap:8px}
+.timeline-item-name{font-family:'JetBrains Mono',monospace;font-size:13px;font-weight:700;color:var(--text)}
+.timeline-remove{
+  height:20px;
+  min-width:20px;
+  border-radius:3px;
+  border:1px solid var(--red);
+  background:transparent;
+  color:var(--red);
+  font-size:11px;
+  cursor:pointer;
+}
+.timeline-remove:hover{background:var(--red);color:#fff}
+.timeline-loops{display:flex;align-items:center;gap:6px}
+.timeline-loops label{font-size:10px;color:var(--text-dim);text-transform:uppercase;letter-spacing:.7px}
+.timeline-loops input{
+  width:52px;
+  background:var(--surface3);
+  border:1px solid var(--border);
+  color:var(--text);
+  border-radius:3px;
+  padding:3px 5px;
+  text-align:center;
+  font-family:'JetBrains Mono',monospace;
+}
+.timeline-item-range{font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--text-dim)}
+.section-empty{
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  width:100%;
+  color:var(--text-dim);
+  font-size:12px;
+  border:1px dashed var(--border);
+  border-radius:5px;
+}
 
 /* ── INSPECTOR ── */
 #insp{

@@ -19,6 +19,7 @@
   <div class="tab-btns">
     <button class="tab-btn active" data-tab="create">Create</button>
     <button class="tab-btn" data-tab="record">Record</button>
+    <button class="tab-btn" data-tab="sections">Sections</button>
   </div>
 
   <!-- Transport (always visible) -->
@@ -55,6 +56,7 @@
       <input type="number" id="cycle-start" value="1" min="1" max="64" step="0.25" style="width:48px;text-align:center">
       <span class="tl">→</span>
       <input type="number" id="cycle-end" value="2" min="1" max="64" step="0.25" style="width:48px;text-align:center">
+      <button class="tbtn section" id="btn-add-section" title="Create section from cycle range" style="display:none">SECTION</button>
     </div>
     <div class="tg">
       <button class="tbtn pen on" id="btn-mode-draw" title="Draw mode (pen on)">✎</button>
@@ -78,6 +80,13 @@
     </div>
   </div>
 
+  <!-- SECTION TAB -->
+  <div class="tab-content" id="tab-sections" style="display:none">
+    <div class="tg">
+      <span class="tl">Arrange sections in timeline view below</span>
+    </div>
+  </div>
+
   <!-- Always visible: bot actions + file I/O -->
   <div class="tr">
     <button class="tbtn act" id="btn-upload">⇪ Upload to Bot</button>
@@ -89,6 +98,16 @@
 
 <!-- MAIN -->
 <div id="main">
+  <div id="section-view" style="display:none">
+    <div class="section-head">
+      <div class="section-title">Section Arrangement</div>
+      <div class="section-meta" id="section-meta">0 bars</div>
+    </div>
+    <div class="section-timeline" id="section-timeline"></div>
+    <div class="section-help" id="section-help">Drag sections from the library into the timeline. Use Ctrl/Cmd+C and Ctrl/Cmd+V to copy and paste selected timeline blocks.</div>
+    <div class="section-library-head">Available Sections</div>
+    <div class="section-library" id="section-library"></div>
+  </div>
   <div id="seq">
     <div id="roll-wrap">
       <canvas id="roll"></canvas>
@@ -292,6 +311,7 @@
 <script src="js/render.js"></script>
 <script src="js/interaction.js"></script>
 <script src="js/editor.js"></script>
+<script src="js/sections.js"></script>
 <script src="js/transport.js"></script>
 <script src="js/toolbar.js"></script>
 <script src="js/json.js"></script>

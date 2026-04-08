@@ -24,11 +24,59 @@ function render(){
   if(!ctx)return;
   ctx.clearRect(0,0,CW,canvasH());
   drawBG(); drawGrid(); drawLabels();
-  drawCycleBar(); drawChordLane(); drawMidiLane(); drawTempoPointOverlay(); drawSlideLinks();
+  drawCycleBar(); drawSectionGuides(); drawChordLane(); drawMidiLane(); drawTempoPointOverlay(); drawSlideLinks();
   if(S.spectrogramVisible) drawSpectrogram();
   drawNotes();
   if(S.noteAnalysis && Object.keys(S.noteAnalysis).length) drawNoteAnalysisOverlay();
   drawPlayhead(); drawSelectionBox();
+}
+
+function drawSectionGuides(){
+  if(!Array.isArray(S.sections)||!S.sections.length)return;
+
+  ctx.save();
+  ctx.beginPath();
+  ctx.rect(LABEL_W,0,CW-LABEL_W,canvasH());
+  ctx.clip();
+  ctx.setLineDash([4,4]);
+  ctx.lineWidth=1;
+  ctx.font='600 10px "JetBrains Mono"';
+  ctx.textAlign='left';
+  ctx.textBaseline='top';
+
+  const sections=[...S.sections]
+    .filter(section=>Number.isFinite(section?.startBeat)&&Number.isFinite(section?.endBeat)&&section.endBeat>section.startBeat)
+    .sort((a,b)=>a.startBeat-b.startBeat||a.endBeat-b.endBeat||a.id-b.id);
+
+  for(const section of sections){
+    const x1=beatToX(section.startBeat);
+    const x2=beatToX(section.endBeat);
+    if(x2<LABEL_W-2||x1>CW+2)continue;
+
+    ctx.strokeStyle='rgba(34,211,238,0.62)';
+    ctx.beginPath();
+    ctx.moveTo(x1,0);
+    ctx.lineTo(x1,canvasH());
+    ctx.stroke();
+
+    ctx.strokeStyle='rgba(245,158,11,0.55)';
+    ctx.beginPath();
+    ctx.moveTo(x2,0);
+    ctx.lineTo(x2,canvasH());
+    ctx.stroke();
+
+    ctx.strokeStyle='rgba(94,234,212,0.45)';
+    ctx.strokeRect(x1,2,Math.max(0,x2-x1),CHORD_H-4);
+
+    const label=String(section.name||'').trim();
+    if(label){
+      ctx.fillStyle='rgba(94,234,212,0.88)';
+      ctx.fillText(label,Math.max(LABEL_W+2,x1+3),4);
+    }
+  }
+
+  ctx.setLineDash([]);
+  ctx.restore();
 }
 
 function drawTempoPointOverlay(){

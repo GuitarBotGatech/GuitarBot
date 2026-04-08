@@ -25,6 +25,22 @@ document.addEventListener('keydown',e=>{
 
   const tag=document.activeElement?.tagName;
   if(tag==='INPUT'||tag==='SELECT'||tag==='TEXTAREA')return;
+
+  if(S.activeTab==='sections'){
+    if((e.ctrlKey||e.metaKey)&&k==='c'){
+      if(typeof copySelectedSectionTimelineItem==='function'&&copySelectedSectionTimelineItem())e.preventDefault();
+      return;
+    }
+    if((e.ctrlKey||e.metaKey)&&k==='v'){
+      if(typeof pasteSelectedSectionTimelineItem==='function'&&pasteSelectedSectionTimelineItem())e.preventDefault();
+      return;
+    }
+    if((e.key==='Delete'||e.key==='Backspace')&&typeof deleteSelectedSectionTimelineItem==='function'){
+      if(deleteSelectedSectionTimelineItem())e.preventDefault();
+      return;
+    }
+  }
+
   if(e.key==='Escape'&&hasFocusedCCLane()){
     S.focusedCCLane=null;
     render();
@@ -77,6 +93,14 @@ function applyNewProject(){
   S.cycleEnabled=false;
   S.cycleStartBar=1;
   S.cycleEndBar=2;
+  S.activeTab='create';
+  S.sections=[];
+  S.sectionTimeline=[];
+  S.sectionNextId=1;
+  S.sectionNextTimelineId=1;
+  S.sectionSelectedTimelineItemId=null;
+  S.sectionSelectedTimelineItemIds=[];
+  S.sectionClipboard=null;
   S.scrollX=0;
   noteH=noteH_DEFAULT;
   S.editMode='select';
@@ -113,6 +137,8 @@ function applyNewProject(){
   document.getElementById('pos').textContent='1.1';
   document.getElementById('btn-snap').classList.add('on');
   document.getElementById('btn-snap').title='Snap to grid (on)';
+  if(typeof setActiveTab==='function')setActiveTab('create');
+  if(typeof renderSectionView==='function')renderSectionView();
   syncCycleControls();
   setEditMode('select');
   updateGridCtrl();
