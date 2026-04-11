@@ -1,10 +1,25 @@
 // ═══════════════════════════════════════════════
 // TRANSPORT
 // ═══════════════════════════════════════════════
+
+// Mirrors tune.py constants exactly
+const TREMOLO_DURATION_THRESHOLD=0.500; // seconds — matches tune.TREMOLO_DURATION_THRESHOLD
+const PICKER_PLUCK_MOTION_POINTS=11;    // matches tune.PICKER_PLUCK_MOTION_POINTS
+const ROBOT_TIME_STEP=0.005;            // matches tune.TIME_STEP
+
+// Replicates GuitarBotParser.interpPick tremolo period formula
+function tremoloPickPeriodS(speed){
+  const s=Math.min(10,Math.max(1,Math.round(speed)||6));
+  const fillPts=Math.min(30,Math.floor(30-(s-1)*25/9))-4;
+  return(fillPts+PICKER_PLUCK_MOTION_POINTS)*ROBOT_TIME_STEP;
+}
+
 const Synth={
   ctx:null,
   master:null,
-  active:new Set(),
+  active:new Set(),        // items: { node, g, timerIds:[] }
+  workletReady:false,
+
   async ensure(){
     if(!this.ctx){
       const AC=window.AudioContext||window.webkitAudioContext;
@@ -17,37 +32,103 @@ const Synth={
     if(this.ctx.state==='suspended'){
       try{await this.ctx.resume();}catch(_e){}
     }
+    if(!this.workletReady){
+      try{
+        await this.ctx.audioWorklet.addModule('js/karplus-processor.js');
+        this.workletReady=true;
+      }catch(e){
+        console.warn('Karplus worklet failed to load, falling back to oscillator:',e);
+      }
+    }
     return this.ctx.state==='running';
   },
+
   midiToFreq(m){return 440*Math.pow(2,(m-69)/12)},
-  trigger(note,durS=0.2,vel=90){
+
+  // speed: robot speed value 1-10 (matches ev.speed in pluck events)
+  trigger(note,durS=0.2,vel=90,speed=6){
     if(!this.ctx||!this.master)return;
     const now=this.ctx.currentTime;
-    const d=Math.max(0.03,durS);
-    const rel=Math.min(0.12,Math.max(0.03,d*0.45));
-    const atk=0.005;
-    const amp=0.05+Math.min(1,Math.max(0,vel/127))*0.2;
+    const freq=this.midiToFreq(note);
+    const d=Math.max(0.05,durS);
+    const amp=0.3+Math.min(1,Math.max(0,vel/127))*0.7;
+    const isTremolo=d>=TREMOLO_DURATION_THRESHOLD;
 
-    const osc=this.ctx.createOscillator();
-    const g=this.ctx.createGain();
-    osc.type='triangle';
-    osc.frequency.setValueAtTime(this.midiToFreq(note),now);
+    if(this.workletReady){
+      // ── Karplus-Strong string synthesis ──────────────────
+      // Lower notes get a slightly higher decay → longer sustain, like a real string
+      const decay=Math.min(0.9998,0.996+(1-Math.min(1,freq/800))*0.003);
 
-    g.gain.setValueAtTime(0.0001,now);
-    g.gain.exponentialRampToValueAtTime(amp,now+atk);
-    g.gain.setValueAtTime(amp,now+Math.max(atk,d-rel));
-    g.gain.exponentialRampToValueAtTime(0.0001,now+d);
+      const node=new AudioWorkletNode(this.ctx,'karplus-strong');
+      const g=this.ctx.createGain();
+      node.connect(g); g.connect(this.master);
 
-    osc.connect(g); g.connect(this.master);
-    osc.start(now);
-    osc.stop(now+d+0.01);
+      // Initial pick
+      node.port.postMessage({type:'trigger',frequency:freq,decay});
 
-    this.active.add(osc);
-    osc.onended=()=>{this.active.delete(osc)};
+      const timerIds=[];
+
+      if(isTremolo){
+        // ── Tremolo: schedule repeated re-picks at the robot's computed rate ──
+        // Each re-trigger re-seeds the KS delay line → re-attack on each pick stroke
+        const periodS=tremoloPickPeriodS(speed);
+        const numPicks=Math.floor(d/periodS);
+        for(let i=1;i<numPicks;i++){
+          timerIds.push(setTimeout(()=>{
+            node.port.postMessage({type:'trigger',frequency:freq,decay});
+          },Math.round(i*periodS*1000)));
+        }
+        // Flat gain for the full duration, short fade at the end
+        g.gain.setValueAtTime(amp,now);
+        g.gain.setValueAtTime(amp,now+Math.max(0.01,d-0.05));
+        g.gain.exponentialRampToValueAtTime(0.0001,now+d);
+      }else{
+        // ── Single pluck: natural KS decay ───────────────────
+        const fadeStart=Math.max(now+0.01,now+d-0.05);
+        g.gain.setValueAtTime(amp,now);
+        g.gain.setValueAtTime(amp,fadeStart);
+        g.gain.exponentialRampToValueAtTime(0.0001,now+d);
+      }
+
+      const item={node,g,timerIds};
+      timerIds.push(setTimeout(()=>{
+        node.port.postMessage({type:'stop'});
+        try{node.disconnect();g.disconnect();}catch(_e){}
+        this.active.delete(item);
+      },(d+0.15)*1000));
+      this.active.add(item);
+
+    }else{
+      // ── Fallback: triangle oscillator ────────────────────
+      const rel=Math.min(0.12,Math.max(0.03,d*0.45));
+      const atk=0.005;
+      const fallAmp=0.05+Math.min(1,Math.max(0,vel/127))*0.2;
+      const osc=this.ctx.createOscillator();
+      const g=this.ctx.createGain();
+      osc.type='triangle';
+      osc.frequency.setValueAtTime(freq,now);
+      g.gain.setValueAtTime(0.0001,now);
+      g.gain.exponentialRampToValueAtTime(fallAmp,now+atk);
+      g.gain.setValueAtTime(fallAmp,now+Math.max(atk,d-rel));
+      g.gain.exponentialRampToValueAtTime(0.0001,now+d);
+      osc.connect(g); g.connect(this.master);
+      osc.start(now); osc.stop(now+d+0.01);
+      const item={node:osc,g,timerIds:[]};
+      osc.onended=()=>this.active.delete(item);
+      this.active.add(item);
+    }
   },
+
   stopAll(){
-    for(const osc of this.active){
-      try{osc.stop();}catch(_e){}
+    for(const item of this.active){
+      try{
+        if(item.node.port) item.node.port.postMessage({type:'stop'});
+        else item.node.stop();
+        item.g.gain.cancelScheduledValues(0);
+        item.g.gain.setValueAtTime(0,0);
+        item.node.disconnect(); item.g.disconnect();
+      }catch(_e){}
+      for(const tid of(item.timerIds||[])) clearTimeout(tid);
     }
     this.active.clear();
   }
@@ -60,7 +141,7 @@ function triggerPluckEventsBetween(prevBeat,nextBeat){
     const eb=parseBeat(ev.beat);
     if(eb>=prevBeat&&eb<nextBeat){
       const durS=(ev.duration_b??0.5)/bps;
-      Synth.trigger(ev.note,durS,speedToVelocity(ev.speed));
+      Synth.trigger(ev.note,durS,speedToVelocity(ev.speed),ev.speed??6);
     }
   }
 }
