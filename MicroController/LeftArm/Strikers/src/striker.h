@@ -114,7 +114,7 @@ public:
         }
         // CHANGE FOR PLUCKER --> NEGATIVE
         if(iNodeID >= 13){
-            err = epos.setHomingMethod(HomingMethod::CurrentThresholdNegative);
+            err = epos.setHomingMethod(HomingMethod::CurrentThresholdPositive);
         }
         //CHANGE ME
         //err = epos.setHomingMethod(HomingMethod::CurrentThresholdPositive);

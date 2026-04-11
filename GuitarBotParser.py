@@ -1,7 +1,6 @@
 import numpy as np
 import matplotlib.pyplot as plt
 import math
-# This is a custom module you will need in your environment.
 from parsing.chord_selector import find_lowest_cost_chord
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
