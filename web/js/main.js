@@ -23,6 +23,17 @@ document.addEventListener('keydown',e=>{
     return;
   }
 
+  // Space bar — play/stop toggle (before input-field guard so it always fires)
+  if(e.key===' '){
+    const tag=document.activeElement?.tagName;
+    if(tag!=='INPUT'&&tag!=='SELECT'&&tag!=='TEXTAREA'){
+      e.preventDefault();
+      if(S.playing) document.getElementById('btn-stop').click();
+      else          document.getElementById('btn-play').click();
+      return;
+    }
+  }
+
   const tag=document.activeElement?.tagName;
   if(tag==='INPUT'||tag==='SELECT'||tag==='TEXTAREA')return;
 

@@ -358,7 +358,12 @@ function renderSectionTimeline(){
   }
 
   for(let index=0;index<=S.sectionTimeline.length;index++){
-    timeline.appendChild(timelineItemDropSlot(index));
+    const slot=timelineItemDropSlot(index);
+    if(index===S.sectionTimeline.length){
+      slot.style.flex='1';
+      slot.style.minWidth='14px';
+    }
+    timeline.appendChild(slot);
     if(index>=S.sectionTimeline.length)continue;
 
     const item=S.sectionTimeline[index];
@@ -533,6 +538,59 @@ const addSectionButton=document.getElementById('btn-add-section');
 if(addSectionButton){
   addSectionButton.addEventListener('click',()=>createSectionFromCycle());
 }
+
+// ── SECTION EXPORT MODAL ──
+
+function openSectionExportModal(){
+  document.getElementById('section-export-modal')?.classList.add('on');
+}
+
+function closeSectionExportModal(){
+  document.getElementById('section-export-modal')?.classList.remove('on');
+}
+
+document.getElementById('btn-export-sections')?.addEventListener('click',openSectionExportModal);
+document.getElementById('btn-close-section-export')?.addEventListener('click',closeSectionExportModal);
+
+document.getElementById('section-export-modal')?.addEventListener('click',e=>{
+  if(e.target===e.currentTarget)closeSectionExportModal();
+});
+
+document.getElementById('btn-sec-export-json')?.addEventListener('click',()=>{
+  closeSectionExportModal();
+  // Export the sections-expanded (flat) JSON
+  const expanded=buildSectionExpandedJSON();
+  const data=expanded||buildJSON();
+  const base=(S.songName.replace(/[^a-z0-9_\-]/gi,'_').toLowerCase()||'song');
+  const blob=new Blob([JSON.stringify(data,null,2)],{type:'application/json'});
+  saveBlobWithAnchor(blob,`${base}_expanded.json`);
+});
+
+document.getElementById('btn-sec-export-midi')?.addEventListener('click',()=>{
+  closeSectionExportModal();
+  exportUsingNativePicker('midi').then(usedNative=>{
+    if(!usedNative)exportMidiViaAnchor();
+  });
+});
+
+document.getElementById('btn-sec-export-seq')?.addEventListener('click',()=>{
+  closeSectionExportModal();
+  const expanded=buildSectionExpandedJSON();
+  if(!expanded){
+    alert('No section timeline to export.');
+    return;
+  }
+  // Strip the original sections/timeline so the expanded flat events load
+  // cleanly without section guides appearing at old boundaries.
+  const flat={
+    song:{
+      ...expanded.song,
+      arrangement:{sections:[],timeline:[]},
+    },
+  };
+  loadJSON(flat);
+  if(typeof setActiveTab==='function')setActiveTab('create');
+});
 
 window.syncSectionControls=syncSectionControls;
 window.renderSectionView=renderSectionView;

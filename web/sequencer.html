@@ -104,6 +104,9 @@
       <div class="section-meta" id="section-meta">0 bars</div>
     </div>
     <div class="section-timeline" id="section-timeline"></div>
+    <div class="section-timeline-footer">
+      <button class="tbtn act" id="btn-export-sections" type="button">↓ Export Sections</button>
+    </div>
     <div class="section-help" id="section-help">Drag sections from the library into the timeline. Use Ctrl/Cmd+C and Ctrl/Cmd+V to copy and paste selected timeline blocks.</div>
     <div class="section-library-head">Available Sections</div>
     <div class="section-library" id="section-library"></div>
@@ -299,6 +302,18 @@
   <div class="ph">Export Format <span class="pc" onclick="closeExportPop()">×</span></div>
   <button class="mlbtn" id="btn-export-json" type="button">Save as JSON</button>
   <button class="mlbtn" id="btn-export-midi" type="button">Save as MIDI</button>
+</div>
+
+<!-- SECTIONS EXPORT MODAL -->
+<div id="section-export-modal" class="modal-overlay">
+  <div class="modal-dialog">
+    <div class="ph">Export Sections <span class="pc" id="btn-close-section-export">×</span></div>
+    <button class="mlbtn" id="btn-sec-export-json" type="button">Save as JSON</button>
+    <button class="mlbtn" id="btn-sec-export-midi" type="button">Save as MIDI</button>
+    <div class="modal-sep"></div>
+    <div class="modal-warn">⚠ This will overwrite the current sequencer contents.</div>
+    <button class="mlbtn mlbtn-danger" id="btn-sec-export-seq" type="button">Export to Current Sequencer</button>
+  </div>
 </div>
 
 <input type="file" id="hidden-file" accept=".json,.mid,.midi,application/json,audio/midi,audio/x-midi">

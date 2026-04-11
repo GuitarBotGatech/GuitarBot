@@ -896,8 +896,7 @@ async function exportUsingNativePicker(formatHint='auto'){
     }
 
     if(exists){
-      const ok=window.confirm(`"${handle.name}" already exists. Overwrite it?`);
-      if(!ok)return true;
+      // Redundant overwrite dialogue removed, the OS natively warns the user.
     }
 
     const name=String(handle?.name||'').toLowerCase();
@@ -1170,6 +1169,9 @@ function loadJSON(data){
   }
 
   S.measures=Math.max(8,Math.ceil(maxB/m)+2);
+  if(Number.isFinite(song.measures)&&Math.round(song.measures)>S.measures){
+    S.measures=Math.round(song.measures);
+  }
   document.getElementById('measures').value=S.measures;
   if(typeof renderSectionView==='function')renderSectionView();
   syncCycleControls();
