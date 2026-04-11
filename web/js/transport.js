@@ -7,6 +7,11 @@ const TREMOLO_DURATION_THRESHOLD=0.500; // seconds — matches tune.TREMOLO_DURA
 const PICKER_PLUCK_MOTION_POINTS=11;    // matches tune.PICKER_PLUCK_MOTION_POINTS
 const ROBOT_TIME_STEP=0.005;            // matches tune.TIME_STEP
 
+// Slide timing constants — mirrors tune.py LH prep-time parameters
+const LH_PREP_TIME_MIN=0.090;           // matches tune.LH_PREP_TIME_MIN
+const LH_PREP_TIME_MAX=0.450;           // matches tune.LH_PREP_TIME_BEFORE_PICK
+const LH_PREP_MAX_SEMITONE_DELTA=9;     // matches tune.LH_PREP_MAX_SEMITONE_DELTA
+
 // Replicates GuitarBotParser.interpPick tremolo period formula
 function tremoloPickPeriodS(speed){
   const s=Math.min(10,Math.max(1,Math.round(speed)||6));
@@ -14,11 +19,22 @@ function tremoloPickPeriodS(speed){
   return(fillPts+PICKER_PLUCK_MOTION_POINTS)*ROBOT_TIME_STEP;
 }
 
+// Replicates lh_interpolate phase-2 (slider motion) duration.
+// Phase 2 is ~1/3 of total prep time; prep time scales with semitone distance.
+function slidePhaseDurationS(semitones){
+  const ratio=Math.min(1.0,Math.abs(semitones)/LH_PREP_MAX_SEMITONE_DELTA);
+  const motionTime=LH_PREP_TIME_MIN+(LH_PREP_TIME_MAX-LH_PREP_TIME_MIN)*ratio;
+  return motionTime/3;
+}
+
 const Synth={
   ctx:null,
   master:null,
   active:new Set(),        // items: { node, g, timerIds:[] }
   workletReady:false,
+  // Tracks the last note fired on each string (index matches STRINGS array).
+  // Used to determine the slide start pitch when slide=1.
+  lastNoteByString:[null,null,null],
 
   async ensure(){
     if(!this.ctx){
@@ -45,8 +61,12 @@ const Synth={
 
   midiToFreq(m){return 440*Math.pow(2,(m-69)/12)},
 
-  // speed: robot speed value 1-10 (matches ev.speed in pluck events)
-  trigger(note,durS=0.2,vel=90,speed=6){
+  // Returns the STRINGS index (0/1/2) for a given MIDI note, or -1 if out of range.
+  _stringIndex(note){return STRINGS.findIndex(s=>note>=s.min&&note<=s.max)},
+
+  // speed  : robot speed value 1–10
+  // slide  : 1 if this note has the slide flag, 0 otherwise
+  trigger(note,durS=0.2,vel=90,speed=6,slide=0){
     if(!this.ctx||!this.master)return;
     const now=this.ctx.currentTime;
     const freq=this.midiToFreq(note);
@@ -54,8 +74,17 @@ const Synth={
     const amp=0.3+Math.min(1,Math.max(0,vel/127))*0.7;
     const isTremolo=d>=TREMOLO_DURATION_THRESHOLD;
 
+    // ── Determine slide start pitch ──────────────────────────────────────
+    const strIdx=this._stringIndex(note);
+    const prevNote=(strIdx>=0)?this.lastNoteByString[strIdx]:null;
+    const doSlide=!!(slide&&prevNote!==null&&prevNote!==note);
+    const slideDurS=doSlide?slidePhaseDurationS(note-prevNote):0;
+
+    // Update last-note tracker before any early returns
+    if(strIdx>=0) this.lastNoteByString[strIdx]=note;
+
     if(this.workletReady){
-      // ── Karplus-Strong string synthesis ──────────────────
+      // ── Karplus-Strong string synthesis ──────────────────────────────
       // Lower notes get a slightly higher decay → longer sustain, like a real string
       const decay=Math.min(0.9998,0.996+(1-Math.min(1,freq/800))*0.003);
 
@@ -63,14 +92,26 @@ const Synth={
       const g=this.ctx.createGain();
       node.connect(g); g.connect(this.master);
 
-      // Initial pick
-      node.port.postMessage({type:'trigger',frequency:freq,decay});
+      if(doSlide){
+        // ── Slide: seed at previous note, glide to current ───────────────
+        // Mirrors the robot's Phase 1 (hold) → Phase 2 (slide) → Phase 3 (press+pick).
+        // The KS worklet starts at startFreq and continuously bends the delay line
+        // length to reach targetFreq over slideDurS seconds.
+        node.port.postMessage({
+          type:'slide',
+          startFrequency:this.midiToFreq(prevNote),
+          targetFrequency:freq,
+          durationS:slideDurS,
+          decay,
+        });
+      }else{
+        node.port.postMessage({type:'trigger',frequency:freq,decay});
+      }
 
       const timerIds=[];
 
       if(isTremolo){
         // ── Tremolo: schedule repeated re-picks at the robot's computed rate ──
-        // Each re-trigger re-seeds the KS delay line → re-attack on each pick stroke
         const periodS=tremoloPickPeriodS(speed);
         const numPicks=Math.floor(d/periodS);
         for(let i=1;i<numPicks;i++){
@@ -78,12 +119,11 @@ const Synth={
             node.port.postMessage({type:'trigger',frequency:freq,decay});
           },Math.round(i*periodS*1000)));
         }
-        // Flat gain for the full duration, short fade at the end
         g.gain.setValueAtTime(amp,now);
         g.gain.setValueAtTime(amp,now+Math.max(0.01,d-0.05));
         g.gain.exponentialRampToValueAtTime(0.0001,now+d);
       }else{
-        // ── Single pluck: natural KS decay ───────────────────
+        // ── Single pluck (or slide): natural KS decay ────────────────────
         const fadeStart=Math.max(now+0.01,now+d-0.05);
         g.gain.setValueAtTime(amp,now);
         g.gain.setValueAtTime(amp,fadeStart);
@@ -99,14 +139,19 @@ const Synth={
       this.active.add(item);
 
     }else{
-      // ── Fallback: triangle oscillator ────────────────────
+      // ── Fallback: triangle oscillator with basic portamento ───────────
       const rel=Math.min(0.12,Math.max(0.03,d*0.45));
       const atk=0.005;
       const fallAmp=0.05+Math.min(1,Math.max(0,vel/127))*0.2;
       const osc=this.ctx.createOscillator();
       const g=this.ctx.createGain();
       osc.type='triangle';
-      osc.frequency.setValueAtTime(freq,now);
+      if(doSlide){
+        osc.frequency.setValueAtTime(this.midiToFreq(prevNote),now);
+        osc.frequency.linearRampToValueAtTime(freq,now+slideDurS);
+      }else{
+        osc.frequency.setValueAtTime(freq,now);
+      }
       g.gain.setValueAtTime(0.0001,now);
       g.gain.exponentialRampToValueAtTime(fallAmp,now+atk);
       g.gain.setValueAtTime(fallAmp,now+Math.max(atk,d-rel));
@@ -131,6 +176,7 @@ const Synth={
       for(const tid of(item.timerIds||[])) clearTimeout(tid);
     }
     this.active.clear();
+    this.lastNoteByString=[null,null,null];
   }
 };
 
@@ -141,7 +187,7 @@ function triggerPluckEventsBetween(prevBeat,nextBeat){
     const eb=parseBeat(ev.beat);
     if(eb>=prevBeat&&eb<nextBeat){
       const durS=(ev.duration_b??0.5)/bps;
-      Synth.trigger(ev.note,durS,speedToVelocity(ev.speed),ev.speed??6);
+      Synth.trigger(ev.note,durS,speedToVelocity(ev.speed),ev.speed??6,ev.slide??0);
     }
   }
 }
