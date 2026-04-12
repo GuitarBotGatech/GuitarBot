@@ -8,6 +8,7 @@ from plotly.subplots import make_subplots
 import copy
 import pandas as pd
 import tune as tu
+from path_planner import plan_strings
 
 
 class GuitarBotParser:
@@ -21,6 +22,7 @@ class GuitarBotParser:
         self.initial_point = initial_point
         self.current_fret_positions = [0, 0, 0, 0, 0, 0]  # Start by preferring voicings near first position
         self.graph = graph
+        self.use_path_planner = True
 
     '''
         Main Dashboard Function
@@ -664,6 +666,15 @@ class GuitarBotParser:
 
         return min(effective_max_prep, max(min_prep, motion_time))
 
+    def _preassign_strings(self, picks: list) -> list:
+        """Run the A* path planner to fill in string_index for all unassigned picks.
+
+        Chord-pluck shorthands (note in 0..5) and picks that already carry a
+        user-specified string are left untouched.  The planner is seeded with
+        self.current_fret_positions so segment-to-segment state is preserved.
+        """
+        return plan_strings(picks, initial_frets=list(self.current_fret_positions))
+
     def parsePickMIDI(self, picks):
         """
         Parses picking MIDI commands and converts them into motor positions.
@@ -685,6 +696,9 @@ class GuitarBotParser:
                 - pick_motor_positions (list): A list of motor position events for the picking mechanism.
                 - slide_toggles (list): A list of boolean slide toggles corresponding to each pick.
         """
+        if self.use_path_planner:
+            picks = self._preassign_strings(picks)
+
         pick_events = []
         slide_toggles = []
         string_ranges_tuples = [(r[0], r[1]) for r in tu.STRING_MIDI_RANGES]
