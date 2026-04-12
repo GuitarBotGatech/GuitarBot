@@ -125,8 +125,8 @@ class GuitarBotParser:
                     **({'row': 1, 'col': 1} if has_cc_subplot else {})
                 )
 
-            # Plot right hand motors (12-14)
-            for motor in range(12, min(15, combined_array.shape[1])):
+            # Plot right hand motors (12-17)
+            for motor in range(12, min(18, combined_array.shape[1])):
                 picker_id = motor - 12
 
                 fig.add_trace(
