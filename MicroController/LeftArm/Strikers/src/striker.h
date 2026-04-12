@@ -108,12 +108,12 @@ public:
 //        return prepToGoHome();
         // Added Homing compatible w/ epos
         int err = epos.setOpMode(OpMode::Homing, HomingMethod::CurrentThresholdNegative);
-        if( iNodeID == 2 || iNodeID == 3 || iNodeID == 6 || iNodeID > 6){
+        if( iNodeID == 2 || iNodeID == 3 || iNodeID == 6 || iNodeID > 6 || iNodeID >= 13){
             //LOG_LOG("Passed");
             err = epos.setHomingMethod(HomingMethod::CurrentThresholdPositive);
         }
         // CHANGE FOR PLUCKER --> NEGATIVE
-        if(iNodeID >= 13){
+        if(iNodeID == 14 || iNodeID == 16 || iNodeID == 17){
             err = epos.setHomingMethod(HomingMethod::CurrentThresholdNegative);
         }
         //CHANGE ME

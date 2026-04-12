@@ -816,7 +816,7 @@ class GuitarBotParser:
 
                 current_pick_pos = start_pos
                 for _ in range(num_picks):
-                    dest_pos = down_enc if current_pick_pos > mid_point else up_enc
+                    dest_pos = down_enc if current_pick_pos < mid_point else up_enc
                     points1 = self.interp_with_blend(current_pick_pos, dest_pos, tu.PICKER_PLUCK_MOTION_POINTS, 0.2)
                     points2 = np.full(fill_points, dest_pos)
                     tremolo_points.extend(points1)
