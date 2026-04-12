@@ -23,7 +23,7 @@ unsigned int localPort = 8888;
 char packetBuffer[2048]; // Buffer for one chunk (20 * 15 * 4 = 1200 bytes)
 
 // --- Two-Stage Queue System ---
-const int FLOATS_PER_POINT = 15; 
+const int FLOATS_PER_POINT = 18;
 
 // Define a simple structure to hold one trajectory point
 struct TrajectoryPoint {

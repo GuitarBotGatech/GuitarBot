@@ -124,7 +124,7 @@ public:
         err = kNoError;
         for (int i = NUM_STRIKERS + NUM_PRESSERS + NUM_STRUMMER_SLIDERS + NUM_STRUMMER_PICKERS + 1; i < NUM_STRIKERS + NUM_PRESSERS + NUM_STRUMMER_SLIDERS + NUM_STRUMMER_PICKERS + NUM_PLUCKERS + 1; ++i) {
             LOG_LOG("Plucker %i", i);
-            if(i == 13 || i == 16 || i == 18){ //
+            if(i == 13 || i == 16){ //
                 err = m_striker[i].init(i, spec5);
             }
             else{
@@ -270,7 +270,7 @@ public:
         Output: Pushes point to the queue
     */
     void processTrajPoints(float *trajPoint) {
-        int packetSize = 15;
+        int packetSize = 18;
         int curr_pos;
         Serial.print("RECEIVED: ");
         for (int i = 0; i < packetSize; i++) {
@@ -280,7 +280,7 @@ public:
         Serial.println();
 
         for (int x = 0; x < NUM_MOTORS; x++) {
-            if (x < 17) {
+            if (x < 18) {
                 if (x > 5 && x < 12) {
                     int curr_pos;
                     curr_pos = pInstance->m_striker[x + 1].getPosition_ticks();
@@ -385,6 +385,9 @@ public:
                     pos2pulse = (this_state_PICK * EC45_ENC_RES_PLUCKER1) / mm_to_enc_conversion_factor;
                 }
                 if(i == 17){
+                    pos2pulse = (this_state_PICK * EC45_ENC_RES_PLUCKER2) / mm_to_enc_conversion_factor;
+                }
+                if(i == 18){
                     pos2pulse = (this_state_PICK * EC45_ENC_RES_PLUCKER2) / mm_to_enc_conversion_factor;
                 }
 
@@ -529,8 +532,8 @@ private:
     bool m_bDataRequested = false;
 
 
-    float all_Trajs[17][200]; //CHANGE FOR MORE TRAJS
-    float curr_point[17];
+    float all_Trajs[18][200]; //CHANGE FOR MORE TRAJS
+    float curr_point[18];
 
     int prev_frets[6];
     int prev_playcommands[6];

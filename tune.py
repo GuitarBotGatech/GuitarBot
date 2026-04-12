@@ -13,7 +13,7 @@ TIME_STEP = .005
 
 #Graphing
 # Controls graphing the functions used on each motor. False turns off, true turns on.
-graph = False
+graph = True
 
 # Blend percentage for trajectory interpolation (0.0 to 1.0).
 # A higher value creates a more gradual acceleration and deceleration.
@@ -79,6 +79,7 @@ TIMESTAMP_ROUNDING_FACTOR = 200.0
 # Index 0 corresponds to Fret 1.
 SLIDER_MM_PER_FRET = [19, 52, 85, 112, 139, 164, 187, 211, 234]
 
+
 # Position values for the three states of the presser motors:
 # 1: Open/Unpressed, 2: Pressed, 3: Muted (partially pressed).
 PRESSER_ENCODER_POSITIONS = [-650, 500, 100]
@@ -96,7 +97,7 @@ SLIDER_ENCODER_OFFSET = -2000
 # Multiplier to reverse the direction of specific slider motors if they are mounted mirrored.
 # A value of -1 reverses the motor, 1 keeps it the same.
 # Index corresponds to motor ID (String 1 = 0, String 2 = 1, etc.).
-SLIDER_MOTOR_DIRECTION = [-1, 1, 1, -1, -1, 1]
+SLIDER_MOTOR_DIRECTION = [-1, 1,1,-1, -1, 1]
 
 # ----------------------------------------------------------------------------
 # 4. Right Hand (RH) / Picker Physical Parameters
@@ -108,11 +109,11 @@ SLIDER_MOTOR_DIRECTION = [-1, 1, 1, -1, -1, 1]
 # Key is the motor ID.
 PICKER_MOTOR_INFO = {
     0: {'down_pluck_mm': -5.3, 'up_pluck_mm': -8.8, 'resolution': 1024}, # E
-    1: {'down_pluck_mm': 6.0, 'up_pluck_mm': 9.0, 'resolution': 2048}, # A
-    2: {'down_pluck_mm': -6.0, 'up_pluck_mm': -9.0, 'resolution': 2048}, # D
+    1: {'down_pluck_mm': 4.8, 'up_pluck_mm': 8.4, 'resolution': 2048}, # A
+    2: {'down_pluck_mm': -6.1, 'up_pluck_mm': -9.5, 'resolution': 2048}, # D
     3: {'down_pluck_mm': 6.0, 'up_pluck_mm': 9.0, 'resolution': 1024}, # G
     4: {'down_pluck_mm': 5.0, 'up_pluck_mm': 8.0, 'resolution': 2048}, # B
-    5: {'down_pluck_mm': -6.0, 'up_pluck_mm': -9.0, 'resolution': 2048} # E
+    5: {'down_pluck_mm': -2.5, 'up_pluck_mm': -5.5, 'resolution': 2048} # E
 }
 
 # ----------------------------------------------------------------------------
@@ -123,14 +124,13 @@ PICKER_MOTOR_INFO = {
 # MIDI note ranges for each string/picker.
 # Format: (lowest_note, highest_note, slider_direction_multiplier)
 # The multiplier is used to account for mirrored slider mechanisms relative to the picker.
-STRING_MIDI_RANGES = [ #Bookmark
-    (40, 49, SLIDER_MOTOR_DIRECTION[0]),  # String 1 (e.g., Low E for prototype)
-    (50, 58, SLIDER_MOTOR_DIRECTION[2]),  # String 3 (e.g., D for prototype)
-    (59, 68, SLIDER_MOTOR_DIRECTION[4]),  # String 5 (e.g., B for prototype)
-    # Add other strings if applicable
-    # (45, 55, 1),  # String 2
-    # (55, 65, -1), # String 4
-    # (64, 74, 1)   # String 6
+STRING_MIDI_RANGES = [
+    (40, 49, SLIDER_MOTOR_DIRECTION[0]),  # String 1,E
+    (45, 54, SLIDER_MOTOR_DIRECTION[1]),  # String 2,A
+    (50, 59, SLIDER_MOTOR_DIRECTION[2]),  # String 3,D
+    (55, 64, SLIDER_MOTOR_DIRECTION[3]), # String 4.B
+    (59, 68, SLIDER_MOTOR_DIRECTION[4]),  # String 5,G
+    (64, 73, SLIDER_MOTOR_DIRECTION[5])   # String 6,E
 ]
 
 # Initial Point
@@ -143,7 +143,10 @@ initial_point = [ #Bookmark
                  # Pluckers
                  int(PICKER_MOTOR_INFO[0]["up_pluck_mm"]*1024/9.4),
                  int(PICKER_MOTOR_INFO[1]["up_pluck_mm"]*2048/9.4),
-                 int(PICKER_MOTOR_INFO[2]["up_pluck_mm"]*2048/9.4)
+                 int(PICKER_MOTOR_INFO[2]["up_pluck_mm"]*2048/9.4),
+                 int(PICKER_MOTOR_INFO[3]["up_pluck_mm"]*1024/9.4),
+                 int(PICKER_MOTOR_INFO[4]["up_pluck_mm"]*2048/9.4),
+                 int(PICKER_MOTOR_INFO[5]["up_pluck_mm"]*2048/9.4)
 
                  ]
 
@@ -162,10 +165,10 @@ CHORD_LIBRARY_FILE = "Alternate_Chords.csv"
 # Picker start state (positions). Should match picker motor dictionary 'up_pluck_mm'
 START_STATE_PICK = [PICKER_MOTOR_INFO[0]['up_pluck_mm'], PICKER_MOTOR_INFO[1]['up_pluck_mm'], 
                     PICKER_MOTOR_INFO[2]['up_pluck_mm'], PICKER_MOTOR_INFO[3]['up_pluck_mm'], 
-                    PICKER_MOTOR_INFO[4]['up_pluck_mm']]
+                    PICKER_MOTOR_INFO[4]['up_pluck_mm'], PICKER_MOTOR_INFO[5]['up_pluck_mm']]
 
 # Motor IDs for pickers (E, D, B). Adjust if wiring changes.
-MOTOR_ID_PICK = [13, 14, 15, 16, 17]
+MOTOR_ID_PICK = [13, 14, 15, 16, 17, 18]
 
 # Homing offsets
 HOME_OFFSET_SLIDE = 50000
