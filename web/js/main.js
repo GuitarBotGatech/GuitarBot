@@ -83,7 +83,7 @@ function applyNewProject(){
   S.snapEnabled=true;
   S.gridIdx=1;
   S.stringSoloIndex=null;
-  S.stringMuted=[false,false,false];
+  S.stringMuted=STRINGS.map(()=>false);
   S.pluck=[];
   S.harmonic=[];
   S.chord=[];
@@ -192,6 +192,8 @@ function applyStartupMode(){
 function init(){
   resize();
   window.addEventListener('resize',resize);
+  const wrap = document.getElementById('roll-wrap');
+  if (wrap) wrap.addEventListener('scroll', ()=>render());
   applyStartupMode();
   render();
   syncJSON();

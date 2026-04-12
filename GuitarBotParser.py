@@ -386,7 +386,7 @@ class GuitarBotParser:
                 prep_time_s = float(event.get('prep_time', self.get_lh_note_movement_duration()))
                 phase1_points, phase2_points, phase3_points = split_note_phase_points(prep_time_s)
                 motor_index = event['motor_id']
-                slider_motor_ID, presser_motor_ID = motor_index * 2, motor_index * 2 + 6
+                slider_motor_ID, presser_motor_ID = motor_index, motor_index + 6
                 q0_slider_motor, q0_presser_motor = current_encoder_position[slider_motor_ID], current_encoder_position[
                     presser_motor_ID]
                 qf_slider = int(event['position'])
@@ -884,8 +884,7 @@ class GuitarBotParser:
 
             all_points = np.array([]) # Initialize as empty numpy array
             if is_pluck:
-                # Keep picker timing in sync with parsePickMIDI by honoring the commanded destination.
-                dest_pos = float(commanded_dest_pos)
+                dest_pos = down_enc if abs(start_pos - up_enc) < abs(start_pos - down_enc) else up_enc
                 all_points = self.interp_with_blend(start_pos, dest_pos, tu.PICKER_PLUCK_MOTION_POINTS, tb_cent)
             else: # Tremolo
                 tremolo_points = []
@@ -895,7 +894,7 @@ class GuitarBotParser:
 
                 current_pick_pos = start_pos
                 for _ in range(num_picks):
-                    dest_pos = down_enc if current_pick_pos < mid_point else up_enc
+                    dest_pos = down_enc if abs(current_pick_pos - up_enc) < abs(current_pick_pos - down_enc) else up_enc
                     points1 = self.interp_with_blend(current_pick_pos, dest_pos, tu.PICKER_PLUCK_MOTION_POINTS, 0.2)
                     points2 = np.full(fill_points, dest_pos)
                     tremolo_points.extend(points1)

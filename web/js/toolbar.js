@@ -8,6 +8,8 @@ document.querySelectorAll('.tab-btn').forEach(btn=>{
     document.querySelectorAll('.tab-content').forEach(c=>{
       c.style.display=c.id===`tab-${tab}`?'flex':'none';
     });
+    S.activeTab=tab;
+    if(typeof resize==='function') resize(); else render();
   });
 });
 

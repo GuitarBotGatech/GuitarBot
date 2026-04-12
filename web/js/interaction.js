@@ -94,7 +94,7 @@ canvas.addEventListener('pointerdown',e=>{
     } else if(cx>=LABEL_W){
       const b=normalizePlacementBeat(Math.max(0,xToBeat(cx)));
       const n=clampNote(yToNote(cy));
-      if(b<totalBeats())addNote(b,n);
+      if(b<totalBeats() && S.activeTab !== 'automation')addNote(b,n);
       deselectAll();
     }
   } else {
@@ -320,7 +320,7 @@ canvas.addEventListener('dblclick',e=>{
 
   if(cx>=LABEL_W&&cy<CHORD_H){
     const b=normalizePlacementBeat(Math.max(0,xToBeat(cx)));
-    if(b<totalBeats()){
+    if(b<totalBeats() && S.activeTab !== 'automation'){
       addChord(b);
       render();
     }
@@ -351,6 +351,7 @@ function applySelectionBox(box){
   const selectedCurves=createEmptyMidiCurveSelection();
 
   for(const ev of S.pluck){
+    if(S.activeTab === 'automation') break;
     const x=beatToX(parseBeat(ev.beat));
     const y=noteToY(ev.note);
     const w=Math.max(8,ev.duration_b*S.zoom);
@@ -465,6 +466,7 @@ function midiDown(cx,cy,e){
 }
 
 function hitPluck(cx,cy){
+  if(S.activeTab === 'automation') return null;
   for(const ev of S.pluck){
     const x=beatToX(parseBeat(ev.beat)),y=noteToY(ev.note),w=Math.max(8,ev.duration_b*S.zoom);
     if(cx>=x&&cx<=x+w&&cy>=y+1&&cy<=y+noteH-1)return ev;
@@ -522,6 +524,7 @@ function updateHoverCursor(cx,cy){
   canvas.style.cursor=S.editMode==='draw'?'default':'crosshair';
 }
 function hitChord(cx,cy){
+  if(S.activeTab === 'automation') return null;
   for(const ev of S.chord){
     const x=beatToX(parseBeat(ev.beat)),fw=Math.max(36,ev.chord.length*8+10);
     if(cx>=x-4&&cx<=x+fw&&cy>=4&&cy<=CHORD_H-4)return ev;

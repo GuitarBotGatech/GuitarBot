@@ -158,7 +158,7 @@ function noteRulePrepTimeSeconds(prevEvent,nextEvent){
 
 function evaluatePluckNoteWarnings(){
   const warnings=[];
-  const byString=[[],[],[]];
+  const byString=STRINGS.map(()=>[]);
 
   for(const ev of S.pluck){
     const stringIndex=noteRuleStringIndex(ev);
@@ -391,7 +391,7 @@ function optimizeNoteWarningsLayout(){
   const closeGapBeats=ruleThresholdSeconds('too-close',0.12)/Math.max(1e-6,spb);
   const minDurBeats=Math.max(minDurationBeats(),ruleThresholdSeconds('too-short',0.08)/Math.max(1e-6,spb));
 
-  const byString=[[],[],[]];
+  const byString=STRINGS.map(()=>[]);
   for(const ev of S.pluck){
     const stringIndex=noteRuleStringIndex(ev);
     byString[stringIndex].push(ev);
@@ -539,13 +539,51 @@ function onFixWarningsClick(event){
   if(typeof showImportToast==='function')showImportToast(message,3600);
 }
 
+function planStringsGreedy(){
+  // Greedy string assignment: for each unassigned note (sorted by time),
+  // pick the string whose current fret position requires the least travel.
+  // Skips notes that already have an explicit string_index set.
+  const lastFret=new Array(STRINGS.length).fill(0);
+  const sorted=[...S.pluck].sort((a,b)=>parseBeat(a.beat)-parseBeat(b.beat));
+  const changes=[];
+  for(const ev of sorted){
+    if(ev.note>=0&&ev.note<=5) continue; // chord-pluck shorthand, skip
+    if(ev.string_index!=null) {
+      // Respect pin; update lastFret so subsequent notes plan around it
+      const s=parseInt(ev.string_index,10);
+      if(s>=0&&s<STRINGS.length) lastFret[s]=ev.note-STRINGS[s].min;
+      continue;
+    }
+    let bestStr=-1, bestCost=Infinity;
+    STRINGS.forEach((s,i)=>{
+      if(ev.note<s.min||ev.note>s.max) return;
+      const fret=ev.note-s.min;
+      const cost=Math.abs(fret-lastFret[i]);
+      if(cost<bestCost){bestCost=cost;bestStr=i;}
+    });
+    if(bestStr>=0){
+      changes.push({id:ev.id,string_index:bestStr});
+      lastFret[bestStr]=ev.note-STRINGS[bestStr].min;
+    }
+  }
+  if(!changes.length) return;
+  pushHistorySnapshot(JSON.stringify(buildJSON()));
+  changes.forEach(({id,string_index})=>{
+    const ev=S.pluck.find(e=>e.id===id);
+    if(ev) ev.string_index=string_index;
+  });
+  render();
+}
+
 function bindNoteWarningUI(){
   if(S.noteWarningUIBound)return;
   const badge=document.getElementById('note-warn');
   const fixBtn=document.getElementById('btn-fix-warnings');
+  const planBtn=document.getElementById('btn-plan-strings');
   if(!badge||!fixBtn)return;
   badge.addEventListener('click',onNoteWarningsBadgeClick);
   fixBtn.addEventListener('click',onFixWarningsClick);
+  if(planBtn) planBtn.addEventListener('click',planStringsGreedy);
   S.noteWarningUIBound=true;
 }
 

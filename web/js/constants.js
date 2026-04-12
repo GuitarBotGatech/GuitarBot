@@ -1,7 +1,7 @@
 // ═══════════════════════════════════════════════
 // CONSTANTS
 // ═══════════════════════════════════════════════
-const MIDI_MIN=40, MIDI_MAX=68, NOTE_COUNT=29;
+const MIDI_MIN=40, MIDI_MAX=73, NOTE_COUNT=34;
 const noteH_DEFAULT=14, noteH_MIN=6, noteH_MAX=50;
 let noteH=noteH_DEFAULT;
 const LABEL_W=54, CHORD_H=30;
@@ -18,8 +18,11 @@ const MIDI_GENERAL_LANE_INDEX=MIDI_AUTOMATION_KEYS.length;
 const MIDI_H=MIDI_AUTOMATION_TOTAL_H+MIDI_GENERAL_LANE_H;
 const rollH=()=>NOTE_COUNT*noteH;
 const SLIDERLESS_H=24;
-const SLIDERLESS_TOTAL=3*SLIDERLESS_H;
-const canvasH=()=>CHORD_H+rollH()+SLIDERLESS_TOTAL+MIDI_H;
+const SLIDERLESS_TOTAL=6*SLIDERLESS_H;
+const canvasH=()=>{
+  if(typeof S!=='undefined'&&S.activeTab!=='automation') return CHORD_H+rollH()+SLIDERLESS_TOTAL;
+  return CHORD_H+rollH()+SLIDERLESS_TOTAL+MIDI_H;
+};
 const SUBDIV=4; // used by formatBeat/parseBeat for 3-part display only
 const GRID_STEPS=[
   {label:'1/16t',beats:1/6},
@@ -36,18 +39,40 @@ const SPEED_MIN=1, SPEED_MAX=10, SPEED_DEFAULT=6;
 const IMPORT_KEY='guitarbot_startup_import_json';
 
 const STRINGS=[
-  {min:40,max:49,name:"E String",color:"#f59e0b",dim:"#3b200566"},
-  {min:50,max:58,name:"D String",color:"#14b8a6",dim:"#0a3b3666"},
-  {min:59,max:68,name:"B String",color:"#a855f7",dim:"#3b107866"},
+  {min:40,max:52,name:"E2",color:"#ef4444",dim:"#3b050566"}, // Low E
+  {min:45,max:57,name:"A2",color:"#f97316",dim:"#3b170566"}, // A
+  {min:50,max:62,name:"D3",color:"#eab308",dim:"#3b2d0566"}, // D
+  {min:55,max:67,name:"G3",color:"#22c55e",dim:"#053b1466"}, // G
+  {min:59,max:71,name:"B3",color:"#3b82f6",dim:"#051a3b66"}, // B
+  {min:64,max:76,name:"E4",color:"#a855f7",dim:"#1e053b66"}, // High E
 ];
 
 const NOTE_NAMES=["C","C#","D","D#","E","F","F#","G","G#","A","A#","B"];
 const noteName=m=>NOTE_NAMES[m%12]+(Math.floor(m/12)-1);
-const strOf=m=>{
-  if(m===0) return STRINGS[0];
-  if(m===2) return STRINGS[1];
-  if(m===4) return STRINGS[2];
-  return STRINGS.find(s=>m>=s.min&&m<=s.max)||STRINGS[0];
+// lowestFretCandidate: among all strings that can play midi note m,
+// return the index of the one requiring the fewest frets from open.
+const lowestFretCandidate=m=>{
+  let best=-1, bestFret=Infinity;
+  STRINGS.forEach((s,i)=>{
+    if(m>=s.min&&m<=s.max){
+      const fret=m-s.min;
+      if(fret<bestFret){bestFret=fret;best=i;}
+    }
+  });
+  return best>=0?best:0;
+};
+// strOf: returns the STRINGS entry for a note, respecting explicit string_index
+// when called with an event object, or falling back to lowestFretCandidate.
+const strOf=(mOrEv,stringIdx)=>{
+  // Called as strOf(midiNote) or strOf(midiNote, stringIndex)
+  const m=typeof mOrEv==='object'?mOrEv.note:mOrEv;
+  const idx=typeof mOrEv==='object'
+    ?(mOrEv.string_index!=null?parseInt(mOrEv.string_index,10):null)
+    :(stringIdx!=null?stringIdx:null);
+  if(idx!=null&&idx>=0&&idx<STRINGS.length)return STRINGS[idx];
+  // Chord-pluck shorthand (note 0..5 = string index)
+  if(m>=0&&m<=5)return STRINGS[m]||STRINGS[0];
+  return STRINGS[lowestFretCandidate(m)];
 };
 const createEmptyMidiCurves=()=>Object.fromEntries(MIDI_AUTOMATION_KEYS.map(key=>[String(key),[]]));
 const createEmptyMidiCurveMuteState=()=>Object.fromEntries(MIDI_AUTOMATION_KEYS.map(key=>[String(key),false]));

@@ -24,9 +24,17 @@ function render(){
   if(!ctx)return;
   ctx.clearRect(0,0,CW,canvasH());
   drawBG(); drawGrid(); drawLabels();
-  drawCycleBar(); drawChordLane(); drawMidiLane(); drawTempoPointOverlay(); drawSlideLinks();
-  if(S.spectrogramVisible) drawSpectrogram();
-  drawNotes();
+  drawCycleBar(); drawChordLane();
+  const inAutomation = S.activeTab === 'automation';
+  if(inAutomation){
+    // Ghost notes as background reference, then full-opacity automation lanes
+    ctx.save(); ctx.globalAlpha = 0.15; drawNotes(); ctx.restore();
+    drawMidiLane(); drawTempoPointOverlay();
+  } else {
+    drawSlideLinks();
+    if(S.spectrogramVisible) drawSpectrogram();
+    drawNotes();
+  }
   if(S.noteAnalysis && Object.keys(S.noteAnalysis).length) drawNoteAnalysisOverlay();
   drawPlayhead(); drawSelectionBox();
 }
@@ -161,7 +169,7 @@ function drawSlideLinks(){
   ctx.rect(LABEL_W, 0, CW - LABEL_W, canvasH());
   ctx.clip();
 
-  const byString=[[],[],[]];
+  const byString=STRINGS.map(()=>[]);
   for(const ev of S.pluck){
     byString[eventStringIndex(ev)].push(ev);
   }
@@ -233,9 +241,9 @@ function drawBG(){
     ctx.fillStyle=isSharp?'#08080e':s.dim; ctx.fillRect(LABEL_W,y,CW-LABEL_W,noteH);
     ctx.fillStyle='#14141e'; ctx.fillRect(LABEL_W,y+noteH-1,CW-LABEL_W,1);
   }
-  // Sliderless lanes
+  // Sliderless lanes (6 strings)
   const slTop = CHORD_H + rollH();
-  for(let i=0; i<3; i++){
+  for(let i=0; i<STRINGS.length; i++){
     const y=slTop + i*SLIDERLESS_H;
     ctx.fillStyle=i%2===0?'#101018':'#0c0c14';
     ctx.fillRect(LABEL_W,y,CW-LABEL_W,SLIDERLESS_H);
@@ -243,34 +251,40 @@ function drawBG(){
   }
   // MIDI lane
   const my=midiTopY();
-  for(let lane=0;lane<MIDI_LANE_COUNT;lane++){
-    if(!midiLaneVisible(lane))continue;
-    const top=midiLaneTop(lane);
-    const height=midiLaneHeight(lane);
-    const laneKey=automationLaneKey(lane);
-    const isTempo=lane!==MIDI_GENERAL_LANE_INDEX&&isTempoLaneKey(laneKey);
-    ctx.fillStyle=isTempo?'#10141b':(lane%2===0?'#0a0a12':'#0d0d16');
-    ctx.fillRect(LABEL_W,top,CW-LABEL_W,height);
+  if (S.activeTab === 'automation') {
+    for(let lane=0;lane<MIDI_LANE_COUNT;lane++){
+      if(!midiLaneVisible(lane))continue;
+      const top=midiLaneTop(lane);
+      const height=midiLaneHeight(lane);
+      const laneKey=automationLaneKey(lane);
+      const isTempo=lane!==MIDI_GENERAL_LANE_INDEX&&isTempoLaneKey(laneKey);
+      ctx.fillStyle=isTempo?'#10141b':(lane%2===0?'#0a0a12':'#0d0d16');
+      ctx.fillRect(LABEL_W,top,CW-LABEL_W,height);
+    }
   }
   // Label column
   ctx.fillStyle='#0e0e16';
   ctx.fillRect(0,0,LABEL_W,canvasH());
   ctx.fillStyle='#161622'; ctx.fillRect(0,0,LABEL_W,CHORD_H);
-  ctx.fillRect(0,my,LABEL_W,MIDI_H);
+  if (S.activeTab === 'automation') {
+    ctx.fillRect(0,my,LABEL_W,MIDI_H);
+  }
   // Lane labels
   ctx.fillStyle='#383860'; ctx.font='500 9px "JetBrains Mono"'; ctx.textAlign='center';
   ctx.fillText('CHD',LABEL_W/2,CHORD_H/2+3);
-  for(let lane=0;lane<MIDI_LANE_COUNT;lane++){
-    if(!midiLaneVisible(lane))continue;
-    const top=midiLaneTop(lane);
-    const h=midiLaneHeight(lane);
-    const laneKey=automationLaneKey(lane);
-    const label=lane===MIDI_GENERAL_LANE_INDEX
-      ?'FX'
-      :(isTempoLaneKey(laneKey)
-        ?`TMP${S.midiCurveMuted[String(laneKey)]?' (M)':''}`
-        :`CC${laneKey}${S.midiCurveMuted[String(laneKey)]?' (M)':''}`);
-    ctx.fillText(label,LABEL_W/2,top+h/2+3);
+  if (S.activeTab === 'automation') {
+    for(let lane=0;lane<MIDI_LANE_COUNT;lane++){
+      if(!midiLaneVisible(lane))continue;
+      const top=midiLaneTop(lane);
+      const h=midiLaneHeight(lane);
+      const laneKey=automationLaneKey(lane);
+      const label=lane===MIDI_GENERAL_LANE_INDEX
+        ?'FX'
+        :(isTempoLaneKey(laneKey)
+          ?`TMP${S.midiCurveMuted[String(laneKey)]?' (M)':''}`
+          :`CC${laneKey}${S.midiCurveMuted[String(laneKey)]?' (M)':''}`);
+      ctx.fillText(label,LABEL_W/2,top+h/2+3);
+    }
   }
 }
 
@@ -305,15 +319,19 @@ function drawGrid(){
   // Zone separators
   ctx.strokeStyle='#232340'; ctx.lineWidth=1;
   const slTop = CHORD_H + rollH();
-  [[0,CHORD_H],[0,slTop],[0,slTop+SLIDERLESS_H],[0,slTop+SLIDERLESS_H*2],[0,slTop+SLIDERLESS_H*3],[0,midiTopY()]].forEach(([,y])=>{
+  const zoneLines = [[0,CHORD_H],[0,slTop]];
+  for(let i=1; i<=6; i++) zoneLines.push([0, slTop+SLIDERLESS_H*i]);
+  zoneLines.forEach(([,y])=>{
     ctx.beginPath(); ctx.moveTo(0,y); ctx.lineTo(CW,y); ctx.stroke();
   });
-  for(let lane=0;lane<MIDI_LANE_COUNT;lane++){
-    if(!midiLaneVisible(lane))continue;
-    const y=midiLaneTop(lane);
-    ctx.beginPath(); ctx.moveTo(0,y); ctx.lineTo(CW,y); ctx.stroke();
+  if (S.activeTab === 'automation') {
+    for(let lane=0;lane<MIDI_LANE_COUNT;lane++){
+      if(!midiLaneVisible(lane))continue;
+      const y=midiLaneTop(lane);
+      ctx.beginPath(); ctx.moveTo(0,y); ctx.lineTo(CW,y); ctx.stroke();
+    }
+    ctx.beginPath(); ctx.moveTo(0,midiTopY()+MIDI_H); ctx.lineTo(CW,midiTopY()+MIDI_H); ctx.stroke();
   }
-  ctx.beginPath(); ctx.moveTo(0,midiTopY()+MIDI_H); ctx.lineTo(CW,midiTopY()+MIDI_H); ctx.stroke();
   ctx.beginPath(); ctx.moveTo(LABEL_W,0); ctx.lineTo(LABEL_W,canvasH()); ctx.stroke();
 
   // Bottom time ruler (seconds), companion to top bar numbering
@@ -353,13 +371,13 @@ function drawLabels(){
     ctx.fillText(noteName(n),LABEL_W-4,y+noteH/2+3);
   }
   const slTop = CHORD_H + rollH();
-  const SLIDERLESS_NAMES = ['B String', 'D String', 'E String'];
-  const SLIDERLESS_STR_INDICES = [2, 1, 0];
-  for(let i=0; i<3; i++){
+  for(let i=0; i<STRINGS.length; i++){
+    // Lane 0 = highest string (E4), lane 5 = lowest (E2)
+    const s = STRINGS[STRINGS.length - 1 - i];
     const y = slTop + i*SLIDERLESS_H;
-    ctx.fillStyle = STRINGS[SLIDERLESS_STR_INDICES[i]].color;
+    ctx.fillStyle = s.color;
     ctx.font = '600 9px "JetBrains Mono"';
-    ctx.fillText(SLIDERLESS_NAMES[i], LABEL_W-4, y+SLIDERLESS_H/2+3);
+    ctx.fillText(s.name, LABEL_W-4, y+SLIDERLESS_H/2+3);
   }
   // String lanes + controls in left column
   STRINGS.forEach((s,index)=>{

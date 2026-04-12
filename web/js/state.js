@@ -18,7 +18,8 @@ let S={
   snapEnabled:true,
   gridIdx:1,
   stringSoloIndex:null,
-  stringMuted:[false,false,false],
+  activeTab:'create',
+  stringMuted:[false,false,false,false,false,false],
   selPluckIds:new Set(),
   clipboardPluck:null,
     clipboardMidiCurves:null,
@@ -49,29 +50,24 @@ const bpm=()=>beatsPerMeasureFromTimeSig(S.timeSig);
 const totalBeats=()=>S.measures*bpm();
 const beatToX=b=>LABEL_W+b*S.zoom-S.scrollX;
 const xToBeat=x=>(x-LABEL_W+S.scrollX)/S.zoom;
+// Sliderless lanes: note 0..5 map to lanes top-to-bottom as string 5..0
+// (highest string at top, lowest at bottom, matching visual guitar layout)
 const noteToY=n=>{
-  if(n===4) return CHORD_H + rollH() + 0*SLIDERLESS_H + (SLIDERLESS_H-noteH)/2;
-  if(n===2) return CHORD_H + rollH() + 1*SLIDERLESS_H + (SLIDERLESS_H-noteH)/2;
-  if(n===0) return CHORD_H + rollH() + 2*SLIDERLESS_H + (SLIDERLESS_H-noteH)/2;
+  if(n>=0&&n<=5)
+    return CHORD_H+rollH()+(5-n)*SLIDERLESS_H+(SLIDERLESS_H-noteH)/2;
   return CHORD_H+(MIDI_MAX-n)*noteH;
 };
 const yToNote=y=>{
-  const slTop = CHORD_H + rollH();
-  if (y >= slTop && y < slTop + SLIDERLESS_TOTAL) {
-    const laneIndex = Math.floor((y - slTop) / SLIDERLESS_H);
-    if(laneIndex===0) return 4;
-    if(laneIndex===1) return 2;
-    if(laneIndex===2) return 0;
+  const slTop=CHORD_H+rollH();
+  if(y>=slTop&&y<slTop+SLIDERLESS_TOTAL){
+    const lane=Math.floor((y-slTop)/SLIDERLESS_H);
+    return 5-lane; // lane 0 → note 5 (E4), lane 5 → note 0 (E2)
   }
-  return Math.max(MIDI_MIN, Math.min(MIDI_MAX, MIDI_MAX-Math.floor((y-CHORD_H)/noteH)));
+  return Math.max(MIDI_MIN,Math.min(MIDI_MAX,MIDI_MAX-Math.floor((y-CHORD_H)/noteH)));
 };
-const clampNote = n => {
-  if (n <= 4) {
-    if (n < 1) return 0;
-    if (n < 3) return 2;
-    return 4;
-  }
-  return clamp(n, MIDI_MIN, MIDI_MAX);
+const clampNote=n=>{
+  if(n>=0&&n<=5)return Math.round(clamp(n,0,5));
+  return clamp(n,MIDI_MIN,MIDI_MAX);
 };
 const midiTopY=()=>CHORD_H+rollH()+SLIDERLESS_TOTAL;
 const hasFocusedCCLane=()=>Number.isInteger(S.focusedCCLane)&&S.focusedCCLane>=0&&S.focusedCCLane<MIDI_AUTOMATION_KEYS.length;
@@ -190,10 +186,16 @@ const clampSpeed=v=>clamp(parseInt(v)||SPEED_DEFAULT,SPEED_MIN,SPEED_MAX);
 const speedToVelocity=s=>Math.round(((clampSpeed(s)-SPEED_MIN)/(SPEED_MAX-SPEED_MIN))*127);
 
 function stringLaneBounds(index){
-  const s=STRINGS[index];
-  if(!s)return null;
-  const top=noteToY(s.max);
-  const bottom=noteToY(s.min)+noteH;
+  let topNote=-1, bottomNote=Infinity;
+  for(let n=MIDI_MIN;n<=MIDI_MAX;n++){
+    if(strOf(n)===STRINGS[index]){
+      topNote=Math.max(topNote,n);
+      bottomNote=Math.min(bottomNote,n);
+    }
+  }
+  if(topNote===-1)return null;
+  const top=noteToY(topNote);
+  const bottom=noteToY(bottomNote)+noteH;
   return {top,bottom,height:Math.max(0,bottom-top)};
 }
 
@@ -201,15 +203,21 @@ function stringTrackControlRects(index){
   const bounds=stringLaneBounds(index);
   if(!bounds)return null;
   const pad=3;
-  const laneH=Math.max(16,bounds.height-pad*2);
-  const y=bounds.top+pad;
   const labelH = 7;
   const btnH = 16;
   const btnW = 20;
   const gap = 4;
-  const label = {x: 6, y: y + 1, w: LABEL_W - 12, h: labelH};
   const stackH = btnH * 2 + gap;
-  const startY = Math.min(bounds.bottom - stackH - 2, y + labelH + 8);
+  const wrap = document.getElementById('roll-wrap');
+  const scrollY = wrap ? wrap.scrollTop : 0;
+  
+  const blockH = labelH + 8 + stackH;
+  const minStartY = bounds.top + pad;
+  const maxStartY = bounds.bottom - pad - blockH;
+  const stickyY = Math.min(maxStartY, Math.max(minStartY, scrollY + pad));
+
+  const label = {x: 6, y: stickyY + 1, w: LABEL_W - 12, h: labelH};
+  const startY = stickyY + labelH + 8;
   const solo = {x: 6, y: startY, w: btnW, h: btnH};
   const mute = {x: 6, y: startY + btnH + gap, w: btnW, h: btnH};
   return {label,solo,mute,bounds};
