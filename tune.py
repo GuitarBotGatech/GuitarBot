@@ -111,7 +111,7 @@ PICKER_MOTOR_INFO = {
     1: {'down_pluck_mm': 6.0, 'up_pluck_mm': 9.0, 'resolution': 2048}, # A
     2: {'down_pluck_mm': -6.0, 'up_pluck_mm': -9.0, 'resolution': 2048}, # D
     3: {'down_pluck_mm': 6.0, 'up_pluck_mm': 9.0, 'resolution': 1024}, # G
-    4: {'down_pluck_mm': 6.0, 'up_pluck_mm': 9.0, 'resolution': 2048}, # B
+    4: {'down_pluck_mm': 5.0, 'up_pluck_mm': 8.0, 'resolution': 2048}, # B
     5: {'down_pluck_mm': -6.0, 'up_pluck_mm': -9.0, 'resolution': 2048} # E
 }
 
@@ -160,7 +160,9 @@ CHORD_LIBRARY_FILE = "Alternate_Chords.csv"
 # tune.h can be generated programmatically.
 
 # Picker start state (positions). Should match picker motor dictionary 'up_pluck_mm'
-START_STATE_PICK = [PICKER_MOTOR_INFO[0]['up_pluck_mm'], PICKER_MOTOR_INFO[1]['up_pluck_mm'], PICKER_MOTOR_INFO[2]['up_pluck_mm'], PICKER_MOTOR_INFO[3]['up_pluck_mm'], PICKER_MOTOR_INFO[4]['up_pluck_mm']]
+START_STATE_PICK = [PICKER_MOTOR_INFO[0]['up_pluck_mm'], PICKER_MOTOR_INFO[1]['up_pluck_mm'], 
+                    PICKER_MOTOR_INFO[2]['up_pluck_mm'], PICKER_MOTOR_INFO[3]['up_pluck_mm'], 
+                    PICKER_MOTOR_INFO[4]['up_pluck_mm']]
 
 # Motor IDs for pickers (E, D, B). Adjust if wiring changes.
 MOTOR_ID_PICK = [13, 14, 15, 16, 17]

@@ -124,7 +124,7 @@ public:
         err = kNoError;
         for (int i = NUM_STRIKERS + NUM_PRESSERS + NUM_STRUMMER_SLIDERS + NUM_STRUMMER_PICKERS + 1; i < NUM_STRIKERS + NUM_PRESSERS + NUM_STRUMMER_SLIDERS + NUM_STRUMMER_PICKERS + NUM_PLUCKERS + 1; ++i) {
             LOG_LOG("Plucker %i", i);
-            if(i == 13 || i == 16){ //
+            if(i == 13 || i == 16 || i == 18){ //
                 err = m_striker[i].init(i, spec5);
             }
             else{
