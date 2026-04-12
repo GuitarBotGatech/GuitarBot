@@ -41,7 +41,7 @@ LH_PRESSER_PRESSED_POS = 500
 # Torque value for a press, used for sliding to ensure string contact.
 # Given in terms of LH_PRESSER_SLIDE_PRESS_POS/1000 % of torque rating. For example, LH_PRESSER_SLIDE_PRESS_POS = 650 then the motor is outputting 65% of the motors' rated torque value.
 # Values over 1000 overwork the motor, which can result in overheating and stalling.
-LH_PRESSER_SLIDE_PRESS_POS = 400
+LH_PRESSER_SLIDE_PRESS_POS = 200
 
 # ----------------------------------------------------------------------------
 # 2. Timing and Synchronization Parameters
@@ -107,14 +107,12 @@ SLIDER_MOTOR_DIRECTION = [-1, 1, 1, -1, -1, 1]
 # Calibrate the mm positions for the desired picking depth and tone.
 # Key is the motor ID.
 PICKER_MOTOR_INFO = {
-    #0: {'down_pluck_mm': 4.6, 'up_pluck_mm': 7.8, 'resolution': 1024}, # E, New Picker, middle: 6.2
-    0: {'down_pluck_mm': 4.3, 'up_pluck_mm': 7.5, 'resolution': 1024}, # E
-    #0: {'down_pluck_mm': 7.8, 'up_pluck_mm': 7.8, 'resolution': 1024}, # E, Middle
-    #1: {'down_pluck_mm': 2.0, 'up_pluck_mm': 5.0, 'resolution': 2048}, # D, New Picker
-    1: {'down_pluck_mm': 2.1, 'up_pluck_mm': 5.4, 'resolution': 2048}, # D
-    #2: {'down_pluck_mm': 2.8, 'up_pluck_mm': 5.8, 'resolution': 2048} # B, New Picker
-    2: {'down_pluck_mm': 2.8, 'up_pluck_mm': 5.8, 'resolution': 2048} # B
-    # Add entries for other pickers if they exist, e.g., 3, 4, 5
+    0: {'down_pluck_mm': -5.3, 'up_pluck_mm': -8.8, 'resolution': 1024}, # E
+    1: {'down_pluck_mm': 6.0, 'up_pluck_mm': 9.0, 'resolution': 2048}, # A
+    2: {'down_pluck_mm': -6.0, 'up_pluck_mm': -9.0, 'resolution': 2048}, # D
+    3: {'down_pluck_mm': 6.0, 'up_pluck_mm': 9.0, 'resolution': 1024}, # G
+    4: {'down_pluck_mm': 6.0, 'up_pluck_mm': 9.0, 'resolution': 2048}, # B
+    5: {'down_pluck_mm': -6.0, 'up_pluck_mm': -9.0, 'resolution': 2048} # E
 }
 
 # ----------------------------------------------------------------------------
@@ -125,7 +123,7 @@ PICKER_MOTOR_INFO = {
 # MIDI note ranges for each string/picker.
 # Format: (lowest_note, highest_note, slider_direction_multiplier)
 # The multiplier is used to account for mirrored slider mechanisms relative to the picker.
-STRING_MIDI_RANGES = [
+STRING_MIDI_RANGES = [ #Bookmark
     (40, 49, SLIDER_MOTOR_DIRECTION[0]),  # String 1 (e.g., Low E for prototype)
     (50, 58, SLIDER_MOTOR_DIRECTION[2]),  # String 3 (e.g., D for prototype)
     (59, 68, SLIDER_MOTOR_DIRECTION[4]),  # String 5 (e.g., B for prototype)
@@ -137,7 +135,7 @@ STRING_MIDI_RANGES = [
 
 # Initial Point
 # Controls the starting point for the very first message sent to GuitarBot when the receiver file starts.
-initial_point = [
+initial_point = [ #Bookmark
                  # Sliders
                  0, 0, 0, 0, 0, 0,
                  # Pressers
@@ -146,6 +144,7 @@ initial_point = [
                  int(PICKER_MOTOR_INFO[0]["up_pluck_mm"]*1024/9.4),
                  int(PICKER_MOTOR_INFO[1]["up_pluck_mm"]*2048/9.4),
                  int(PICKER_MOTOR_INFO[2]["up_pluck_mm"]*2048/9.4)
+
                  ]
 
 
@@ -161,10 +160,10 @@ CHORD_LIBRARY_FILE = "Alternate_Chords.csv"
 # tune.h can be generated programmatically.
 
 # Picker start state (positions). Should match picker motor dictionary 'up_pluck_mm'
-START_STATE_PICK = [PICKER_MOTOR_INFO[0]['up_pluck_mm'], PICKER_MOTOR_INFO[1]['up_pluck_mm'], PICKER_MOTOR_INFO[2]['up_pluck_mm']]
+START_STATE_PICK = [PICKER_MOTOR_INFO[0]['up_pluck_mm'], PICKER_MOTOR_INFO[1]['up_pluck_mm'], PICKER_MOTOR_INFO[2]['up_pluck_mm'], PICKER_MOTOR_INFO[3]['up_pluck_mm'], PICKER_MOTOR_INFO[4]['up_pluck_mm']]
 
 # Motor IDs for pickers (E, D, B). Adjust if wiring changes.
-MOTOR_ID_PICK = [13, 14, 15]
+MOTOR_ID_PICK = [13, 14, 15, 16, 17]
 
 # Homing offsets
 HOME_OFFSET_SLIDE = 50000

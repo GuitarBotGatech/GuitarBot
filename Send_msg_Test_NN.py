@@ -873,7 +873,10 @@ outro_segment = get_pluck_segment(string_theory, 1+40.0, 170.0)
 #pluck_message = Async_Glissando_Phrase_2 #NA
 #pluck_message = Polyrhythmic_Phrase_1 #NA
 #pluck_message = Polyrhythmic_Phrase_2
-pluck_message = string_theory
+#pluck_message = string_theory
+test_trem = [[59, 1, 10, 0, 1]]
+
+pluck_message = test_trem
 
 # print("First 3 notes of selected segment:")
 # for msg in chorus_segment[:3]:
