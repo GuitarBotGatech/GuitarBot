@@ -64,13 +64,23 @@ LH_PREP_TIME_MIN = 0.090
 
 # Semitone delta that maps to full LH_PREP_TIME_BEFORE_PICK.
 # Delta values above this are clamped to the max prep window.
-LH_PREP_MAX_SEMITONE_DELTA = 9
+LH_PREP_MAX_SEMITONE_DELTA = 18
 
-# Extra caution near the top of calibrated travel to avoid hard-stop impacts.
-# Fret numbers are 1-indexed (fret 9 is currently the highest calibrated fret).
-LH_HIGH_FRET_CAUTION_START_FRET = 9
-LH_HIGH_FRET_EXTRA_PREP_TIME = 0.250
-LH_HIGH_FRET_MAX_PREP_TIME = 0.700
+# Upper fret boundary used by prep-time safety near chassis/end-stop travel.
+# Guitar fret numbering: open = 0, then 1..N.
+LH_MIN_FRET = 0
+LH_MAX_FRET = 9
+
+# Extra prep headroom for transitions that start/end near either chassis edge.
+LH_EDGE_PREP_TIME_BONUS = 0.250
+LH_EDGE_PREP_TIME_CAP = 0.750
+
+# Backward-compatible aliases for older scripts/tests.
+LH_HIGH_FRET_CAUTION_START_FRET = LH_MAX_FRET
+LH_HIGH_FRET_EXTRA_PREP_TIME = LH_EDGE_PREP_TIME_BONUS
+LH_HIGH_FRET_MAX_PREP_TIME = LH_EDGE_PREP_TIME_CAP
+LH_MAX_FRET_PREP_TIME_BONUS = LH_EDGE_PREP_TIME_BONUS
+LH_MAX_FRET_PREP_TIME_CAP = LH_EDGE_PREP_TIME_CAP
 
 # The time window (in seconds) to check for overlaps between left-hand and picker movements.
 # If a pick event occurs within this window of a left-hand event, it may be adjusted or ignored.

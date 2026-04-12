@@ -563,6 +563,61 @@ class GuitarBotParser:
     # Only strings 0, 2, 4 have physical pluckers.
     _CHORD_PLUCK_STRING_TO_PICKER = {0: 0, 2: 1, 4: 2}
 
+    def _picker_note_to_fret(self, note, picker_id):
+        if note is None or picker_id is None:
+            return None
+
+        try:
+            picker_idx = int(picker_id)
+            midi_note = int(note)
+        except (TypeError, ValueError):
+            return None
+
+        if not (0 <= picker_idx < len(tu.STRING_MIDI_RANGES)):
+            return None
+
+        string_low_note = int(tu.STRING_MIDI_RANGES[picker_idx][0])
+        return midi_note - string_low_note
+
+    def _is_edge_fret(self, fret):
+        if fret is None:
+            return False
+
+        min_fret = int(getattr(tu, "LH_MIN_FRET", 0))
+        max_fret = int(
+            getattr(
+                tu,
+                "LH_MAX_FRET",
+                getattr(tu, "LH_HIGH_FRET_CAUTION_START_FRET", len(tu.SLIDER_MM_PER_FRET)),
+            )
+        )
+
+        fret_value = int(fret)
+        return fret_value <= min_fret or fret_value >= max_fret
+
+    def _get_edge_prep_timing(self, max_prep):
+        prep_bonus = max(
+            0.0,
+            float(
+                getattr(
+                    tu,
+                    "LH_EDGE_PREP_TIME_BONUS",
+                    getattr(tu, "LH_HIGH_FRET_EXTRA_PREP_TIME", 0.0),
+                )
+            ),
+        )
+        prep_cap = max(
+            max_prep,
+            float(
+                getattr(
+                    tu,
+                    "LH_EDGE_PREP_TIME_CAP",
+                    getattr(tu, "LH_HIGH_FRET_MAX_PREP_TIME", max_prep),
+                )
+            ),
+        )
+        return prep_bonus, prep_cap
+
     def _lh_prep_time_for_event(self, prev_note, note, duration, slide_toggle, picker_id=None):
         max_prep = float(tu.LH_PREP_TIME_BEFORE_PICK)
         min_prep = float(getattr(tu, "LH_PREP_TIME_MIN", max_prep * 0.2))
@@ -576,19 +631,19 @@ class GuitarBotParser:
 
         same_note = prev_note is not None and int(prev_note) == int(note)
         is_tremolo = float(duration) >= float(tu.TREMOLO_DURATION_THRESHOLD)
-        slide_on = int(slide_toggle) == 1
+        slide_enabled = int(slide_toggle) == 1
 
         if prev_note is None:
             # First fretted note after rest starts from baseline prep.
             motion_time = max_prep
-        elif same_note and not slide_on:
+        elif same_note and not slide_enabled:
             motion_time = min_prep
         else:
             semitone_delta = abs(int(note) - int(prev_note))
             ratio = min(1.0, float(semitone_delta) / float(max_delta))
             motion_time = min_prep + (max_prep - min_prep) * ratio
 
-            if slide_on:
+            if slide_enabled:
                 # Sliding transitions benefit from a small extra buffer, still capped by max_prep.
                 motion_time += float(tu.TIME_STEP)
 
@@ -596,26 +651,16 @@ class GuitarBotParser:
             motion_time += float(tu.TIME_STEP)
 
         if picker_id is not None and note > 5:
-            try:
-                picker_idx = int(picker_id)
-                if 0 <= picker_idx < len(tu.STRING_MIDI_RANGES):
-                    string_low_note = int(tu.STRING_MIDI_RANGES[picker_idx][0])
-                    fret = int(note) - string_low_note
-                    prev_fret = (int(prev_note) - string_low_note) if prev_note is not None else None
-                    caution_start_fret = int(getattr(tu, "LH_HIGH_FRET_CAUTION_START_FRET", len(tu.SLIDER_MM_PER_FRET)))
-                    high_fret_extra = max(0.0, float(getattr(tu, "LH_HIGH_FRET_EXTRA_PREP_TIME", 0.0)))
-                    high_fret_max = max(max_prep, float(getattr(tu, "LH_HIGH_FRET_MAX_PREP_TIME", max_prep)))
+            target_fret = self._picker_note_to_fret(note, picker_id)
+            source_fret = self._picker_note_to_fret(prev_note, picker_id) if prev_note is not None else None
 
-                    near_high_fret_target = fret >= caution_start_fret
-                    near_high_fret_source = prev_fret is not None and prev_fret >= caution_start_fret
+            near_edge = self._is_edge_fret(target_fret) or self._is_edge_fret(source_fret)
+            if near_edge:
+                edge_prep_bonus, edge_prep_cap = self._get_edge_prep_timing(max_prep)
 
-                    if near_high_fret_target or near_high_fret_source:
-                        # Add safety headroom whenever a move starts from or lands near end-stop frets.
-                        motion_time = max(motion_time, max_prep) + high_fret_extra
-                        effective_max_prep = high_fret_max
-            except Exception:
-                # If picker/fret inference fails, fall back to normal prep timing.
-                pass
+                # Add safety headroom whenever a move starts from or lands near a travel edge.
+                motion_time = max(motion_time, max_prep) + edge_prep_bonus
+                effective_max_prep = edge_prep_cap
 
         return min(effective_max_prep, max(min_prep, motion_time))
 
@@ -744,7 +789,26 @@ class GuitarBotParser:
                 print(f"Warning: No available picker for note {note} at timestamp {timestamp}")
 
         pick_motor_positions = []
-        pickerStates = [True] * len(tu.PICKER_MOTOR_INFO)  # True = up, False = down
+
+        # Infer picker start state from the parser's current RH start point so
+        # segment-to-segment plucks stay synchronized with the actual trajectory.
+        rh_start_positions = list(self.initial_point[12:]) if len(self.initial_point) > 12 else []
+        pickerStates = []  # True = up, False = down
+        for motor_idx in range(len(tu.PICKER_MOTOR_INFO)):
+            if motor_idx >= len(rh_start_positions):
+                pickerStates.append(True)
+                continue
+
+            info = tu.PICKER_MOTOR_INFO[motor_idx]
+            res = info['resolution']
+            down_enc = (info['down_pluck_mm'] * res) / tu.MM_TO_ENCODER_CONVERSION_FACTOR
+            up_enc = (info['up_pluck_mm'] * res) / tu.MM_TO_ENCODER_CONVERSION_FACTOR
+            curr_enc = float(rh_start_positions[motor_idx])
+
+            dist_to_up = abs(curr_enc - up_enc)
+            dist_to_down = abs(curr_enc - down_enc)
+            pickerStates.append(dist_to_up <= dist_to_down)
+
         for _, (motor_id, note, duration, speed, timestamp) in pick_events:
             pick_state = pickerStates[motor_id]
             dest_key = 'down_pluck_mm' if pick_state else 'up_pluck_mm'
@@ -793,7 +857,7 @@ class GuitarBotParser:
         last_lh_note_by_picker = [None] * max(1, len(tu.PICKER_MOTOR_INFO))
 
         for i, (event_data, timestamp) in enumerate(pick_events):
-            motor_id, note, _, duration, speed = event_data
+            motor_id, note, commanded_dest_pos, duration, speed = event_data
             start_index = int(timestamp / tu.TIME_STEP)
             is_pluck = duration < tu.TREMOLO_DURATION_THRESHOLD
 
@@ -806,7 +870,8 @@ class GuitarBotParser:
 
             all_points = np.array([]) # Initialize as empty numpy array
             if is_pluck:
-                dest_pos = down_enc if start_pos > mid_point else up_enc
+                # Keep picker timing in sync with parsePickMIDI by honoring the commanded destination.
+                dest_pos = float(commanded_dest_pos)
                 all_points = self.interp_with_blend(start_pos, dest_pos, tu.PICKER_PLUCK_MOTION_POINTS, tb_cent)
             else: # Tremolo
                 tremolo_points = []

@@ -1,5 +1,7 @@
 import copy
 
+import numpy as np
+
 import pytest
 
 import tune as tu
@@ -59,10 +61,10 @@ def test_lh_prep_time_adds_extra_caution_for_9th_fret_target():
 
     # note 59 as D-string (picker 1) is fret 9 and should get high-fret safety padding.
     prep_d_fret9 = parser._lh_prep_time_for_event(57, 59, 0.025, 0, picker_id=1)
-    # same note pitched on B-string (picker 2) is fret 0 and should not get high-fret padding.
+    # same note pitched on B-string (picker 2) is fret 0 and should also get edge padding.
     prep_b_open = parser._lh_prep_time_for_event(57, 59, 0.025, 0, picker_id=2)
 
-    assert prep_d_fret9 > prep_b_open
+    assert prep_d_fret9 == pytest.approx(prep_b_open)
     assert prep_d_fret9 >= float(tu.LH_PREP_TIME_BEFORE_PICK)
     assert prep_d_fret9 <= float(tu.LH_HIGH_FRET_MAX_PREP_TIME)
 
@@ -83,4 +85,27 @@ def test_lh_prep_time_from_9th_fret_to_open_uses_high_fret_cap():
     prep_from_mid_to_open = parser._lh_prep_time_for_event(57, 50, 0.025, 0, picker_id=1)
 
     assert prep_from_high_to_open == pytest.approx(float(tu.LH_HIGH_FRET_MAX_PREP_TIME))
-    assert prep_from_high_to_open > prep_from_mid_to_open
+    assert prep_from_mid_to_open == pytest.approx(float(tu.LH_HIGH_FRET_MAX_PREP_TIME))
+
+
+def test_parse_pick_midi_keeps_plucker_motion_synced_across_segments():
+    parser = GuitarBotParser(initial_point=copy.deepcopy(tu.initial_point), graph=False)
+
+    # Segment 1 ends with picker 0 at down-pluck destination.
+    parser.parseAllMIDI([], [[44, 0.125, 6, 0, 1.0]])
+
+    # Segment 2 starts with the same note; first pluck should still move (up-stroke),
+    # not be a no-op due to picker state reset.
+    segment_two = [
+        [44, 0.125, 6, 0, 2.0],
+        [45, 0.125, 6, 1, 2.125],
+        [44, 0.125, 6, 1, 2.25],
+    ]
+    traj = parser.parseAllMIDI([], segment_two)
+
+    picker_col = 12
+    start_idx = int(2.0 / tu.TIME_STEP)
+    end_idx = start_idx + tu.PICKER_PLUCK_MOTION_POINTS + 6
+    window = traj[start_idx:end_idx, picker_col]
+
+    assert float(np.max(window) - np.min(window)) > 0.0
