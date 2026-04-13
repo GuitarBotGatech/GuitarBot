@@ -874,32 +874,14 @@ outro_segment = get_pluck_segment(string_theory, 1+40.0, 170.0)
 #pluck_message = Polyrhythmic_Phrase_1 #NA
 #pluck_message = Polyrhythmic_Phrase_2
 #pluck_message = string_theory
+test_trem = [[70, 1, 10, 0, 1]]
 
-
-# test_trem = [[44, 1, 10, 0, 1],[50, 1, 10, 0, 3],[55, 1, 10, 0, 5],[60, 1, 10, 0, 7],[65, 1, 10, 0, 9],[70, 1, 10, 0, 11]]
-# pluck_message = test_trem
+pluck_message = test_trem
 
 # print("First 3 notes of selected segment:")
 # for msg in chorus_segment[:3]:
 #     print(msg)
 
-pluck_message = [
-    # BAR 1 (0.0s - 2.0s): G Major Voicing
-    [43, 1.8, 4, 0, 0.0], [47, 1.8, 2, 0, 0.0], [50, 1.8, 6, 0, 0.0],
-    [55, 1.8, 8, 0, 0.0], [59, 1.8, 8, 0, 0.0], [67, 1.8, 8, 0, 0.0],
-
-    # BAR 2 (2.0s - 4.0s): C Major Voicing
-    [48, 1.8, 3, 0, 2.0], [52, 1.8, 2, 0, 2.0], [55, 1.8, 5, 0, 2.0],
-    [60, 1.8, 9, 0, 2.0], [64, 1.8, 5, 0, 2.0], [67, 1.8, 10, 0, 2.0],
-
-    # BAR 3 (4.0s - 6.0s): D Major Voicing
-    [45, 1.8, 7, 0, 4.0], [50, 1.8, 8, 0, 4.0], [54, 1.8, 10, 0, 4.0],
-    [57, 1.8, 1, 0, 4.0], [62, 1.8, 2, 0, 4.0], [66, 1.8, 2, 0, 4.0],
-
-    # BAR 4 (6.0s - 8.0s): Em Voicing
-    [40, 1.8, 5, 0, 6.0], [47, 1.8, 5, 0, 6.0], [52, 1.8, 3, 0, 6.0],
-    [55, 1.8, 3, 0, 6.0], [59, 1.8, 10, 0, 6.0], [64, 1.8, 6, 0, 6.0]
-]
 
 chords_message = [["On", pluck_message[-1][4] + pluck_message[-1][1]+2]]
 
