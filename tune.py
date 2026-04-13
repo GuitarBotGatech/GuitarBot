@@ -13,7 +13,7 @@ TIME_STEP = .005
 
 #Graphing
 # Controls graphing the functions used on each motor. False turns off, true turns on.
-graph = True
+graph = False
 
 # Blend percentage for trajectory interpolation (0.0 to 1.0).
 # A higher value creates a more gradual acceleration and deceleration.
@@ -108,12 +108,12 @@ SLIDER_MOTOR_DIRECTION = [-1, 1,1,-1, -1, 1]
 # Calibrate the mm positions for the desired picking depth and tone.
 # Key is the motor ID.
 PICKER_MOTOR_INFO = {
-    0: {'down_pluck_mm': -5.3, 'up_pluck_mm': -8.8, 'resolution': 1024}, # E
-    1: {'down_pluck_mm': 4.8, 'up_pluck_mm': 8.4, 'resolution': 2048}, # A
-    2: {'down_pluck_mm': -6.1, 'up_pluck_mm': -9.5, 'resolution': 2048}, # D
-    3: {'down_pluck_mm': 6.0, 'up_pluck_mm': 9.0, 'resolution': 1024}, # G
-    4: {'down_pluck_mm': 5.0, 'up_pluck_mm': 8.0, 'resolution': 2048}, # B
-    5: {'down_pluck_mm': -2.5, 'up_pluck_mm': -5.5, 'resolution': 2048} # E
+    0: {'down_pluck_mm': -6.3, 'up_pluck_mm': -9.2, 'resolution': 1024}, # E
+    1: {'down_pluck_mm': 5, 'up_pluck_mm': 8.4, 'resolution': 2048}, # A
+    2: {'down_pluck_mm': -5.3, 'up_pluck_mm': -9.5, 'resolution': 2048}, # D
+    3: {'down_pluck_mm': 4.7, 'up_pluck_mm': 8.7, 'resolution': 1024}, # G
+    4: {'down_pluck_mm': 4.7, 'up_pluck_mm': 8.0, 'resolution': 2048}, # B
+    5: {'down_pluck_mm': -2.3, 'up_pluck_mm': -6.5, 'resolution': 2048} # E
 }
 
 # ----------------------------------------------------------------------------
