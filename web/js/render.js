@@ -185,8 +185,8 @@ function drawSlideLinks(){
       const toBeat=parseBeat(to.beat);
       const fromX=beatToX(fromBeat)+Math.max(8,from.duration_b*S.zoom);
       const toX=beatToX(toBeat);
-      const fromY=noteToY(from.note)+(noteH/2);
-      const toY=noteToY(to.note)+(noteH/2);
+      const fromY=noteToY(from.note)+(activeNoteH()/2);
+      const toY=noteToY(to.note)+(activeNoteH()/2);
 
       if(toX<LABEL_W||fromX>CW)continue;
 
@@ -238,16 +238,18 @@ function drawBG(){
   // Roll rows
   for(let n=MIDI_MIN;n<=MIDI_MAX;n++){
     const y=noteToY(n), s=strOf(n), isSharp=[1,3,6,8,10].includes(n%12);
-    ctx.fillStyle=isSharp?'#08080e':s.dim; ctx.fillRect(LABEL_W,y,CW-LABEL_W,noteH);
-    ctx.fillStyle='#14141e'; ctx.fillRect(LABEL_W,y+noteH-1,CW-LABEL_W,1);
+    ctx.fillStyle=isSharp?'#08080e':s.dim; ctx.fillRect(LABEL_W,y,CW-LABEL_W,activeNoteH());
+    ctx.fillStyle='#14141e'; ctx.fillRect(LABEL_W,y+activeNoteH()-1,CW-LABEL_W,1);
   }
-  // Sliderless lanes (6 strings)
-  const slTop = CHORD_H + rollH();
-  for(let i=0; i<STRINGS.length; i++){
-    const y=slTop + i*SLIDERLESS_H;
-    ctx.fillStyle=i%2===0?'#101018':'#0c0c14';
-    ctx.fillRect(LABEL_W,y,CW-LABEL_W,SLIDERLESS_H);
-    ctx.fillStyle='#14141e'; ctx.fillRect(LABEL_W,y+SLIDERLESS_H-1,CW-LABEL_W,1);
+  // Sliderless lanes (6 strings) — hidden in automation mode
+  if(S.activeTab!=='automation'){
+    const slTop = CHORD_H + rollH();
+    for(let i=0; i<STRINGS.length; i++){
+      const y=slTop + i*SLIDERLESS_H;
+      ctx.fillStyle=i%2===0?'#101018':'#0c0c14';
+      ctx.fillRect(LABEL_W,y,CW-LABEL_W,SLIDERLESS_H);
+      ctx.fillStyle='#14141e'; ctx.fillRect(LABEL_W,y+SLIDERLESS_H-1,CW-LABEL_W,1);
+    }
   }
   // MIDI lane
   const my=midiTopY();
@@ -320,7 +322,9 @@ function drawGrid(){
   ctx.strokeStyle='#232340'; ctx.lineWidth=1;
   const slTop = CHORD_H + rollH();
   const zoneLines = [[0,CHORD_H],[0,slTop]];
-  for(let i=1; i<=6; i++) zoneLines.push([0, slTop+SLIDERLESS_H*i]);
+  if(S.activeTab!=='automation'){
+    for(let i=1; i<=6; i++) zoneLines.push([0, slTop+SLIDERLESS_H*i]);
+  }
   zoneLines.forEach(([,y])=>{
     ctx.beginPath(); ctx.moveTo(0,y); ctx.lineTo(CW,y); ctx.stroke();
   });
@@ -368,16 +372,19 @@ function drawLabels(){
     const y=noteToY(n), isC=(n%12)===0, isSharp=[1,3,6,8,10].includes(n%12);
     ctx.fillStyle=isC?'#5858a0':isSharp?'#1e1e38':'#303058';
     ctx.font=(isC?'600':'400')+' 9px "JetBrains Mono"';
-    ctx.fillText(noteName(n),LABEL_W-4,y+noteH/2+3);
+    ctx.fillText(noteName(n),LABEL_W-4,y+activeNoteH()/2+3);
   }
-  const slTop = CHORD_H + rollH();
-  for(let i=0; i<STRINGS.length; i++){
-    // Lane 0 = highest string (E4), lane 5 = lowest (E2)
-    const s = STRINGS[STRINGS.length - 1 - i];
-    const y = slTop + i*SLIDERLESS_H;
-    ctx.fillStyle = s.color;
-    ctx.font = '600 9px "JetBrains Mono"';
-    ctx.fillText(s.name, LABEL_W-4, y+SLIDERLESS_H/2+3);
+  // Sliderless lane labels — hidden in automation mode
+  if(S.activeTab!=='automation'){
+    const slTop = CHORD_H + rollH();
+    for(let i=0; i<STRINGS.length; i++){
+      // Lane 0 = highest string (E4), lane 5 = lowest (E2)
+      const s = STRINGS[STRINGS.length - 1 - i];
+      const y = slTop + i*SLIDERLESS_H;
+      ctx.fillStyle = s.color;
+      ctx.font = '600 9px "JetBrains Mono"';
+      ctx.fillText(s.name, LABEL_W-4, y+SLIDERLESS_H/2+3);
+    }
   }
   // String lanes + controls in left column
   STRINGS.forEach((s,index)=>{
@@ -529,21 +536,21 @@ function drawNotes(){
     if(cw2<=0)return;
 
     ctx.save();
-    ctx.beginPath(); ctx.rect(cx2,y+1,cw2,noteH-2); ctx.clip();
+    ctx.beginPath(); ctx.rect(cx2,y+1,cw2,activeNoteH()-2); ctx.clip();
 
     // Body
     ctx.fillStyle=s.color+(sel?'ee':'bb');
-    ctx.fillRect(x,y+1,w,noteH-2);
+    ctx.fillRect(x,y+1,w,activeNoteH()-2);
 
     // Slide stripes
     if(ev.slide){
       ctx.strokeStyle='rgba(255,255,255,0.22)'; ctx.lineWidth=1;
-      for(let sx=x-noteH;sx<x+w+noteH;sx+=5){
-        ctx.beginPath(); ctx.moveTo(sx,y+1); ctx.lineTo(sx+noteH-2,y+noteH-1); ctx.stroke();
+      for(let sx=x-activeNoteH();sx<x+w+activeNoteH();sx+=5){
+        ctx.beginPath(); ctx.moveTo(sx,y+1); ctx.lineTo(sx+activeNoteH()-2,y+activeNoteH()-1); ctx.stroke();
       }
 
       const markerX=Math.max(LABEL_W+3, x+4);
-      const markerY=y+(noteH/2);
+      const markerY=y+(activeNoteH()/2);
       ctx.beginPath();
       ctx.moveTo(markerX+6,markerY-4);
       ctx.lineTo(markerX,markerY);
@@ -555,7 +562,7 @@ function drawNotes(){
     // Tremolo wave
     if(isTrem){
       ctx.strokeStyle='rgba(0,0,0,0.45)'; ctx.lineWidth=1.5;
-      const my2=y+noteH/2;
+      const my2=y+activeNoteH()/2;
       ctx.beginPath();
       for(let tx=x;tx<x+w;tx+=2){
         const wy=my2+Math.sin((tx-x)*1.2)*2.2;
@@ -569,14 +576,14 @@ function drawNotes(){
     ctx.strokeStyle=sel?'#fff':s.color;
     ctx.lineWidth=sel?1.5:0.8;
     if(sel){ctx.shadowBlur=10;ctx.shadowColor=s.color}
-    ctx.strokeRect(cx2,y+1,cw2,noteH-2);
+    ctx.strokeRect(cx2,y+1,cw2,activeNoteH()-2);
     ctx.shadowBlur=0;
 
     // Resize handle
     const hx=Math.min(CW-4,x+w-4);
     if(hx>=LABEL_W){
       ctx.fillStyle='rgba(255,255,255,0.45)';
-      ctx.fillRect(hx,y+2,3,noteH-4);
+      ctx.fillRect(hx,y+2,3,activeNoteH()-4);
     }
 
     const layout=(typeof noteWarningBadgeLayout==='function')?noteWarningBadgeLayout(ev):null;

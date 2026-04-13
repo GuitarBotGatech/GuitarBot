@@ -53,23 +53,27 @@ const xToBeat=x=>(x-LABEL_W+S.scrollX)/S.zoom;
 // Sliderless lanes: note 0..5 map to lanes top-to-bottom as string 5..0
 // (highest string at top, lowest at bottom, matching visual guitar layout)
 const noteToY=n=>{
+  const nh=activeNoteH();
   if(n>=0&&n<=5)
-    return CHORD_H+rollH()+(5-n)*SLIDERLESS_H+(SLIDERLESS_H-noteH)/2;
-  return CHORD_H+(MIDI_MAX-n)*noteH;
+    return CHORD_H+rollH()+(5-n)*SLIDERLESS_H+(SLIDERLESS_H-nh)/2;
+  return CHORD_H+(MIDI_MAX-n)*nh;
 };
 const yToNote=y=>{
-  const slTop=CHORD_H+rollH();
-  if(y>=slTop&&y<slTop+SLIDERLESS_TOTAL){
-    const lane=Math.floor((y-slTop)/SLIDERLESS_H);
-    return 5-lane; // lane 0 → note 5 (E4), lane 5 → note 0 (E2)
+  if(S.activeTab!=='automation'){
+    const slTop=CHORD_H+rollH();
+    if(y>=slTop&&y<slTop+SLIDERLESS_TOTAL){
+      const lane=Math.floor((y-slTop)/SLIDERLESS_H);
+      return 5-lane; // lane 0 → note 5 (E4), lane 5 → note 0 (E2)
+    }
   }
-  return Math.max(MIDI_MIN,Math.min(MIDI_MAX,MIDI_MAX-Math.floor((y-CHORD_H)/noteH)));
+  const nh=activeNoteH();
+  return Math.max(MIDI_MIN,Math.min(MIDI_MAX,MIDI_MAX-Math.floor((y-CHORD_H)/nh)));
 };
 const clampNote=n=>{
   if(n>=0&&n<=5)return Math.round(clamp(n,0,5));
   return clamp(n,MIDI_MIN,MIDI_MAX);
 };
-const midiTopY=()=>CHORD_H+rollH()+SLIDERLESS_TOTAL;
+const midiTopY=()=>CHORD_H+rollH()+(S.activeTab==='automation'?0:SLIDERLESS_TOTAL);
 const hasFocusedCCLane=()=>Number.isInteger(S.focusedCCLane)&&S.focusedCCLane>=0&&S.focusedCCLane<MIDI_AUTOMATION_KEYS.length;
 const midiLaneVisible=index=>!hasFocusedCCLane()||index===S.focusedCCLane;
 const midiLaneTop=index=>{
@@ -195,7 +199,7 @@ function stringLaneBounds(index){
   }
   if(topNote===-1)return null;
   const top=noteToY(topNote);
-  const bottom=noteToY(bottomNote)+noteH;
+  const bottom=noteToY(bottomNote)+activeNoteH();
   return {top,bottom,height:Math.max(0,bottom-top)};
 }
 

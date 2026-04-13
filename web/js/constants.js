@@ -3,6 +3,7 @@
 // ═══════════════════════════════════════════════
 const MIDI_MIN=40, MIDI_MAX=73, NOTE_COUNT=34;
 const noteH_DEFAULT=14, noteH_MIN=6, noteH_MAX=50;
+const NOTE_H_AUTO=6;
 let noteH=noteH_DEFAULT;
 const LABEL_W=54, CHORD_H=30;
 const MIDI_GENERAL_LANE_H=24;
@@ -16,12 +17,14 @@ const MIDI_LANE_COUNT=1+MIDI_AUTOMATION_KEYS.length;
 const MIDI_AUTOMATION_TOTAL_H=MIDI_AUTOMATION_KEYS.length*MIDI_AUTOMATION_LANE_H;
 const MIDI_GENERAL_LANE_INDEX=MIDI_AUTOMATION_KEYS.length;
 const MIDI_H=MIDI_AUTOMATION_TOTAL_H+MIDI_GENERAL_LANE_H;
-const rollH=()=>NOTE_COUNT*noteH;
+const activeNoteH=()=>typeof S!=='undefined'&&S.activeTab==='automation'?NOTE_H_AUTO:noteH;
+const rollH=()=>NOTE_COUNT*activeNoteH();
 const SLIDERLESS_H=24;
 const SLIDERLESS_TOTAL=6*SLIDERLESS_H;
 const canvasH=()=>{
-  if(typeof S!=='undefined'&&S.activeTab!=='automation') return CHORD_H+rollH()+SLIDERLESS_TOTAL;
-  return CHORD_H+rollH()+SLIDERLESS_TOTAL+MIDI_H;
+  const inAuto=typeof S!=='undefined'&&S.activeTab==='automation';
+  if(inAuto) return CHORD_H+rollH()+MIDI_H;
+  return CHORD_H+rollH()+SLIDERLESS_TOTAL;
 };
 const SUBDIV=4; // used by formatBeat/parseBeat for 3-part display only
 const GRID_STEPS=[
