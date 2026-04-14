@@ -874,13 +874,9 @@ outro_segment = get_pluck_segment(string_theory, 1+40.0, 170.0)
 #pluck_message = Polyrhythmic_Phrase_1 #NA
 #pluck_message = Polyrhythmic_Phrase_2
 #pluck_message = string_theory
-test_trem = [[70, 1, 10, 0, 1]]
+test_trem = [[56, 1, 10, 0, 1]]
 
-pluck_message = test_trem
-
-# print("First 3 notes of selected segment:")
-# for msg in chorus_segment[:3]:
-#     print(msg)
+pluck_message = string_theory
 
 
 chords_message = [["On", pluck_message[-1][4] + pluck_message[-1][1]+2]]

@@ -294,23 +294,20 @@ def generate_rhythmic_progression(iterations, bpm=120):
 
     return messages
 
-def polyrhythms_timestamps(rhythms_to_generate: list, base_notes: int, measures: int, bpm: int = 120):
+def polyrhythms_timestamps(rhythms_to_generate, base_notes, measures, bpm):
     """
-    Calculates timestamps for multiple layers of notes over a shared duration.
+    Generates timestamps for polyrhythmic layers over a number of measures.
     """
     seconds_per_quarter_note = 60.0 / bpm
     measure_duration = base_notes * seconds_per_quarter_note
-    all_timestamps = {}
-    for notes_to_fit in rhythms_to_generate:
-        polyrhythm_note_duration = measure_duration / notes_to_fit
-        timestamps = []
-        for measure in range(measures):
-            measure_start_time = measure * measure_duration
-            for i in range(notes_to_fit):
-                timestamp = measure_start_time + (i * polyrhythm_note_duration)
-                timestamps.append(round(timestamp, 4))
-        all_timestamps[notes_to_fit] = timestamps
-    return all_timestamps
+    section_duration = measure_duration * measures
+    timestamps = {}
+
+    for rhythm in set(rhythms_to_generate):
+        if rhythm > 0:
+            time_between_notes = section_duration / (rhythm * measures)
+            timestamps[rhythm] = [i * time_between_notes for i in range(rhythm * measures)]
+    return timestamps
 
 def generate_polyrhythms():
     """
@@ -372,110 +369,99 @@ def generate_polyrhythms():
 
 def generate_e_major_blues_progression():
     """
-    Generates a longer, more melodic piece using an expanded chord set and
-    probabilistic melody notes from the E Major Blues scale.
+    Generates a melodic piece using 6-string voicings and polyrhythms based
+    on the E Major Blues scale.
     """
     # --- Configuration ---
     BPM = 80
     BASE_DURATION = 4
     DEFAULT_NOTE_DURATION = 0.49
-    TREMOLO_SPEED = 7
+    TREMOLO_PROBABILITY = 0.25  # 25% chance for melody strings
+    MELODY_NOTE_PROBABILITY = 0.15 # 15% chance for top strings to play scale notes
     TREMOLO_MIN_DURATION = 0.5
-    TREMOLO_PROBABILITY = 0.3  # 30% chance for a B-string note to be tremolo
-    MELODY_NOTE_PROBABILITY = 0.1  # 10% chance for B-string to play a blues scale note
 
-    # --- Musical Definitions ---
+    # --- Musical Definitions (6 Strings: E, A, D, G, B, E) ---
 
-    # Chord voicings for E Major (I, vi, ii, V)
     CHORD_VOICINGS = {
-        "E_Major": [  # I chord
-            [40, 56, 59],  # (E, G#, B) -> Frets: 0, 6, 0
-            [44, 52, 59],  # (G#, E, B) -> Frets: 4, 2, 0
+        "E_Major": [
+            [40, 47, 52, 56, 59, 64],  # Open E Major
+            [40, 47, 56, 56, 64, 64],  # Power-ish E
         ],
-        "C#_Minor": [  # vi chord
-            [49, 56, 61],  # (C#, G#, C#) -> Frets: 9, 6, 2
-            [49, 52, 64],  # (C#, E, E) -> Frets: 9, 2, 5
+        "C#_Minor": [
+            [49, 56, 54, 56, 61, 64],  # C#m7 style
+            [49, 52, 56, 61, 64, 68],  # Extended C#m
         ],
-        "F#_Minor": [  # ii chord
-            [42, 57, 61],  # (F#, A, C#) -> Frets: 2, 7, 2
-            [45, 54, 61],  # (A, F#, C#) -> Frets: 5, 4, 2
+        "F#_Minor": [
+            [42, 49, 54, 57, 61, 66],  # F#m7
+            [45, 50, 57, 57, 61, 69],  # A Major/F#m hybrid
         ],
-        "B_Major": [  # V chord
-            [47, 54, 63],  # (B, F#, D#) -> Frets: 7, 4, 4
-            [47, 59, 63],  # (B, B, D#)  -> Frets: 7, 9, 4
+        "B_Major": [
+            [47, 54, 52, 54, 59, 63],  # B7 style
+            [47, 47, 54, 58, 63, 66],  # B Maj
         ]
     }
 
-    # E Major Blues Scale playable on the B string (frets 0-9)
-    # Notes: B, C#, E, F#, G, G#
-    E_BLUES_SCALE_ON_B_STRING = [59, 61, 64, 66, 67, 68]
+    # E Major Blues Scale playable on G(3), B(4), and E(5) strings
+    G_SCALE = [55, 56, 58, 59, 61, 62]
+    B_SCALE = [59, 61, 64, 66, 67, 68]
+    E_SCALE = [64, 66, 69, 71, 72, 73]
+    SCALES = {3: G_SCALE, 4: B_SCALE, 5: E_SCALE}
 
-    # A longer, 16-measure chord progression
+    # Progression: Chord Name, measures, layers [E, A, D, G, B, E]
     CHORD_PROGRESSION = [
-        ("E_Major", 2, [3, 2, 4]),
-        ("C#_Minor", 2, [4, 5, 3]),
-        ("F#_Minor", 2, [2, 4, 3]),
-        ("B_Major", 2, [5, 3, 2]),
-        ("E_Major", 2, [3, 4, 4])
+        ("E_Major", 2, [2, 1, 3, 4, 3, 2]),
+        ("C#_Minor", 2, [3, 2, 4, 2, 4, 3]),
+        ("F#_Minor", 2, [2, 3, 2, 5, 3, 4]),
+        ("B_Major", 2, [4, 2, 3, 3, 5, 2]),
+        ("E_Major", 2, [2, 1, 2, 4, 6, 8]) # Climax
     ]
 
     # --- Message Generation ---
     messages = []
-    current_timestamp = 0.0
+    current_timestamp = 1.0 # Start at 1.0s
     seconds_per_quarter_note = 60.0 / BPM
     measure_duration = BASE_DURATION * seconds_per_quarter_note
 
-    print(f"Generating a 16-measure melodic piece in E Major Blues at {BPM} BPM.")
+    print(f"Generating 6-string E Major Blues piece at {BPM} BPM.")
 
     for chord_name, num_measures, layers in CHORD_PROGRESSION:
-        chosen_triad = random.choice(CHORD_VOICINGS[chord_name])
-        rhythm_str = ':'.join(map(str, layers))
-        print(f"\nSection: {chord_name} for {num_measures} measures. Polyrhythm: {rhythm_str}. Voicing: {chosen_triad}")
-
+        chosen_voicing = random.choice(CHORD_VOICINGS[chord_name])
+        section_duration = measure_duration * num_measures
+        
         timestamps_for_section = polyrhythms_timestamps(
             rhythms_to_generate=layers, base_notes=BASE_DURATION, measures=num_measures, bpm=BPM
         )
 
         for string_index, rhythm in enumerate(layers):
-            note = chosen_triad[string_index]
+            note = chosen_voicing[string_index]
             timestamps = timestamps_for_section.get(rhythm, [])
-            time_between_notes = measure_duration / rhythm if rhythm > 0 else float('inf')
-
+            
             for ts in timestamps:
-                ts += 1
                 current_note = note
+                
+                # Melody Logic for top strings (3, 4, 5)
+                if string_index in SCALES and random.random() < MELODY_NOTE_PROBABILITY:
+                    current_note = random.choice(SCALES[string_index])
 
-                # --- Melodic Blues Note Logic for B String ---
-                is_b_string = (string_index == 2)
-                if is_b_string and random.random() < MELODY_NOTE_PROBABILITY:
-                    current_note = random.choice(E_BLUES_SCALE_ON_B_STRING)
-
-                # --- Tremolo Logic ---
-                message_timestamp = current_timestamp + ts
+                # Tremolo Logic
                 note_duration = DEFAULT_NOTE_DURATION
                 tremolo_speed = 0
-                if time_between_notes >= TREMOLO_MIN_DURATION:
-                    if random.random() < TREMOLO_PROBABILITY:
-                        note_duration = .5
-                        if is_b_string:
-                            tremolo_speed = random.randint(5,10)
-                        else:
-                            tremolo_speed = random.randint(1,5)
+                if random.random() < TREMOLO_PROBABILITY:
+                    note_duration = 0.55
+                    tremolo_speed = random.randint(3, 9)
 
+                message_timestamp = current_timestamp + ts
+                messages.append([int(current_note), round(note_duration, 3), int(tremolo_speed), 0, round(message_timestamp, 3)])
 
-                temp_message = [current_note, round(note_duration, 4), tremolo_speed, 0, message_timestamp]
-                messages.append(temp_message)
-
-        current_timestamp += measure_duration * num_measures
+        current_timestamp += section_duration
 
     messages.sort(key=lambda x: x[4])
-
-    print("\n--- Generated Message ---")
-    for msg in messages:
-        print(msg)
-
     return messages
 
+
+#-----------
+# Utilities
+#-----------
 
 import random
 
@@ -496,15 +482,5 @@ def polyrhythms_timestamps(rhythms_to_generate, base_notes, measures, bpm):
     return timestamps
 
 
-# --- Example Usage ---
-# generated_music = generate_e_major_blues_improvisation()
-# print("\n--- Final Generated Message ---")
-# for msg in generated_music:
-#     print(msg)
-
-# Example usages
-# generateSong() # Random plucks in C Major
-# pluck_message = generate_scale_progression(12) # Play the C Major scale x times
-# pluck_message = sequential_Plucks(4)
-#pluck_message = generate_polyrhythms()
-generate_e_major_blues_progression()
+if __name__ == "__main__":
+    print(generate_e_major_blues_progression())
