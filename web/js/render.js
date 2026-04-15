@@ -142,11 +142,9 @@ function eventStringIndex(ev){
     const explicit=parseInt(ev.string_index,10);
     if(Number.isFinite(explicit)&&explicit>=0&&explicit<STRINGS.length)return explicit;
   }
-  if(ev.note===0) return 0;
-  if(ev.note===2) return 1;
-  if(ev.note===4) return 2;
-  const inferred=STRINGS.findIndex(s=>ev.note>=s.min&&ev.note<=s.max);
-  return inferred>=0?inferred:0;
+  const note=parseInt(ev?.note,10);
+  if(note>=0&&note<STRINGS.length)return note;
+  return defaultStringIndexForNote(note);
 }
 
 function normalizeMidiCurvePoints(points,key='1'){

@@ -124,9 +124,8 @@ function noteRuleStringIndex(ev){
     if(Number.isFinite(explicit)&&explicit>=0&&explicit<STRINGS.length)return explicit;
   }
   const note=parseInt(ev?.note,10);
-  if(note>=0&&note<STRINGS.length) return note;
-  const inferred=STRINGS.findIndex(s=>note>=s.min&&note<=s.max);
-  return inferred>=0?inferred:0;
+  if(note>=0&&note<STRINGS.length)return note;
+  return defaultStringIndexForNote(note);
 }
 
 function noteRulePrepTimeSeconds(prevEvent,nextEvent){

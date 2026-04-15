@@ -41,6 +41,7 @@ const GRID_STEPS=[
 const SPEED_MIN=0, SPEED_MAX=10, SPEED_DEFAULT=6;
 const TREMOLO_DURATION_THRESHOLD_S=0.5;
 const TREMOLO_UPLOAD_DISABLE_EPSILON_S=0.001;
+const DEFAULT_STRING_LOW_FRET_MAX=4;
 const IMPORT_KEY='guitarbot_startup_import_json';
 
 const STRINGS=[
@@ -66,6 +67,30 @@ const lowestFretCandidate=m=>{
   });
   return best>=0?best:0;
 };
+
+// defaultStringIndexForNote: prefer strings that can play the note in frets 0-4.
+// If multiple strings qualify, pick the one with the smallest fret number.
+// Fall back to the global lowest-fret candidate when no low-fret option exists.
+const defaultStringIndexForNote=m=>{
+  const midi=parseInt(m,10);
+  if(!Number.isFinite(midi))return 0;
+
+  const lowFretCandidates=[];
+  STRINGS.forEach((s,i)=>{
+    if(midi<s.min||midi>s.max)return;
+    const fret=midi-s.min;
+    if(fret>=0&&fret<=DEFAULT_STRING_LOW_FRET_MAX){
+      lowFretCandidates.push({index:i,fret});
+    }
+  });
+
+  if(lowFretCandidates.length){
+    lowFretCandidates.sort((a,b)=>a.fret-b.fret||a.index-b.index);
+    return lowFretCandidates[0].index;
+  }
+
+  return lowestFretCandidate(midi);
+};
 // strOf: returns the STRINGS entry for a note, respecting explicit string_index
 // when called with an event object, or falling back to lowestFretCandidate.
 const strOf=(mOrEv,stringIdx)=>{
@@ -77,7 +102,7 @@ const strOf=(mOrEv,stringIdx)=>{
   if(idx!=null&&idx>=0&&idx<STRINGS.length)return STRINGS[idx];
   // Chord-pluck shorthand (note 0..5 = string index)
   if(m>=0&&m<=5)return STRINGS[m]||STRINGS[0];
-  return STRINGS[lowestFretCandidate(m)];
+  return STRINGS[defaultStringIndexForNote(m)];
 };
 const createEmptyMidiCurves=()=>Object.fromEntries(MIDI_AUTOMATION_KEYS.map(key=>[String(key),[]]));
 const createEmptyMidiCurveMuteState=()=>Object.fromEntries(MIDI_AUTOMATION_KEYS.map(key=>[String(key),false]));
