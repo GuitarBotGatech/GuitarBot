@@ -67,12 +67,12 @@ class TestChordPluckParsing:
         return GuitarBotParser(initial_point=copy.deepcopy(tu.initial_point), graph=False)
 
     @pytest.mark.parametrize("string_index, expected_events", [
-        (0, 1),  # string 0  → picker 0 (E)
-        (2, 1),  # string 2  → picker 1 (D)
-        (4, 1),  # string 4  → picker 2 (B)
-        (1, 0),  # string 1  → no plucker
-        (3, 0),  # string 3  → no plucker
-        (5, 0),  # string 5  → no plucker
+        (0, 1),  # string 0  → picker 0
+        (1, 1),  # string 1  → picker 1
+        (2, 1),  # string 2  → picker 2
+        (3, 1),  # string 3  → picker 3
+        (4, 1),  # string 4  → picker 4
+        (5, 1),  # string 5  → picker 5
     ])
     def test_chord_pluck_routing(self, string_index, expected_events):
         positions, toggles = self._parser().parsePickMIDI([[string_index, 0.4, 3, 0, 1.0]])

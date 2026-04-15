@@ -12,9 +12,9 @@ def test_parse_pick_midi_keeps_slide_toggles_aligned_when_event_skipped():
     parser = GuitarBotParser(initial_point=copy.deepcopy(tu.initial_point), graph=False)
 
     picks = [
-        [59, 0.4, 4, 0, 1.0],   # assigned
-        [60, 0.4, 4, 0, 1.1],   # too close on same picker, should be skipped
-        [61, 0.4, 4, 1, 2.0],   # assigned and slide enabled
+        [72, 0.4, 4, 0, 1.0],   # assigned (high E string)
+        [73, 0.4, 4, 0, 1.1],   # too close on same picker, should be skipped
+        [71, 0.4, 4, 1, 2.0],   # assigned and slide enabled
     ]
 
     pick_motor_positions, slide_toggles = parser.parsePickMIDI(picks)
@@ -41,11 +41,12 @@ def test_lh_prep_time_capped_and_scaled_by_semitone_delta():
 
 def test_parse_pick_midi_honors_zero_based_string_override_for_ambiguous_note():
     parser = GuitarBotParser(initial_point=copy.deepcopy(tu.initial_point), graph=False)
+    parser.use_path_planner = False
 
-    # note 59 can be voiced as open B (picker 2) or D-string 9th fret (picker 1).
-    # Override string_index=1 must force picker 1 so note 68 can still play on picker 2.
+    # note 59 is playable on multiple strings; override string_index=2 (0-based)
+    # must force picker 2 so a later note can still be auto-assigned independently.
     picks = [
-        [59, 0.25, 6, 0, 1, 27.0],
+        [59, 0.25, 6, 0, 2, 27.0],
         [68, 0.25, 6, 0, 27.0],
     ]
 
@@ -53,7 +54,7 @@ def test_parse_pick_midi_honors_zero_based_string_override_for_ambiguous_note():
     assert len(pick_motor_positions) == 2
 
     assigned = sorted((int(event[0][0]), int(event[0][1])) for event in pick_motor_positions)
-    assert assigned == [(1, 59), (2, 68)]
+    assert assigned == [(2, 59), (4, 68)]
 
 
 def test_lh_prep_time_adds_extra_caution_for_9th_fret_target():
@@ -72,9 +73,11 @@ def test_lh_prep_time_adds_extra_caution_for_9th_fret_target():
 def test_lh_prep_time_from_rest_to_9th_fret_uses_high_fret_cap():
     parser = GuitarBotParser(initial_point=copy.deepcopy(tu.initial_point), graph=False)
 
-    # First D-string 9th-fret attack should use the high-fret safety cap.
+    # First D-string 9th-fret attack should include edge bonus and remain capped.
     prep_from_rest = parser._lh_prep_time_for_event(None, 59, 0.025, 0, picker_id=1)
-    assert prep_from_rest == pytest.approx(float(tu.LH_HIGH_FRET_MAX_PREP_TIME))
+    expected = float(tu.LH_PREP_TIME_BEFORE_PICK) + float(tu.LH_EDGE_PREP_TIME_BONUS)
+    assert prep_from_rest == pytest.approx(expected)
+    assert prep_from_rest <= float(tu.LH_HIGH_FRET_MAX_PREP_TIME)
 
 
 def test_lh_prep_time_from_9th_fret_to_open_uses_high_fret_cap():
@@ -84,8 +87,10 @@ def test_lh_prep_time_from_9th_fret_to_open_uses_high_fret_cap():
     prep_from_high_to_open = parser._lh_prep_time_for_event(59, 50, 0.025, 0, picker_id=1)
     prep_from_mid_to_open = parser._lh_prep_time_for_event(57, 50, 0.025, 0, picker_id=1)
 
-    assert prep_from_high_to_open == pytest.approx(float(tu.LH_HIGH_FRET_MAX_PREP_TIME))
-    assert prep_from_mid_to_open == pytest.approx(float(tu.LH_HIGH_FRET_MAX_PREP_TIME))
+    expected = float(tu.LH_PREP_TIME_BEFORE_PICK) + float(tu.LH_EDGE_PREP_TIME_BONUS)
+    assert prep_from_high_to_open == pytest.approx(expected)
+    assert prep_from_mid_to_open == pytest.approx(expected)
+    assert prep_from_high_to_open <= float(tu.LH_HIGH_FRET_MAX_PREP_TIME)
 
 
 def test_parse_pick_midi_keeps_plucker_motion_synced_across_segments():
@@ -105,6 +110,43 @@ def test_parse_pick_midi_keeps_plucker_motion_synced_across_segments():
 
     picker_col = 12
     start_idx = int(2.0 / tu.TIME_STEP)
+    end_idx = start_idx + tu.PICKER_PLUCK_MOTION_POINTS + 6
+    window = traj[start_idx:end_idx, picker_col]
+
+    assert float(np.max(window) - np.min(window)) > 0.0
+
+
+@pytest.mark.parametrize("tremolo_duration", [0.6, 1.6, 2.0])
+def test_tremolo_then_pluck_on_same_picker_still_moves(tremolo_duration):
+    parser = GuitarBotParser(initial_point=copy.deepcopy(tu.initial_point), graph=False)
+
+    second_timestamp = 1.0 + tremolo_duration + 0.2
+    picks = [
+        [44, tremolo_duration, 6, 0, 1.0],
+        [44, 0.125, 6, 0, second_timestamp],
+    ]
+
+    traj = parser.parseAllMIDI([], picks)
+
+    picker_col = 12
+    start_idx = int(second_timestamp / tu.TIME_STEP)
+    end_idx = start_idx + tu.PICKER_PLUCK_MOTION_POINTS + 6
+    window = traj[start_idx:end_idx, picker_col]
+
+    assert float(np.max(window) - np.min(window)) > 0.0
+
+
+def test_tremolo_end_state_is_respected_across_segments():
+    parser = GuitarBotParser(initial_point=copy.deepcopy(tu.initial_point), graph=False)
+
+    # First segment is a tremolo with duration that previously could leave stale picker state.
+    parser.parseAllMIDI([], [[44, 1.6, 6, 0, 1.0]])
+
+    # Second segment starts with the same string; it should still produce motion.
+    traj = parser.parseAllMIDI([], [[44, 0.125, 6, 0, 2.8]])
+
+    picker_col = 12
+    start_idx = int(2.8 / tu.TIME_STEP)
     end_idx = start_idx + tu.PICKER_PLUCK_MOTION_POINTS + 6
     window = traj[start_idx:end_idx, picker_col]
 
