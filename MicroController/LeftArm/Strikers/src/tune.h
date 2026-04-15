@@ -4,7 +4,7 @@
 // Auto-generated from tune.py — DO NOT EDIT BY HAND
 // Run gen_tune_h.py or tune.py to regenerate.
 
-const float start_state_PICK[6] = {-9.2f, 8.4f, -9.5f, 8.7f, 8.0f, -6.5f};
+const float start_state_PICK[6] = {-9.2f, 8.4f, -9.5f, 8.6f, 8.0f, -5.5f};
 const int motor_id_PICK[6] = {13, 14, 15, 16, 17, 18};
 const int home_offset_SLIDE = 50000;
 const int home_offset_PRESS = -25;
