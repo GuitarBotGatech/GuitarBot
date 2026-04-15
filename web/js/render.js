@@ -341,19 +341,39 @@ function drawBG(){
 function drawGrid(){
   const tb=totalBeats(), m=bpm();
   const gs=gridStep(), eps=gs*0.05;
-  const measureLabelXs=[];
+
+  // Draw subdivision lines (grid step), skipping beat/measure positions
+  ctx.lineWidth=1;
   for(let b=0; b<=tb+eps; b+=gs){
     const br=parseFloat(b.toFixed(9));
     const x=beatToX(br);
     if(x<LABEL_W-1||x>CW+1)continue;
-    const remM=br%m, isMeasure=remM<eps||(m-remM)<eps;
-    const remB=br%1,  isBeat=remB<eps||(1-remB)<eps;
-    ctx.strokeStyle=isMeasure?'#323250':isBeat?'#1e1e34':'#141428';
-    ctx.lineWidth=1;
+    const remM=br%m, isMeasure=remM<1e-6||(m-remM)<1e-6;
+    const remB=br%1,  isBeat=remB<1e-6||(1-remB)<1e-6;
+    if(isMeasure||isBeat)continue;
+    ctx.strokeStyle='#141428';
     ctx.beginPath(); ctx.moveTo(x,0); ctx.lineTo(x,canvasH()); ctx.stroke();
-    if(isMeasure){
-      measureLabelXs.push({x,bar:Math.round(br/m)+1});
-    }
+  }
+
+  // Draw beat lines (always at integer beats, independent of grid)
+  for(let b=0; b<=tb; b+=1){
+    const x=beatToX(b);
+    if(x<LABEL_W-1||x>CW+1)continue;
+    const remM=b%m, isMeasure=remM<1e-6;
+    if(isMeasure)continue;
+    ctx.strokeStyle='#1e1e34';
+    ctx.beginPath(); ctx.moveTo(x,0); ctx.lineTo(x,canvasH()); ctx.stroke();
+  }
+
+  // Draw measure lines (always at measure boundaries, independent of grid)
+  const measureLabelXs=[];
+  for(let bar=0; bar*m<=tb; bar+=1){
+    const b=bar*m;
+    const x=beatToX(b);
+    if(x<LABEL_W-1||x>CW+1)continue;
+    ctx.strokeStyle='#323250';
+    ctx.beginPath(); ctx.moveTo(x,0); ctx.lineTo(x,canvasH()); ctx.stroke();
+    measureLabelXs.push({x,bar:bar+1});
   }
 
   ctx.fillStyle='#8f8fd8';
