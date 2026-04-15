@@ -23,6 +23,17 @@ document.addEventListener('keydown',e=>{
     return;
   }
 
+  // Space bar — play/stop toggle (before input-field guard so it always fires)
+  if(e.key===' '){
+    const tag=document.activeElement?.tagName;
+    if(tag!=='INPUT'&&tag!=='SELECT'&&tag!=='TEXTAREA'){
+      e.preventDefault();
+      if(S.playing) document.getElementById('btn-stop').click();
+      else          document.getElementById('btn-play').click();
+      return;
+    }
+  }
+
   const tag=document.activeElement?.tagName;
   if(tag==='INPUT'||tag==='SELECT'||tag==='TEXTAREA')return;
   if(!e.ctrlKey&&!e.metaKey&&!e.altKey&&e.key>='1'&&e.key<='6'){
@@ -90,6 +101,14 @@ function applyNewProject(){
   S.cycleEnabled=false;
   S.cycleStartBar=1;
   S.cycleEndBar=2;
+  S.activeTab='create';
+  S.sections=[];
+  S.sectionTimeline=[];
+  S.sectionNextId=1;
+  S.sectionNextTimelineId=1;
+  S.sectionSelectedTimelineItemId=null;
+  S.sectionSelectedTimelineItemIds=[];
+  S.sectionClipboard=null;
   S.scrollX=0;
   noteH=noteH_DEFAULT;
   S.editMode='select';
@@ -126,6 +145,8 @@ function applyNewProject(){
   document.getElementById('pos').textContent='1.1';
   document.getElementById('btn-snap').classList.add('on');
   document.getElementById('btn-snap').title='Snap to grid (on)';
+  if(typeof setActiveTab==='function')setActiveTab('create');
+  if(typeof renderSectionView==='function')renderSectionView();
   syncCycleControls();
   setEditMode('select');
   updateGridCtrl();

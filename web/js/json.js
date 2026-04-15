@@ -5,6 +5,129 @@ function canonicalBeatLabel(rawBeat){
   return beatLabel(parseBeat(rawBeat));
 }
 
+function eventBeatFromLabelOrTimestamp(ev){
+  if(ev&&ev.beat!==undefined&&ev.beat!==null&&String(ev.beat).trim()!=='')return parseBeat(ev.beat);
+  if(ev&&ev.timestamp!==undefined&&ev.timestamp!==null)return secondsToBeat(ev.timestamp);
+  return 0;
+}
+
+function buildArrangementJSON(){
+  const sections=(Array.isArray(S.sections)?S.sections:[])
+    .filter(section=>Number.isFinite(section?.startBeat)&&Number.isFinite(section?.endBeat)&&section.endBeat>section.startBeat)
+    .map(section=>({
+      id:section.id,
+      name:String(section.name||''),
+      start_beat:canonicalBeatLabel(section.startBeat),
+      end_beat:canonicalBeatLabel(section.endBeat),
+    }));
+
+  const knownIds=new Set(sections.map(section=>section.id));
+  const timeline=(Array.isArray(S.sectionTimeline)?S.sectionTimeline:[])
+    .filter(item=>knownIds.has(item.sectionId))
+    .map(item=>({
+      id:item.id,
+      section_id:item.sectionId,
+      loops:Math.max(1,parseInt(item.loops,10)||1),
+    }));
+
+  return {sections,timeline};
+}
+
+function buildSectionExpandedJSON(){
+  const base=buildJSON();
+  const arrangement=buildArrangementJSON();
+  if(!arrangement.sections.length||!arrangement.timeline.length)return null;
+
+  const sectionMap=new Map(arrangement.sections.map(section=>[
+    section.id,
+    {
+      ...section,
+      startBeat:parseSectionBeat(section.start_beat),
+      endBeat:parseSectionBeat(section.end_beat),
+    },
+  ]));
+
+  const sourceTracks=[...(base.song.tracks||[])].map(track=>({
+    ...track,
+    events:[...(track.events||[])],
+  }));
+
+  const expandedTracks=sourceTracks.map(track=>({
+    ...track,
+    events:[],
+  }));
+
+  const sourceTempo=(base.song.meta?.tempo_curve||[])
+    .filter(point=>Number.isFinite(parseFloat(point?.time))&&Number.isFinite(parseFloat(point?.bpm)))
+    .map(point=>({
+      beat:secondsToBeat(parseFloat(point.time)),
+      bpm:clamp(Math.round(parseFloat(point.bpm)),TEMPO_MIN,TEMPO_MAX),
+    }))
+    .sort((a,b)=>a.beat-b.beat);
+  const expandedTempo=[];
+
+  let cursorBeat=0;
+  for(const item of arrangement.timeline){
+    const section=sectionMap.get(item.section_id);
+    if(!section)continue;
+    const sectionLen=trimBeatNumber(section.endBeat-section.startBeat);
+    if(sectionLen<=0)continue;
+    const loops=Math.max(1,parseInt(item.loops,10)||1);
+
+    for(let loopIndex=0;loopIndex<loops;loopIndex++){
+      const loopStart=cursorBeat+(loopIndex*sectionLen);
+
+      expandedTracks.forEach((track,trackIndex)=>{
+        const sourceEvents=sourceTracks[trackIndex].events||[];
+        for(const event of sourceEvents){
+          const beat=eventBeatFromLabelOrTimestamp(event);
+          if(beat<section.startBeat||beat>=section.endBeat)continue;
+          const shiftedBeat=trimBeatNumber(loopStart+(beat-section.startBeat));
+          track.events.push({...event,beat:canonicalBeatLabel(shiftedBeat)});
+        }
+      });
+
+      for(const point of sourceTempo){
+        if(point.beat<section.startBeat||point.beat>=section.endBeat)continue;
+        const shiftedBeat=trimBeatNumber(loopStart+(point.beat-section.startBeat));
+        expandedTempo.push({
+          time:beatsToSeconds(shiftedBeat),
+          bpm:point.bpm,
+        });
+      }
+    }
+
+    cursorBeat+=sectionLen*loops;
+  }
+
+  for(const track of expandedTracks){
+    track.events.sort((a,b)=>eventBeatFromLabelOrTimestamp(a)-eventBeatFromLabelOrTimestamp(b));
+  }
+
+  expandedTempo.sort((a,b)=>a.time-b.time);
+  if(!expandedTempo.length||expandedTempo[0].time>1e-6){
+    expandedTempo.unshift({time:0.0,bpm:clamp(Math.round(S.bpm),TEMPO_MIN,TEMPO_MAX)});
+  }
+
+  const measures=Math.max(1,Math.ceil(cursorBeat/Math.max(1,bpm())));
+
+  return {
+    song:{
+      ...base.song,
+      meta:{
+        ...base.song.meta,
+        tempo_curve:expandedTempo,
+      },
+      measures,
+      arrangement:{
+        ...arrangement,
+        rendered_total_beats:trimBeatNumber(cursorBeat),
+      },
+      tracks:expandedTracks,
+    },
+  };
+}
+
 function buildJSON(){
   const tempoPoints=normalizeMidiCurvePoints(S.midiCurves[TEMPO_AUTOMATION_KEY]||[],TEMPO_AUTOMATION_KEY);
   const tempoCurve=[];
@@ -79,7 +202,7 @@ function buildJSON(){
       return [k,{min:range.min,max:range.max}];
     })
   );
-  return{song:{name:S.songName,meta:{key:`${S.keyRoot} ${S.keyMode}`,time_signature:S.timeSig,bpm:S.bpm,tempo_curve:tempoCurve,automation_lane_ranges:automationLaneRanges},tracks}};
+  return{song:{name:S.songName,meta:{key:`${S.keyRoot} ${S.keyMode}`,time_signature:S.timeSig,bpm:S.bpm,tempo_curve:tempoCurve,automation_lane_ranges:automationLaneRanges},arrangement:buildArrangementJSON(),tracks}};
 }
 
 function hlJSON(s){
@@ -173,7 +296,9 @@ async function copyPreviewJSON(event){
 }
 
 function buildUploadJSON(){
-  const full=buildJSON();
+  const full=(S.activeTab==='sections'&&Array.isArray(S.sectionTimeline)&&S.sectionTimeline.length)
+    ?(buildSectionExpandedJSON()||buildJSON())
+    :buildJSON();
   const soloRange=Number.isInteger(S.stringSoloIndex)?STRINGS[S.stringSoloIndex]:null;
   const mutedRanges=STRINGS.filter((_,index)=>!!S.stringMuted[index]);
   const effectiveDurationSecondsForUpload=(durationSeconds,speed)=>{
@@ -218,6 +343,22 @@ function buildUploadJSON(){
                   duration_b:effectiveDurationBeatsForUpload(durationBeats,ev.speed),
                 };
               }),
+          };
+        }),
+      },
+    };
+  }
+
+  if(S.activeTab==='sections'){
+    if(!soloRange&&!mutedRanges.length)return full;
+    return {
+      song:{
+        ...full.song,
+        tracks:(full.song.tracks||[]).map(track=>{
+          if(track.type!=='pluck')return track;
+          return {
+            ...track,
+            events:(track.events||[]).filter(ev=>allowPluckNote(ev.note)),
           };
         }),
       },
@@ -781,8 +922,7 @@ async function exportUsingNativePicker(formatHint='auto'){
     }
 
     if(exists){
-      const ok=window.confirm(`"${handle.name}" already exists. Overwrite it?`);
-      if(!ok)return true;
+      // Redundant overwrite dialogue removed, the OS natively warns the user.
     }
 
     const name=String(handle?.name||'').toLowerCase();
@@ -933,6 +1073,7 @@ function loadJSON(data){
     }
   }
   S.pluck=[]; S.harmonic=[]; S.chord=[]; S.midi=[]; S.midiCurves=createEmptyMidiCurves(); S.midiCurveMuted=createEmptyMidiCurveMuteState(); S.midiLaneMenuLane=null; S.focusedCCLane=null; S.nextId=1;
+  S.sections=[]; S.sectionTimeline=[]; S.sectionNextId=1; S.sectionNextTimelineId=1; S.sectionSelectedTimelineItemId=null; S.sectionSelectedTimelineItemIds=[]; S.sectionClipboard=null;
   S.selPluck=null; S.selPluckIds.clear(); S.selChord=null; S.selMidi=null; clearMidiCurveSelection(); S.clipboardPluck=null; S.clipboardMidiCurves=null; closeInsp();
   let maxB=0;
   (song.tracks||[]).forEach(tr=>{
@@ -1011,8 +1152,54 @@ function loadJSON(data){
     S.midiCurves[k]=normalizeMidiCurvePoints(S.midiCurves[k]||[],k);
   }
 
+  if(song.arrangement&&typeof song.arrangement==='object'){
+    const rawSections=Array.isArray(song.arrangement.sections)?song.arrangement.sections:[];
+    const loadedSections=[];
+    for(const raw of rawSections){
+      const startBeat=parseSectionBeat(raw.start_beat??raw.startBeat);
+      const endBeat=parseSectionBeat(raw.end_beat??raw.endBeat);
+      if(!(endBeat>startBeat))continue;
+      const parsedId=parseInt(raw.id,10);
+      loadedSections.push({
+        id:Number.isInteger(parsedId)&&parsedId>0?parsedId:S.sectionNextId++,
+        name:sanitizeSectionName(raw.name,sectionNameFromIndex(loadedSections.length)),
+        startBeat,
+        endBeat,
+      });
+    }
+
+    if(loadedSections.length){
+      S.sections=loadedSections;
+      const maxSectionId=Math.max(...loadedSections.map(section=>section.id));
+      S.sectionNextId=Math.max(S.sectionNextId,maxSectionId+1);
+
+      const sectionIdSet=new Set(loadedSections.map(section=>section.id));
+      const rawTimeline=Array.isArray(song.arrangement.timeline)?song.arrangement.timeline:[];
+      for(const rawItem of rawTimeline){
+        const sectionId=parseInt(rawItem.section_id??rawItem.sectionId,10);
+        if(!sectionIdSet.has(sectionId))continue;
+        const parsedTimelineId=parseInt(rawItem.id,10);
+        const timelineItem={
+          id:Number.isInteger(parsedTimelineId)&&parsedTimelineId>0?parsedTimelineId:S.sectionNextTimelineId++,
+          sectionId,
+          loops:clamp(parseInt(rawItem.loops,10)||1,1,64),
+        };
+        S.sectionTimeline.push(timelineItem);
+      }
+
+      if(S.sectionTimeline.length){
+        const maxTimelineId=Math.max(...S.sectionTimeline.map(item=>item.id));
+        S.sectionNextTimelineId=Math.max(S.sectionNextTimelineId,maxTimelineId+1);
+      }
+    }
+  }
+
   S.measures=Math.max(8,Math.ceil(maxB/m)+2);
+  if(Number.isFinite(song.measures)&&Math.round(song.measures)>S.measures){
+    S.measures=Math.round(song.measures);
+  }
   document.getElementById('measures').value=S.measures;
+  if(typeof renderSectionView==='function')renderSectionView();
   syncCycleControls();
   render(); syncJSON();
 }

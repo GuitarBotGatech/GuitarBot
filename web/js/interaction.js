@@ -312,6 +312,12 @@ canvas.addEventListener('pointermove',e=>{
     render();
     return;
   }
+  if(drag.type==='cycle-select'){
+    const cursorBeat=normalizeBeat(Math.max(0,xToBeat(cx)));
+    setCycleRangeFromBeats(drag.startBeat,cursorBeat,true);
+    render();
+    return;
+  }
   if(drag.type==='cycle-resize'){
     const cursorBeat=normalizeBeat(Math.max(0,xToBeat(cx)));
     const m=bpm();
@@ -440,6 +446,11 @@ canvas.addEventListener('pointerup',()=>{
     render();
     return;
   }
+  if(drag.type==='cycle-select'){
+    drag=null;
+    render();
+    return;
+  }
   if(drag.type==='select-box'){
     if(!drag.moved&&typeof drag.clickBeat==='number')setPlayheadBeat(drag.clickBeat);
     applySelectionBox(drag);
@@ -541,31 +552,10 @@ function chordDown(cx,cy,e){
     showCPop(hit,e.clientX,e.clientY);
     return;
   }
-
-  const cycle=getCycleRange();
-  if(cycle){
-    const beat=Math.max(0,xToBeat(cx));
-    const x1=beatToX(cycle.startBeat);
-    const x2=beatToX(cycle.endBeat);
-    if(Math.abs(cx-x1)<=6){
-      drag={type:'cycle-resize',edge:'left',startBar:cycle.startBar,endBar:cycle.endBar};
-      return;
-    }
-    if(Math.abs(cx-x2)<=6){
-      drag={type:'cycle-resize',edge:'right',startBar:cycle.startBar,endBar:cycle.endBar};
-      return;
-    }
-    if(beat>=cycle.startBeat&&beat<cycle.endBeat){
-      drag={
-        type:'cycle-move',
-        startBeat:beat,
-        startBar:cycle.startBar,
-        endBar:cycle.endBar,
-      };
-      render();
-      return;
-    }
-  }
+  const startBeat=normalizePlacementBeat(Math.max(0,xToBeat(cx)));
+  drag={type:'cycle-select',startBeat};
+  setCycleRangeFromBeats(startBeat,startBeat+minDurationBeats(),true);
+  render();
 }
 function midiDown(cx,cy,e){
   if(cx<LABEL_W)return;
@@ -631,21 +621,7 @@ function getPluckEdgeHit(cx,cy){
 function updateHoverCursor(cx,cy){
   const myY=midiTopY();
   if(cx>=LABEL_W&&cy<CHORD_H){
-    const cycle=getCycleRange();
-    if(cycle){
-      const x1=beatToX(cycle.startBeat);
-      const x2=beatToX(cycle.endBeat);
-      if(Math.abs(cx-x1)<=6||Math.abs(cx-x2)<=6){
-        canvas.style.cursor='ew-resize';
-        return;
-      }
-      const beat=Math.max(0,xToBeat(cx));
-      if(beat>=cycle.startBeat&&beat<cycle.endBeat){
-        canvas.style.cursor=drag&&drag.type==='cycle-move'?'grabbing':'grab';
-        return;
-      }
-    }
-    canvas.style.cursor='default';
+    canvas.style.cursor='crosshair';
     return;
   }
   if(cx<LABEL_W&&cy>=CHORD_H&&cy<myY){

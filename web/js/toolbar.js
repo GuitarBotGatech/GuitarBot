@@ -1,17 +1,26 @@
 // ═══════════════════════════════════════════════
 // TABS
 // ═══════════════════════════════════════════════
-document.querySelectorAll('.tab-btn').forEach(btn=>{
-  btn.addEventListener('click',()=>{
-    const tab=btn.dataset.tab;
-    document.querySelectorAll('.tab-btn').forEach(b=>b.classList.toggle('active',b===btn));
-    document.querySelectorAll('.tab-content').forEach(c=>{
-      c.style.display=c.id===`tab-${tab}`?'flex':'none';
-    });
-    S.activeTab=tab;
-    if(typeof resize==='function') resize(); else render();
+function setActiveTab(tabRaw){
+  const requested=String(tabRaw||'create');
+  const validTabs=new Set(['create','automation','record']);
+  const tab=validTabs.has(requested)?requested:'create';
+  S.activeTab=tab;
+  document.querySelectorAll('.tab-btn').forEach(btn=>{
+    btn.classList.toggle('active',btn.dataset.tab===tab);
   });
+  document.querySelectorAll('.tab-content').forEach(content=>{
+    content.style.display=content.id===`tab-${tab}`?'flex':'none';
+  });
+  if(typeof onTabChanged==='function')onTabChanged(tab);
+  if(typeof resize==='function') resize(); else render();
+}
+
+document.querySelectorAll('.tab-btn').forEach(btn=>{
+  btn.addEventListener('click',()=>setActiveTab(btn.dataset.tab));
 });
+
+window.setActiveTab=setActiveTab;
 
 // ═══════════════════════════════════════════════
 // ZOOM BUTTONS
@@ -116,3 +125,5 @@ document.getElementById('time-sig').addEventListener('change',e=>{
   syncJSON();
 });
 document.getElementById('measures').addEventListener('input',e=>{S.measures=clamp(parseInt(e.target.value)||8,1,64);syncCycleControls();render();syncJSON()});
+
+setActiveTab(S.activeTab||'create');
