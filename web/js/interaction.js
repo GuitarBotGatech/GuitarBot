@@ -710,7 +710,9 @@ function dedupeMidiCCCollisions(keepId){
 canvas.addEventListener('wheel',e=>{
   e.preventDefault();
   if(e.ctrlKey||e.metaKey){
+    const oldZoom=S.zoom;
     S.zoom=clamp(S.zoom*(e.deltaY>0?0.88:1.14),18,320);
+    S.scrollX+=S.playBeat*(S.zoom-oldZoom);
   } else {
     const maxScroll=Math.max(0,totalBeats()*S.zoom-CW+LABEL_W+80);
     S.scrollX=clamp(S.scrollX+(e.shiftKey?e.deltaY:e.deltaX)*0.8,0,maxScroll);

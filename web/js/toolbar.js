@@ -25,8 +25,8 @@ window.setActiveTab=setActiveTab;
 // ═══════════════════════════════════════════════
 // ZOOM BUTTONS
 // ═══════════════════════════════════════════════
-document.getElementById('zoom-in').addEventListener('click',()=>{S.zoom=clamp(S.zoom*1.25,18,320);render()});
-document.getElementById('zoom-out').addEventListener('click',()=>{S.zoom=clamp(S.zoom/1.25,18,320);render()});
+document.getElementById('zoom-in').addEventListener('click',()=>{const oz=S.zoom;S.zoom=clamp(S.zoom*1.25,18,320);S.scrollX+=S.playBeat*(S.zoom-oz);render()});
+document.getElementById('zoom-out').addEventListener('click',()=>{const oz=S.zoom;S.zoom=clamp(S.zoom/1.25,18,320);S.scrollX+=S.playBeat*(S.zoom-oz);render()});
 document.getElementById('btn-snap').addEventListener('click',()=>{
   S.snapEnabled=!S.snapEnabled;
   const btn=document.getElementById('btn-snap');
