@@ -591,13 +591,14 @@ class BothHandsParser:
             total_duration: Total duration to match (seconds)
             
         Returns:
-            2D numpy array [num_timesteps x 3] for RH motors
+            2D numpy array [num_timesteps x num_pickers] for RH motors
         """
         num_timesteps = int(total_duration / tu.TIME_STEP)
-        rh_trajectory = np.zeros((num_timesteps, 3))
+        num_pickers = len(tu.PICKER_MOTOR_INFO)
+        rh_trajectory = np.zeros((num_timesteps, num_pickers))
         
         # Initialize all pickers at current positions
-        for pid in range(3):
+        for pid in range(num_pickers):
             if pid in self.right_hand.current_positions:
                 rh_trajectory[:, pid] = self.right_hand.current_positions[pid]
         
@@ -642,21 +643,22 @@ class BothHandsParser:
     
     def _combine_trajectories(self, lh_trajectory, rh_trajectory):
         """
-        Combine left hand (12 motors) and right hand (3 motors) into full 15-motor array.
+        Combine left hand motors and right hand motors into full trajectory array.
         
         Args:
             lh_trajectory: [N x 12] array for LH motors
-            rh_trajectory: [N x 3] array for RH motors, or None
+            rh_trajectory: [N x num_pickers] array for RH motors, or None
             
         Returns:
-            [N x 15] combined trajectory array
+            [N x (12 + num_pickers)] combined trajectory array
         """
         num_timesteps = lh_trajectory.shape[0]
+        num_pickers = len(tu.PICKER_MOTOR_INFO)
         
         if rh_trajectory is None:
             # Create RH trajectory with current positions
-            rh_trajectory = np.zeros((num_timesteps, 3))
-            for picker_id in range(3):
+            rh_trajectory = np.zeros((num_timesteps, num_pickers))
+            for picker_id in range(num_pickers):
                 if picker_id in self.right_hand.current_positions:
                     rh_trajectory[:, picker_id] = self.right_hand.current_positions[picker_id]
         else:
@@ -669,7 +671,7 @@ class BothHandsParser:
                 # Truncate
                 rh_trajectory = rh_trajectory[:num_timesteps, :]
         
-        # Combine: [LH(12) | RH(3)] = 15 motors
+        # Combine: [LH(12) | RH(num_pickers)]
         combined = np.hstack([lh_trajectory, rh_trajectory])
         
         return combined
@@ -705,8 +707,9 @@ class BothHandsParser:
         # Convert list to numpy array
         rh_full_trajectory = np.array(trajectories_list)
         
-        # Extract just the RH motors (last 3)
-        rh_trajectory = rh_full_trajectory[:, 12:15]
+        # Extract just the RH motors from full trajectory.
+        num_pickers = len(tu.PICKER_MOTOR_INFO)
+        rh_trajectory = rh_full_trajectory[:, 12:12 + num_pickers]
         
         # Get current LH positions and hold them
         num_timesteps = rh_trajectory.shape[0]
@@ -715,7 +718,7 @@ class BothHandsParser:
         # Combine
         combined_trajectory = np.hstack([lh_trajectory, rh_trajectory])
         
-        print(f"\nGenerated dynamics trajectory: {combined_trajectory.shape[0]} timesteps × 15 motors")
+        print(f"\nGenerated dynamics trajectory: {combined_trajectory.shape[0]} timesteps × {combined_trajectory.shape[1]} motors")
         print(f"Duration: {combined_trajectory.shape[0] * tu.TIME_STEP:.3f}s")
         
         # Plot if enabled
@@ -836,8 +839,8 @@ class BothHandsParser:
                 )
             )
         
-        # Plot RH motors (12-14)
-        for motor in range(12, 15):
+        # Plot RH motors (12 onward)
+        for motor in range(12, trajectory.shape[1]):
             picker_id = motor - 12
             
             fig.add_trace(

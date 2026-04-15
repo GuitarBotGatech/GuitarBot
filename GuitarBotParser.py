@@ -562,8 +562,8 @@ class GuitarBotParser:
         return lh_motor_positions
 
     # Maps 0-based string index to picker ID for chord pluck messages.
-    # Only strings 0, 2, 4 have physical pluckers.
-    _CHORD_PLUCK_STRING_TO_PICKER = {0: 0, 2: 1, 4: 2}
+    # In six-plucker mode each string has a dedicated picker.
+    _CHORD_PLUCK_STRING_TO_PICKER = {0: 0, 1: 1, 2: 2, 3: 3, 4: 4, 5: 5}
 
     def _picker_note_to_fret(self, note, picker_id):
         if note is None or picker_id is None:
@@ -619,6 +619,29 @@ class GuitarBotParser:
             ),
         )
         return prep_bonus, prep_cap
+
+    def _tremolo_fill_points(self, speed):
+        try:
+            speed_value = float(speed)
+        except (TypeError, ValueError):
+            speed_value = 1.0
+
+        fill_points = min(30, int(30 - (speed_value - 1) * (25 / 9))) - 4
+        return max(0, fill_points)
+
+    def _estimate_tremolo_pick_count(self, duration, speed):
+        fill_points = self._tremolo_fill_points(speed)
+        single_pick_duration = (fill_points * tu.TIME_STEP) + (tu.PICKER_PLUCK_MOTION_POINTS * tu.TIME_STEP)
+
+        if single_pick_duration <= 0:
+            return 0
+
+        try:
+            duration_value = float(duration)
+        except (TypeError, ValueError):
+            return 0
+
+        return max(0, math.floor(duration_value / single_pick_duration))
 
     def _lh_prep_time_for_event(self, prev_note, note, duration, slide_toggle, picker_id=None):
         max_prep = float(tu.LH_PREP_TIME_BEFORE_PICK)
@@ -688,9 +711,8 @@ class GuitarBotParser:
                 where 'string' is an integer from 1 to 6.
 
                 Special chord pluck format: when note is 0-5, it is treated as a direct
-                string index (0-based) that activates the plucker without modifying the
-                slider trajectory.  Only strings 0, 2, 4 have pluckers; strings 1, 3, 5
-                will produce a warning and be skipped.
+                string index (0-based) that activates the matching string plucker without
+                modifying the slider trajectory.
         Returns:
             tuple: A tuple containing:
                 - pick_motor_positions (list): A list of motor position events for the picking mechanism.
@@ -834,6 +856,10 @@ class GuitarBotParser:
             pick_motor_positions.append([curr_event, timestamp])
             if duration < tu.TREMOLO_DURATION_THRESHOLD:
                 pickerStates[motor_id] = not pick_state
+            else:
+                tremolo_picks = self._estimate_tremolo_pick_count(duration, speed)
+                if tremolo_picks % 2 == 1:
+                    pickerStates[motor_id] = not pick_state
         return pick_motor_positions, slide_toggles
 
     def prepPicker(self, lh_motor_positions, pick_motor_positions):
@@ -884,13 +910,13 @@ class GuitarBotParser:
 
             all_points = np.array([]) # Initialize as empty numpy array
             if is_pluck:
-                dest_pos = down_enc if abs(start_pos - up_enc) < abs(start_pos - down_enc) else up_enc
+                # Keep picker timing and side-selection in sync with parsePickMIDI.
+                dest_pos = float(commanded_dest_pos)
                 all_points = self.interp_with_blend(start_pos, dest_pos, tu.PICKER_PLUCK_MOTION_POINTS, tb_cent)
             else: # Tremolo
                 tremolo_points = []
-                fill_points = min(30, int(30 - (speed - 1) * (25 / 9))) - 4
-                single_pick_duration = (fill_points * tu.TIME_STEP) + (tu.PICKER_PLUCK_MOTION_POINTS * tu.TIME_STEP)
-                num_picks = math.floor(duration / single_pick_duration) if single_pick_duration > 0 else 0
+                fill_points = self._tremolo_fill_points(speed)
+                num_picks = self._estimate_tremolo_pick_count(duration, speed)
 
                 current_pick_pos = start_pos
                 for _ in range(num_picks):

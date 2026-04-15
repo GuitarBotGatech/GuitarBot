@@ -23,9 +23,9 @@ import plotly.graph_objects as go
 
 class RightHandParser:
     def __init__(self):
-        # Track current state of each picker motor (0=down, 1=up)
-        # Mimics GuitarBotParser picker state logic
-        self.picker_states = {0: 1, 1: 1, 2: 1}  # Start in up position
+        # Track current state of each picker motor (0=down, 1=up).
+        # Initialize dynamically from configured picker motors.
+        self.picker_states = {picker_id: 1 for picker_id in tu.PICKER_MOTOR_INFO}  # Start in up position
         
         # Motor position mappings from tune.py - convert mm to encoder ticks
         self.motor_info = {}
