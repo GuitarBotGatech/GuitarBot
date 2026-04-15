@@ -180,6 +180,14 @@ const Synth={
   }
 };
 
+function previewPluckEvent(ev){
+  if(!S.notePreview||!ev)return;
+  Synth.ensure();
+  const bps=S.bpm/60;
+  const durS=(ev.duration_b??0.5)/bps;
+  Synth.trigger(ev.note,durS,speedToVelocity(ev.speed??6),ev.speed??6,ev.slide??0);
+}
+
 function triggerPluckEventsBetween(prevBeat,nextBeat){
   if(nextBeat<=prevBeat)return;
   const bps=S.bpm/60;

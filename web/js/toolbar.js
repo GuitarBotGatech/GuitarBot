@@ -27,6 +27,12 @@ window.setActiveTab=setActiveTab;
 // ═══════════════════════════════════════════════
 document.getElementById('zoom-in').addEventListener('click',()=>{const oz=S.zoom;S.zoom=clamp(S.zoom*1.25,18,320);S.scrollX+=S.playBeat*(S.zoom-oz);render()});
 document.getElementById('zoom-out').addEventListener('click',()=>{const oz=S.zoom;S.zoom=clamp(S.zoom/1.25,18,320);S.scrollX+=S.playBeat*(S.zoom-oz);render()});
+document.getElementById('btn-note-preview').addEventListener('click',()=>{
+  S.notePreview=!S.notePreview;
+  const btn=document.getElementById('btn-note-preview');
+  btn.classList.toggle('on',S.notePreview);
+  btn.title=S.notePreview?'Note preview (on)':'Note preview (off)';
+});
 document.getElementById('btn-snap').addEventListener('click',()=>{
   S.snapEnabled=!S.snapEnabled;
   const btn=document.getElementById('btn-snap');

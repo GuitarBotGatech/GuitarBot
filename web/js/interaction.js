@@ -236,10 +236,14 @@ canvas.addEventListener('pointerdown',e=>{
           no:hit.note-yToNote(cy)};
       }
       selPluck(hit.id);
+      previewPluckEvent(hit);
     } else if(cx>=LABEL_W){
       const b=normalizePlacementBeat(Math.max(0,xToBeat(cx)));
       const n=clampNote(yToNote(cy));
-      if(b<totalBeats() && S.activeTab !== 'automation')addNote(b,n);
+      if(b<totalBeats() && S.activeTab !== 'automation'){
+        const ev=addNote(b,n);
+        previewPluckEvent(ev);
+      }
       deselectAll();
     }
   } else {
@@ -260,11 +264,13 @@ canvas.addEventListener('pointerdown',e=>{
       if(isResizeL||isResizeR){
         drag={type:'resize',id:hit.id,sx:cx,edge:isResizeL?'left':'right',os:start,oe:end};
         selPluck(hit.id);
+        previewPluckEvent(hit);
       } else {
         const selectedIds=S.selPluckIds.size?[...S.selPluckIds]:[];
         const shouldDragGroup=selectedIds.length>1&&S.selPluckIds.has(hit.id);
         if(!shouldDragGroup){
           selPluck(hit.id);
+          previewPluckEvent(hit);
         }
         const ids=shouldDragGroup?selectedIds:[hit.id];
         const noteOffsets=ids.map(id=>{
