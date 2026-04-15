@@ -130,6 +130,6 @@ document.getElementById('time-sig').addEventListener('change',e=>{
   render();
   syncJSON();
 });
-document.getElementById('measures').addEventListener('input',e=>{S.measures=clamp(parseInt(e.target.value)||8,1,64);syncCycleControls();render();syncJSON()});
+document.getElementById('measures').addEventListener('input',e=>{S.measures=clamp(parseInt(e.target.value)||8,1,256);syncCycleControls();render();syncJSON()});
 
 setActiveTab(S.activeTab||'create');

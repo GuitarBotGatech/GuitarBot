@@ -118,7 +118,7 @@ function insertSilenceAtBeat(insertBeat,barsToInsertRaw){
   const requiredMeasures=Math.max(1,Math.ceil(maxBeatEnd/Math.max(1,beatsPerBar)));
   const requestedMeasures=S.measures+barsToInsert;
   const unclampedMeasures=Math.max(requestedMeasures,requiredMeasures);
-  S.measures=clamp(Math.round(unclampedMeasures),1,64);
+  S.measures=clamp(Math.round(unclampedMeasures),1,256);
 
   if(S.cycleEnabled){
     let cycleStartBeat=(parseFloat(S.cycleStartBar)||1)-1;
