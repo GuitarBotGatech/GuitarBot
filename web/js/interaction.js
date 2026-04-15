@@ -2,6 +2,10 @@
 // INTERACTION
 // ═══════════════════════════════════════════════
 let drag=null;
+let seqContextClickBeat=0;
+let seqContextClientX=0;
+let seqContextClientY=0;
+let insertSilenceBeat=0;
 
 function hitStringTrackControl(cx,cy){
   for(let index=0;index<STRINGS.length;index++){
@@ -14,37 +18,178 @@ function hitStringTrackControl(cx,cy){
   return null;
 }
 
+function closeSequencerContextMenu(){
+  const menu=document.getElementById('seq-ctx-menu');
+  if(menu)menu.classList.remove('on');
+}
+
+function closeInsertSilencePopup(){
+  const pop=document.getElementById('insert-silence-pop');
+  if(pop)pop.classList.remove('on');
+}
+
+function placePopupNearClientPoint(pop,clientX,clientY){
+  if(!pop)return;
+
+  const margin=8;
+  const left=Math.max(margin,Math.min(window.innerWidth-pop.offsetWidth-margin,clientX+8));
+  const top=Math.max(margin,Math.min(window.innerHeight-pop.offsetHeight-margin,clientY+8));
+  pop.style.left=`${left}px`;
+  pop.style.top=`${top}px`;
+}
+
+function openSequencerContextMenu(clientX,clientY,beat){
+  const menu=document.getElementById('seq-ctx-menu');
+  if(!menu)return;
+
+  seqContextClickBeat=Math.max(0,trimBeatNumber(parseFloat(beat)||0));
+  seqContextClientX=clientX;
+  seqContextClientY=clientY;
+
+  closeInsertSilencePopup();
+  menu.classList.add('on');
+  placePopupNearClientPoint(menu,clientX,clientY);
+}
+
+function openInsertSilencePopup(clientX,clientY,beat){
+  const pop=document.getElementById('insert-silence-pop');
+  const barsInput=document.getElementById('insert-silence-bars');
+  const atLabel=document.getElementById('insert-silence-at');
+  if(!pop||!barsInput||!atLabel)return;
+
+  insertSilenceBeat=Math.max(0,trimBeatNumber(parseFloat(beat)||0));
+  atLabel.textContent=`At: ${beatLabel(insertSilenceBeat)}`;
+  barsInput.value='1';
+
+  closeSequencerContextMenu();
+  pop.classList.add('on');
+  placePopupNearClientPoint(pop,clientX,clientY);
+
+  barsInput.focus();
+  barsInput.select();
+}
+
+function shiftEventBeat(ev,insertBeat,deltaBeats){
+  if(!ev||ev.beat===undefined||ev.beat===null)return;
+  const eventBeat=parseBeat(ev.beat);
+  if(eventBeat+1e-6<insertBeat)return;
+  ev.beat=beatLabel(eventBeat+deltaBeats);
+}
+
+function insertSilenceAtBeat(insertBeat,barsToInsertRaw){
+  const beatsPerBar=bpm();
+  const barsToInsert=clamp(Math.round(parseFloat(barsToInsertRaw)||0),1,64);
+  const startBeat=Math.max(0,trimBeatNumber(parseFloat(insertBeat)||0));
+  const deltaBeats=barsToInsert*beatsPerBar;
+
+  S.pluck.forEach(ev=>shiftEventBeat(ev,startBeat,deltaBeats));
+  (S.harmonic||[]).forEach(ev=>shiftEventBeat(ev,startBeat,deltaBeats));
+  S.chord.forEach(ev=>shiftEventBeat(ev,startBeat,deltaBeats));
+  S.midi.forEach(ev=>shiftEventBeat(ev,startBeat,deltaBeats));
+
+  for(const laneKey of MIDI_AUTOMATION_KEYS){
+    const key=String(laneKey);
+    const points=S.midiCurves[key]||[];
+    const shifted=points.map(point=>{
+      const beatVal=parseFloat(point?.beat);
+      if(!Number.isFinite(beatVal)||beatVal+1e-6<startBeat)return point;
+      return {...point,beat:trimBeatNumber(beatVal+deltaBeats)};
+    });
+    S.midiCurves[key]=normalizeMidiCurvePoints(shifted,key);
+  }
+
+  let maxBeatEnd=0;
+  for(const ev of S.pluck){
+    const b=parseBeat(ev.beat);
+    const d=Math.max(0,parseFloat(ev.duration_b)||0);
+    maxBeatEnd=Math.max(maxBeatEnd,b+d);
+  }
+  for(const ev of S.chord)maxBeatEnd=Math.max(maxBeatEnd,parseBeat(ev.beat));
+  for(const ev of (S.harmonic||[]))maxBeatEnd=Math.max(maxBeatEnd,parseBeat(ev.beat));
+  for(const ev of S.midi)maxBeatEnd=Math.max(maxBeatEnd,parseBeat(ev.beat));
+  for(const laneKey of MIDI_AUTOMATION_KEYS){
+    const key=String(laneKey);
+    for(const point of (S.midiCurves[key]||[])){
+      const b=parseFloat(point?.beat);
+      if(Number.isFinite(b))maxBeatEnd=Math.max(maxBeatEnd,b);
+    }
+  }
+
+  const requiredMeasures=Math.max(1,Math.ceil(maxBeatEnd/Math.max(1,beatsPerBar)));
+  const requestedMeasures=S.measures+barsToInsert;
+  const unclampedMeasures=Math.max(requestedMeasures,requiredMeasures);
+  S.measures=clamp(Math.round(unclampedMeasures),1,64);
+
+  if(S.cycleEnabled){
+    let cycleStartBeat=(parseFloat(S.cycleStartBar)||1)-1;
+    cycleStartBeat*=beatsPerBar;
+    let cycleEndBeat=(parseFloat(S.cycleEndBar)||1)*beatsPerBar;
+
+    if(cycleStartBeat+1e-6>=startBeat)cycleStartBeat+=deltaBeats;
+    if(cycleEndBeat+1e-6>=startBeat)cycleEndBeat+=deltaBeats;
+
+    S.cycleStartBar=(cycleStartBeat/beatsPerBar)+1;
+    S.cycleEndBar=(cycleEndBeat/beatsPerBar);
+  }
+
+  syncCycleControls();
+  syncJSON();
+  render();
+
+  if(typeof showImportToast==='function'){
+    const clipped=unclampedMeasures>S.measures;
+    const message=clipped
+      ? `Inserted ${barsToInsert} bar${barsToInsert===1?'':'s'} of silence at ${beatLabel(startBeat)} (timeline capped at ${S.measures} bars).`
+      : `Inserted ${barsToInsert} bar${barsToInsert===1?'':'s'} of silence at ${beatLabel(startBeat)}.`;
+    showImportToast(message,2600);
+  }
+}
+
+function applyInsertSilenceFromPopup(){
+  const barsInput=document.getElementById('insert-silence-bars');
+  if(!barsInput)return;
+  insertSilenceAtBeat(insertSilenceBeat,barsInput.value);
+  closeInsertSilencePopup();
+}
+
+document.getElementById('seq-ctx-insert-playhead').addEventListener('click',()=>{
+  openInsertSilencePopup(seqContextClientX,seqContextClientY,S.playBeat);
+});
+
+document.getElementById('seq-ctx-insert-here').addEventListener('click',()=>{
+  openInsertSilencePopup(seqContextClientX,seqContextClientY,seqContextClickBeat);
+});
+
+document.getElementById('insert-silence-apply').addEventListener('click',applyInsertSilenceFromPopup);
+document.getElementById('insert-silence-cancel').addEventListener('click',closeInsertSilencePopup);
+document.getElementById('insert-silence-close').addEventListener('click',closeInsertSilencePopup);
+document.getElementById('insert-silence-bars').addEventListener('keydown',e=>{
+  if(e.key==='Enter'){
+    e.preventDefault();
+    applyInsertSilenceFromPopup();
+  }
+});
+
+document.addEventListener('pointerdown',e=>{
+  const menu=document.getElementById('seq-ctx-menu');
+  const silencePop=document.getElementById('insert-silence-pop');
+  if(menu&&!menu.contains(e.target))closeSequencerContextMenu();
+  if(silencePop&&!silencePop.contains(e.target))closeInsertSilencePopup();
+});
+
 canvas.addEventListener('contextmenu',e=>{
   e.preventDefault();
   const r=canvas.getBoundingClientRect();
   const cx=e.clientX-r.left, cy=e.clientY-r.top;
+  if(cx<LABEL_W)return;
 
-  const ccPointHit=hitMidiCurvePoint(cx,cy);
-  if(ccPointHit){
-    const key=String(ccPointHit.key);
-    const points=S.midiCurves[key]||[];
-    if(ccPointHit.index>=0&&ccPointHit.index<points.length){
-      points.splice(ccPointHit.index,1);
-      S.midiCurves[key]=normalizeMidiCurvePoints(points,key);
-      closeMLPop();
-      syncJSON();
-      render();
-      return;
-    }
-  }
-
-  const myY=midiTopY();
-  if(cx<LABEL_W&&cy>=myY&&cy<myY+MIDI_H){
-    const lane=midiLaneAtY(cy);
-    if(lane>=0&&lane!==MIDI_GENERAL_LANE_INDEX){
-      showMLPop(lane,e.clientX,e.clientY);
-      return;
-    }
-  }
-
+  if(typeof hideNoteWarningPopover==='function')hideNoteWarningPopover();
+  closeCPop();
+  closeMPop();
   closeMLPop();
-  const hit=hitPluck(cx,cy);
-  if(hit){rmPluck(hit.id);closeInsp();render();syncJSON()}
+
+  const clickedBeat=normalizePlacementBeat(Math.max(0,xToBeat(cx)));
+  openSequencerContextMenu(e.clientX,e.clientY,clickedBeat);
 });
 
 canvas.addEventListener('pointerdown',e=>{

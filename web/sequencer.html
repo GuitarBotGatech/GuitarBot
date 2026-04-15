@@ -286,6 +286,27 @@
   <button class="mlbtn" id="btn-export-midi" type="button">Save as MIDI</button>
 </div>
 
+<!-- SEQUENCER CONTEXT MENU -->
+<div class="popup seq-ctx-menu" id="seq-ctx-menu">
+  <div class="ph">Insert Silence</div>
+  <button class="mlbtn" id="seq-ctx-insert-playhead" type="button">Insert Silence At Playhead</button>
+  <button class="mlbtn" id="seq-ctx-insert-here" type="button">Insert Silence Here</button>
+</div>
+
+<!-- INSERT SILENCE POPUP -->
+<div class="popup" id="insert-silence-pop">
+  <div class="ph">Insert Silence <span class="pc" id="insert-silence-close">×</span></div>
+  <div class="pr"><div class="pl" id="insert-silence-at">At: 1.1</div></div>
+  <div class="pr">
+    <div class="pl">Bars To Insert</div>
+    <input type="number" id="insert-silence-bars" min="1" max="64" step="1" value="1" style="width:100%">
+  </div>
+  <div class="pr" style="display:flex;gap:6px;align-items:center;margin-bottom:0">
+    <button class="mlbtn" id="insert-silence-apply" type="button" style="margin-top:0;flex:1">Apply</button>
+    <button class="mlbtn" id="insert-silence-cancel" type="button" style="margin-top:0;flex:1">Cancel</button>
+  </div>
+</div>
+
 <input type="file" id="hidden-file" accept=".json,.mid,.midi,application/json,audio/midi,audio/x-midi">
 <div id="import-toast" aria-live="polite"></div>
 
