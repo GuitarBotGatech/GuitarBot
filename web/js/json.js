@@ -176,6 +176,17 @@ function buildUploadJSON(){
   const full=buildJSON();
   const soloRange=Number.isInteger(S.stringSoloIndex)?STRINGS[S.stringSoloIndex]:null;
   const mutedRanges=STRINGS.filter((_,index)=>!!S.stringMuted[index]);
+  const effectiveDurationSecondsForUpload=(durationSeconds,speed)=>{
+    const raw=Math.max(0,parseFloat(durationSeconds)||0);
+    if(raw<TREMOLO_DURATION_THRESHOLD_S)return raw;
+    if(clampSpeed(speed)!==0)return raw;
+    return Math.max(0,TREMOLO_DURATION_THRESHOLD_S-TREMOLO_UPLOAD_DISABLE_EPSILON_S);
+  };
+  const effectiveDurationBeatsForUpload=(durationBeats,speed)=>{
+    const beats=Math.max(0,parseFloat(durationBeats)||0);
+    const adjustedSeconds=effectiveDurationSecondsForUpload(beats*secondsPerBeat(),speed);
+    return adjustedSeconds/Math.max(1e-6,secondsPerBeat());
+  };
   const allowPluckNote=(noteRaw)=>{
     const note=parseInt(noteRaw,10);
     if(!Number.isFinite(note))return false;
@@ -184,7 +195,6 @@ function buildUploadJSON(){
   };
 
   if(!getCycleRange()){
-    if(!soloRange&&!mutedRanges.length)return full;
     return {
       song:{
         ...full.song,
@@ -192,7 +202,22 @@ function buildUploadJSON(){
           if(track.type!=='pluck')return track;
           return {
             ...track,
-            events:(track.events||[]).filter(ev=>allowPluckNote(ev.note)),
+            events:(track.events||[])
+              .filter(ev=>{
+                if(!soloRange&&!mutedRanges.length)return true;
+                return allowPluckNote(ev.note);
+              })
+              .map(ev=>{
+                const durationBeats=(ev.duration_b!==undefined&&ev.duration_b!==null)
+                  ? (parseFloat(ev.duration_b)||0.5)
+                  : ((ev.duration_s!==undefined&&ev.duration_s!==null)
+                      ? secondsToDurationBeats(ev.duration_s)
+                      : (parseFloat(ev.duration)||0.5));
+                return {
+                  ...ev,
+                  duration_b:effectiveDurationBeatsForUpload(durationBeats,ev.speed),
+                };
+              }),
           };
         }),
       },
@@ -227,9 +252,10 @@ function buildUploadJSON(){
             : ((ev.duration_s!==undefined&&ev.duration_s!==null)
                 ? secondsToDurationBeats(ev.duration_s)
                 : (parseFloat(ev.duration)||0.5));
+          const durationSeconds=effectiveDurationSecondsForUpload(durationBeats*spb,ev.speed);
           const out={
             note:ev.note,
-            duration_s:durationBeats*spb,
+            duration_s:durationSeconds,
             speed:ev.speed,
             slide:ev.slide,
             timestamp:toTimestamp(beat),

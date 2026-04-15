@@ -176,7 +176,12 @@ const secondsTickStep=()=>{
   }
   return candidates[candidates.length-1];
 };
-const hasTremolo=ev=>noteDurationSeconds(ev)>0.5;
+const hasTremolo=ev=>{
+  if(!ev)return false;
+  const durationS=noteDurationSeconds(ev);
+  const speed=clampSpeed(ev.speed);
+  return durationS>=TREMOLO_DURATION_THRESHOLD_S&&speed>0;
+};
 const hasMidiCurveSelection=()=>MIDI_AUTOMATION_KEYS.some(key=>(S.selMidiCurvePoints[String(key)]?.size||0)>0);
 const isMidiCurvePointSelected=(key,point)=>{
   const set=S.selMidiCurvePoints[String(key)];
@@ -186,7 +191,11 @@ const isMidiCurvePointSelected=(key,point)=>{
 function clearMidiCurveSelection(){
   S.selMidiCurvePoints=createEmptyMidiCurveSelection();
 }
-const clampSpeed=v=>clamp(parseInt(v)||SPEED_DEFAULT,SPEED_MIN,SPEED_MAX);
+const clampSpeed=v=>{
+  const parsed=parseInt(v,10);
+  const safe=Number.isFinite(parsed)?parsed:SPEED_DEFAULT;
+  return clamp(safe,SPEED_MIN,SPEED_MAX);
+};
 const speedToVelocity=s=>Math.round(((clampSpeed(s)-SPEED_MIN)/(SPEED_MAX-SPEED_MIN))*127);
 
 function stringLaneBounds(index){

@@ -135,10 +135,9 @@ function noteRulePrepTimeSeconds(prevEvent,nextEvent){
 
   const prevNote=prevEvent?parseInt(prevEvent.note,10):null;
   const nextNote=parseInt(nextEvent.note,10);
-  const durationS=Math.max(0,(parseFloat(nextEvent.duration_b)||0)*secondsPerBeat());
   const slideOn=parseInt(nextEvent.slide||0,10)===1;
   const sameNote=prevNote!==null&&prevNote===nextNote;
-  const isTremolo=durationS>=0.5;
+  const isTremolo=hasTremolo(nextEvent);
 
   let motionTime=0;
   if(sameNote&&!slideOn){
@@ -218,7 +217,7 @@ function evaluatePluckNoteWarnings(){
       }
 
       if(openRule&&prev){
-        const prevIsTremolo=prev.durationS>=0.5;
+        const prevIsTremolo=hasTremolo(prev.ev);
         const curSlide=parseInt(cur.ev.slide||0,10)===1;
         if(prevIsTremolo&&!curSlide){
           const prepS=noteRulePrepTimeSeconds(prev.ev,cur.ev);
@@ -408,8 +407,7 @@ function optimizeNoteWarningsLayout(){
         requiredStart=Math.max(requiredStart,prevPlaced.startBeat+closeGapBeats);
         requiredStart=Math.max(requiredStart,prevPlaced.endBeat+1e-4);
         const prevEvent=prevPlaced.ev;
-        const prevDurationS=(prevPlaced.endBeat-prevPlaced.startBeat)*spb;
-        const prevIsTremolo=prevDurationS>=0.5;
+        const prevIsTremolo=hasTremolo(prevEvent);
         const curSlide=parseInt(ev.slide||0,10)===1;
         if(prevIsTremolo&&!curSlide){
           const prepS=noteRulePrepTimeSeconds(prevEvent,ev);

@@ -38,7 +38,9 @@ const GRID_STEPS=[
   {label:'1/2',  beats:2  },
   {label:'1',    beats:4  },
 ];
-const SPEED_MIN=1, SPEED_MAX=10, SPEED_DEFAULT=6;
+const SPEED_MIN=0, SPEED_MAX=10, SPEED_DEFAULT=6;
+const TREMOLO_DURATION_THRESHOLD_S=0.5;
+const TREMOLO_UPLOAD_DISABLE_EPSILON_S=0.001;
 const IMPORT_KEY='guitarbot_startup_import_json';
 
 const STRINGS=[
