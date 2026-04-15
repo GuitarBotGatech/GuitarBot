@@ -1,7 +1,7 @@
 // ═══════════════════════════════════════════════
 // CONSTANTS
 // ═══════════════════════════════════════════════
-const MIDI_MIN=40, MIDI_MAX=73, NOTE_COUNT=34;
+const MIDI_MIN=40, MIDI_MAX=74, NOTE_COUNT=35;
 const noteH_DEFAULT=14, noteH_MIN=6, noteH_MAX=50;
 const NOTE_H_AUTO=6;
 let noteH=noteH_DEFAULT;
