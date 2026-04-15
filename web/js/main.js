@@ -25,6 +25,13 @@ document.addEventListener('keydown',e=>{
 
   const tag=document.activeElement?.tagName;
   if(tag==='INPUT'||tag==='SELECT'||tag==='TEXTAREA')return;
+  if(!e.ctrlKey&&!e.metaKey&&!e.altKey&&e.key>='1'&&e.key<='6'){
+    const stringIdx=parseInt(e.key,10)-1;
+    if(setStringOverrideForSelected(stringIdx)){
+      e.preventDefault();
+    }
+    return;
+  }
   if(e.key==='Escape'&&hasFocusedCCLane()){
     S.focusedCCLane=null;
     render();

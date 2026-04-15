@@ -241,9 +241,8 @@ function updStrOv(v){
 }
 
 function physicalStringCodeToOverrideIndex(code){
-  if(code===0)return 0; // E
-  if(code===2)return 1; // D
-  if(code===4)return 2; // B
+  const parsed=parseInt(code,10);
+  if(Number.isFinite(parsed)&&parsed>=0&&parsed<STRINGS.length)return parsed;
   return null;
 }
 

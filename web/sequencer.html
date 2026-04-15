@@ -63,7 +63,6 @@
     </div>
     <div class="tg">
       <span class="note-warn ok" id="note-warn" title="No note timing warnings">✓ NOTES OK</span>
-      <button class="tbtn" id="btn-fix-warnings" title="Auto-fix note warnings">FIX</button>
       <button class="tbtn" id="btn-plan-strings" title="Greedy string assignment for all unassigned notes">PLAN</button>
     </div>
   </div>
@@ -157,9 +156,12 @@
         <select id="i-str-ov" onchange="updStrOv(this.value)" style="width:100%">
           <option value="__mixed__" disabled hidden>Mixed values</option>
           <option value="">Auto (by note)</option>
-          <option value="0">0 — Low E</option>
-          <option value="1">1 — D</option>
-          <option value="2">2 — B</option>
+          <option value="0">0 — Low E (E2)</option>
+          <option value="1">1 — A (A2)</option>
+          <option value="2">2 — D (D3)</option>
+          <option value="3">3 — G (G3)</option>
+          <option value="4">4 — B (B3)</option>
+          <option value="5">5 — High E (E4)</option>
         </select>
       </div>
       <div class="if" id="i-analysis-row" style="display:none">

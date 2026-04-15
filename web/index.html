@@ -133,10 +133,9 @@ body{display:flex;align-items:center;justify-content:center;padding:24px}
 
         <div class="card">
           <h2>2) Open / Resume</h2>
-          <p>Load a saved arrangement from a local JSON or MIDI file, or resume your auto-saved session.</p>
+          <p>Load a saved arrangement from a local JSON or MIDI file.</p>
           <div style="display:flex;gap:8px">
             <button class="btn open" id="btn-open" style="flex:1">Open File</button>
-            <button class="btn recent" id="btn-recent" style="display:none;flex:1">Resume</button>
           </div>
         </div>
 
@@ -182,17 +181,6 @@ document.getElementById('btn-example').addEventListener('click',()=>{
   localStorage.removeItem(IMPORT_KEY);
   go('example');
 });
-
-const recentBtn = document.getElementById('btn-recent');
-if(recentBtn){
-  recentBtn.addEventListener('click',()=>{
-    localStorage.removeItem(IMPORT_KEY);
-    go('recent');
-  });
-  if(localStorage.getItem('guitarbot_autosave')){
-    recentBtn.style.display='block';
-  }
-}
 
 document.getElementById('btn-open').addEventListener('click',()=>{
   document.getElementById('hidden-file').click();

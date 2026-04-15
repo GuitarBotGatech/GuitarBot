@@ -145,10 +145,6 @@ input[type=range]::-webkit-slider-thumb:hover{transform:scale(1.2)}
 .note-warn.warn:hover{background:rgba(251,191,36,0.12)}
 .note-warn.pulse{animation:note-warn-pulse .7s ease}
 
-#btn-fix-warnings{border-color:var(--yellow);color:var(--yellow);min-width:38px}
-#btn-fix-warnings:hover{background:var(--yellow);color:#000}
-#btn-fix-warnings:disabled{opacity:.4;cursor:default;background:transparent;color:var(--text-dim);border-color:var(--border)}
-
 .note-warn-popover{
   position:fixed;
   z-index:120;

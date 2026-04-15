@@ -124,9 +124,7 @@ function noteRuleStringIndex(ev){
     if(Number.isFinite(explicit)&&explicit>=0&&explicit<STRINGS.length)return explicit;
   }
   const note=parseInt(ev?.note,10);
-  if(note===0) return 0;
-  if(note===2) return 1;
-  if(note===4) return 2;
+  if(note>=0&&note<STRINGS.length) return note;
   const inferred=STRINGS.findIndex(s=>note>=s.min&&note<=s.max);
   return inferred>=0?inferred:0;
 }
@@ -494,7 +492,6 @@ function renderNoteWarningsAndGetCount(){
   S.noteWarnings=warnings;
   S.noteWarningsByNoteId=buildWarningIndex(warnings);
   const badge=document.getElementById('note-warn');
-  const fixBtn=document.getElementById('btn-fix-warnings');
   const count=warnings.length;
 
   if(badge){
@@ -519,24 +516,7 @@ function renderNoteWarningsAndGetCount(){
     }
   }
 
-  if(fixBtn)fixBtn.disabled=!count;
   return count;
-}
-
-function onFixWarningsClick(event){
-  event.preventDefault();
-  event.stopPropagation();
-  const before=(S.noteWarnings||[]).length;
-  if(!before)return;
-
-  const result=optimizeNoteWarningsLayout();
-  render();
-  syncJSON();
-
-  const message=result.after<before
-    ? `Auto-fix reduced warnings ${before} → ${result.after} (updated ${result.moved} notes).`
-    : `Auto-fix made no warning improvements (${before} warnings).`;
-  if(typeof showImportToast==='function')showImportToast(message,3600);
 }
 
 function planStringsGreedy(){
@@ -578,11 +558,9 @@ function planStringsGreedy(){
 function bindNoteWarningUI(){
   if(S.noteWarningUIBound)return;
   const badge=document.getElementById('note-warn');
-  const fixBtn=document.getElementById('btn-fix-warnings');
   const planBtn=document.getElementById('btn-plan-strings');
-  if(!badge||!fixBtn)return;
+  if(!badge)return;
   badge.addEventListener('click',onNoteWarningsBadgeClick);
-  fixBtn.addEventListener('click',onFixWarningsClick);
   if(planBtn) planBtn.addEventListener('click',planStringsGreedy);
   S.noteWarningUIBound=true;
 }
