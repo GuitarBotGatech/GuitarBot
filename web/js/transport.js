@@ -201,6 +201,7 @@ function triggerPluckEventsBetween(prevBeat,nextBeat){
 }
 
 let playIv=null, playT0=null, playB0=0;
+let prevCycleKey=null; // tracks cycle identity to detect mid-playback moves
 
 function setPlayheadBeat(beat){
   S.playBeat=clamp(normalizeBeat(beat),0,totalBeats());
@@ -220,6 +221,7 @@ document.getElementById('btn-play').addEventListener('click',()=>{
     setPlayheadBeat(cycleRange.startBeat);
   }
   S.playing=true; playT0=performance.now(); playB0=S.playBeat;
+  prevCycleKey=null;
   document.getElementById('btn-play').classList.add('on');
   playIv=setInterval(()=>{
     const prevBeat=S.playBeat;
@@ -230,7 +232,14 @@ document.getElementById('btn-play').addEventListener('click',()=>{
       const len=cycle.endBeat-cycle.startBeat;
       const absoluteBeat=playB0+elapsed;
       const wrapped=cycle.startBeat+((((absoluteBeat-cycle.startBeat)%len)+len)%len);
-      if(wrapped<prevBeat){
+      const cycleKey=cycle.startBeat+'_'+cycle.endBeat;
+      const cycleChanged=prevCycleKey!==null&&prevCycleKey!==cycleKey;
+      prevCycleKey=cycleKey;
+      if(cycleChanged){
+        // Cycle moved mid-playback: re-anchor so next tick is clean, skip notes this tick
+        playT0=performance.now(); playB0=wrapped;
+        S.playBeat=wrapped;
+      }else if(wrapped<prevBeat){
         triggerPluckEventsBetween(prevBeat,cycle.endBeat);
         triggerPluckEventsBetween(cycle.startBeat,wrapped);
       }else{
