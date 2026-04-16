@@ -60,6 +60,6 @@ The new message types are reported in the terminal by running **OSC_Message_Rece
 - **Validated**: Input validation for MIDI notes, velocities, and force parameters
 
 #### **System Compatibility**
-- **Format**: Maintains 15×N trajectory matrix (12 LH + 3 RH motors)
+- **Format**: 18×N trajectory matrix (12 LH + 6 RH motors)
 - **Integration**: Compatible with existing `RobotController` and OSC receiver
 - **Plotting**: Clearer motor labels ([Function] No. vs. Motor No.)
