@@ -24,6 +24,7 @@ let S={
   sectionClipboard:null,
   editMode:'select',
   snapEnabled:true,
+  notePreview:true,
   gridIdx:1,
   stringSoloIndex:null,
   activeTab:'create',
