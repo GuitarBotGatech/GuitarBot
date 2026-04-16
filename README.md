@@ -8,31 +8,7 @@ Project repo for GuitarBot.
 
 ---
 
-This details changes made from 2025-2026 for Ryan Baker's work on improving GuitarBot as a platform for data-driven analysis and performance. 
-This branch also shared history with Marcus Parker's compositional work that explores GuitarBot's unique sonorities as a robotic musician.
-
-**Goal: Enable the GuitarBot platform to have highly specified control messages to be used for audio-based calibration and learning**
-
-This branch introduces a major refactoring of the parsing system to support dataset generation workflows for optimizing fretting force and dynamic range control.
-
-### Major Changes
-
-#### **New Modular Parser Architecture**
-- **Replaced** monolithic parsing approach with modular left/right hand separation
-- **Refactored** `DynamicsParser.py` → `RightHandParser.py` (enhanced with velocity mapping)
-- **Cleaned** `LeftHandParser.py` to focus purely on fretting (removed right-hand concerns)  
-- **Created** `BothHandsParser.py` as orchestrator for coordinated left/right hand trajectories
-
-#### **Enhanced Message Protocols**
-- **`/Fret` Messages**: MIDI note-based fretting with optional presser force control (0.0-1.0) (expanded to /RLFret for GuitaRL paper)
-- **`/Dyn` Messages**: Right-hand dynamics testing with state-based or velocity-based plucking
-- **Coordinated Messages**: Combined fretting + plucking for complete note production with a more overt code structure
-
-#### **Dataset Generation Focus**
-- **Fretting Optimization**: `/Fret` messages for calibrating optimal presser positions per fret
-- **Dynamics Range**: `/Dyn` messages for testing plucking motor dynamic response
-- **Clean Separation**: Robotics code separated from learning/dataset functionality
-- **Recording**: Programmatically capture data from the robot for automated annotated corpus creation
+A six plucker iteration of Guitarbot, featuring a web-based UI with a karplus-strong sequencer that can upload directly to the bot.
 
 ## Environment Setup
 **Prerequisites:** [Miniconda](https://conda.io/projects/conda/en/latest/user-guide/install/index.html) and the [midification](https://github.com/bakerbass/midification) repo cloned as a sibling directory (directory name remains `midification`).
