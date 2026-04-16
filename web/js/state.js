@@ -48,6 +48,10 @@ let S={
   latencyDriftMsPerMin:0,
   audioWavB64:null,
   recStartBeat:0,
+  midiRecordingActive:false,
+  midiRecStartBeat:0,
+  midiQuantize:false,
+  midiInputDeviceName:null,
 };
 
 function beatsPerMeasureFromTimeSig(timeSigRaw){

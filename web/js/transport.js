@@ -130,13 +130,14 @@ const Synth={
         g.gain.exponentialRampToValueAtTime(0.0001,now+d);
       }
 
-      const item={node,g,timerIds};
+      const item={node,g,timerIds,isWorklet:true};
       timerIds.push(setTimeout(()=>{
         node.port.postMessage({type:'stop'});
         try{node.disconnect();g.disconnect();}catch(_e){}
         this.active.delete(item);
       },(d+0.15)*1000));
       this.active.add(item);
+      return item;
 
     }else{
       // ── Fallback: triangle oscillator with basic portamento ───────────
@@ -158,10 +159,32 @@ const Synth={
       g.gain.exponentialRampToValueAtTime(0.0001,now+d);
       osc.connect(g); g.connect(this.master);
       osc.start(now); osc.stop(now+d+0.01);
-      const item={node:osc,g,timerIds:[]};
+      const item={node:osc,g,timerIds:[],isWorklet:false};
       osc.onended=()=>this.active.delete(item);
       this.active.add(item);
+      return item;
     }
+  },
+
+  // Stop a specific voice previously returned from trigger().
+  // Used by MIDI live-monitor to release a held note on note-off.
+  release(item){
+    if(!item||!this.active.has(item))return;
+    try{
+      const now=this.ctx?this.ctx.currentTime:0;
+      item.g.gain.cancelScheduledValues(now);
+      item.g.gain.setValueAtTime(item.g.gain.value,now);
+      item.g.gain.exponentialRampToValueAtTime(0.0001,now+0.08);
+      if(item.isWorklet){
+        setTimeout(()=>{
+          try{item.node.port.postMessage({type:'stop'});item.node.disconnect();item.g.disconnect();}catch(_e){}
+        },100);
+      }else{
+        try{item.node.stop(now+0.1);}catch(_e){}
+      }
+    }catch(_e){}
+    for(const tid of(item.timerIds||[]))clearTimeout(tid);
+    this.active.delete(item);
   },
 
   stopAll(){
@@ -263,6 +286,7 @@ document.getElementById('btn-play').addEventListener('click',()=>{
 
 document.getElementById('btn-stop').addEventListener('click',stopPlay);
 function stopPlay(){
+  if(typeof MIDIInput!=='undefined'&&S.midiRecordingActive)MIDIInput.finalizeRecording();
   S.playing=false; clearInterval(playIv); playIv=null;
   Synth.stopAll();
   S.playBeat=0; document.getElementById('btn-play').classList.remove('on');

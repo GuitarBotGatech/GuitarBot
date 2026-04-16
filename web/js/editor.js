@@ -36,6 +36,29 @@ function addNote(b,n){
   const ev=ensureSlideShape({id:S.nextId++,note:n,duration_b:dur,speed:SPEED_DEFAULT,slide:0,beat:beatLabel(b),string_index:null});
   S.pluck.push(ev); selPluck(ev.id); syncJSON(); return ev;
 }
+// Used by MIDI recording: exact (optionally quantized) start beat and
+// duration, skipping the collision guard so overdubs and overlaps land
+// as played. Does not select or sync JSON (caller batches).
+function addNoteExact(note,startBeat,durBeats,speed){
+  if(note<MIDI_MIN||note>MIDI_MAX)return null;
+  let b=Math.max(0,startBeat);
+  let d=Math.max(0.02,durBeats);
+  if(S.midiQuantize){
+    b=snap(b);
+    d=Math.max(gridStep(),Math.round(d/gridStep())*gridStep());
+  }
+  const ev=ensureSlideShape({
+    id:S.nextId++,
+    note,
+    duration_b:trimBeatNumber(d),
+    speed:clampSpeed(speed),
+    slide:0,
+    beat:beatLabel(b),
+    string_index:null,
+  });
+  S.pluck.push(ev);
+  return ev;
+}
 function rmPluck(id){
   S.pluck=S.pluck.filter(e=>e.id!==id);
   S.selPluckIds.delete(id);

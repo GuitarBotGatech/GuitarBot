@@ -78,6 +78,14 @@
       <span class="analyze-status" id="analyze-status"></span>
       <button class="tbtn" id="btn-clear-recording" title="Clear recording">✕REC</button>
     </div>
+    <div class="tg" style="margin-top:4px">
+      <button class="tbtn" id="btn-midi-record" title="Record MIDI keyboard">🎹</button>
+      <select id="midi-device" title="MIDI input device" style="min-width:160px">
+        <option value="">— no MIDI input —</option>
+      </select>
+      <button class="tbtn" id="btn-midi-quantize" title="Quantize MIDI recording to grid">Q</button>
+      <span class="analyze-status" id="midi-status"></span>
+    </div>
   </div>
 
   <!-- Always visible: bot actions + file I/O -->
@@ -323,6 +331,7 @@
 <script src="js/json.js"></script>
 <script src="js/main.js"></script>
 <script src="js/audio_recorder.js"></script>
+<script src="js/midi_input.js"></script>
 <script src="js/spectrogram.js"></script>
 <script src="js/analysis.js"></script>
 </body>
