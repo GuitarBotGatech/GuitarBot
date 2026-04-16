@@ -26,13 +26,12 @@ A six plucker iteration of Guitarbot, featuring a web-based UI with a karplus-st
 
 Run strikers.io in Arduino IDE by uploading to the OpenCR board, turning on the robot, and opening the serial monitor.
 
-You're all set! Start sending messages using the **OSC_Message_Send.py** and **OSC_Message_Receiver.py** scripts to start the GuitarBot UI.
+You're all set! Start sending messages using the **OSC_Message_Send.py** and **OSC_Message_Receiver.py** scripts or start the GuitarBot UI by running `python launch.py`.
 
-### New Parser
-**GuitarBotParser.py** still handles pluck messages for longer form song trajectories.
+### Parsers
+**GuitarBotParser.py** handles pluck and chord messages for longer form song trajectories.
 
 **BothHandsParser.py** is designed for fine control of single-note events, i.e. for dataset generation and machine learning. 
- - **RightHandParser.py** and **LeftHandParser.py** are mostly just copied from **GuitarBotParser.py**
 
 
 ### To Update Environment Configuration:
@@ -44,22 +43,20 @@ You're all set! Start sending messages using the **OSC_Message_Send.py** and **O
 
 ### Message Protocol Updates
 
-The new message types are reported in the terminal by running **OSC_Message_Receiver.py**
+The OSC message types are reported in the terminal by running **OSC_Message_Receiver.py**
 
 ### Technical Improvements
 
 #### **Trajectory Generation**
-- **Consistent**: All parsers use `GuitarBotParser.interp_with_blend` for smooth motion
 - **Robust**: Handle None returns from interpolation functions gracefully
-- **Calibrated**: Use `tune.py` values for motor directions, positions, and conversions
-- **Timed**: Explicit and easier-to-read coordination between left-hand prep and right-hand execution
+- **Tested**: Run tests on trajectories to validate parsing numerically before running on the robot
+- **Calibration**: Use `tune.py` values for motor directions, positions, and conversions
+- **Data-ready**: Synchronize with an automated recording process for dataset creation or machine learning
 
 #### **MIDI Integration** 
-- **Unified**: All parsers use `STRING_MIDI_RANGES` for consistent note mapping
-- **Flexible**: Support for full MIDI note range (40-68) across available strings
-- **Validated**: Input validation for MIDI notes, velocities, and force parameters
+- **Flexible**: Support for full MIDI note range (40-74) across 6 strings
+- **Audio Effects** Automate MIDI CC directly from web interface
 
 #### **System Compatibility**
 - **Format**: 18×N trajectory matrix (12 LH + 6 RH motors)
-- **Integration**: Compatible with existing `RobotController` and OSC receiver
-- **Plotting**: Clearer motor labels ([Function] No. vs. Motor No.)
+- **Configuration and Reset**: Send /Config and /Reset messages to configure the robot without power cycling
