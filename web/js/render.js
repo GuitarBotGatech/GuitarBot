@@ -340,38 +340,38 @@ function drawBG(){
 
 function drawGrid(){
   const tb=totalBeats(), m=bpm();
-  const gs=gridStep(), eps=gs*0.05;
+  const gs=gridStep();
 
-  // Draw subdivision lines (grid step), skipping beat/measure positions
+  // Convert grid step to exact integer ratio over 12.
+  // All GRID_STEPS denominators (1,2,3,4,6) divide 12 evenly, so
+  // Math.round(gs*12) gives an exact integer with no rounding error.
+  // This lets us use pure integer arithmetic for the loop-boundary check,
+  // eliminating float drift that caused triplet subdivisions to be skipped.
+  const gsN=Math.round(gs*12); // numerator: gs = gsN/12
+  const gsD=12;                 // denominator
+
+  // Pass 1: subdivision lines — per-measure, restarting from each bar boundary.
+  // Loop condition i*gsN < m*gsD is exact integer arithmetic (no float drift).
+  ctx.strokeStyle='#1c1c36';
   ctx.lineWidth=1;
-  for(let b=0; b<=tb+eps; b+=gs){
-    const br=parseFloat(b.toFixed(9));
-    const x=beatToX(br);
-    if(x<LABEL_W-1||x>CW+1)continue;
-    const remM=br%m, isMeasure=remM<1e-6||(m-remM)<1e-6;
-    const remB=br%1,  isBeat=remB<1e-6||(1-remB)<1e-6;
-    if(isMeasure||isBeat)continue;
-    ctx.strokeStyle='#141428';
-    ctx.beginPath(); ctx.moveTo(x,0); ctx.lineTo(x,canvasH()); ctx.stroke();
+  for(let bar=0; bar*m<tb; bar++){
+    const ms=bar*m;
+    for(let i=1; i*gsN<m*gsD; i++){
+      const br=ms+(i*gsN)/gsD; // single float divide, minimal error
+      if(br>=tb)break;
+      const x=beatToX(br);
+      if(x<LABEL_W-1||x>CW+1)continue;
+      ctx.beginPath(); ctx.moveTo(x,0); ctx.lineTo(x,canvasH()); ctx.stroke();
+    }
   }
 
-  // Draw beat lines (always at integer beats, independent of grid)
-  for(let b=0; b<=tb; b+=1){
-    const x=beatToX(b);
-    if(x<LABEL_W-1||x>CW+1)continue;
-    const remM=b%m, isMeasure=remM<1e-6;
-    if(isMeasure)continue;
-    ctx.strokeStyle='#1e1e34';
-    ctx.beginPath(); ctx.moveTo(x,0); ctx.lineTo(x,canvasH()); ctx.stroke();
-  }
-
-  // Draw measure lines (always at measure boundaries, independent of grid)
+  // Pass 3: measure lines (always at bar*m, independent of grid)
   const measureLabelXs=[];
-  for(let bar=0; bar*m<=tb; bar+=1){
+  for(let bar=0; bar*m<=tb; bar++){
     const b=bar*m;
     const x=beatToX(b);
     if(x<LABEL_W-1||x>CW+1)continue;
-    ctx.strokeStyle='#323250';
+    ctx.strokeStyle='#383864';
     ctx.beginPath(); ctx.moveTo(x,0); ctx.lineTo(x,canvasH()); ctx.stroke();
     measureLabelXs.push({x,bar:bar+1});
   }
