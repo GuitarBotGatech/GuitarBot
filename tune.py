@@ -108,12 +108,12 @@ SLIDER_MOTOR_DIRECTION = [-1, 1,1,-1, -1, 1]
 # Calibrate the mm positions for the desired picking depth and tone.
 # Key is the motor ID.
 PICKER_MOTOR_INFO = {
-    0: {'down_pluck_mm': -5.3, 'up_pluck_mm': -9.2, 'resolution': 1024}, # E
-    1: {'down_pluck_mm': 4.5, 'up_pluck_mm': 8.4, 'resolution': 2048}, # A
+    0: {'down_pluck_mm': -6.0, 'up_pluck_mm': -9.5, 'resolution': 1024}, # E
+    1: {'down_pluck_mm': 6.0, 'up_pluck_mm': 10.0, 'resolution': 2048}, # A
     2: {'down_pluck_mm': -6.4, 'up_pluck_mm': -9.5, 'resolution': 2048}, # D
-    3: {'down_pluck_mm': 5.6, 'up_pluck_mm': 8.6, 'resolution': 1024}, # G
-    4: {'down_pluck_mm': 5.0, 'up_pluck_mm': 8.0, 'resolution': 2048}, # B
-    5: {'down_pluck_mm': -2.5, 'up_pluck_mm': -5.5, 'resolution': 2048} # E
+    3: {'down_pluck_mm': 6.2, 'up_pluck_mm': 9.7, 'resolution': 1024}, # G
+    4: {'down_pluck_mm': 5.7, 'up_pluck_mm': 8.8, 'resolution': 2048}, # B
+    5: {'down_pluck_mm': -2.7, 'up_pluck_mm': -6.3, 'resolution': 2048} # E
 }
 
 # ----------------------------------------------------------------------------

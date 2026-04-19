@@ -907,12 +907,12 @@ outro_segment = get_pluck_segment(string_theory, 150.0, 180.0)
 #pluck_message = Polyrhythmic_Phrase_1 #NA
 #pluck_message = Polyrhythmic_Phrase_2
 #pluck_message = string_theory
-test = [[40, 1, 10, 0, 1]]
-
-pluck_message = test
+test = [[60, 2, 10, 0, 1]]
+pluck_message = transition_segment
 
 
 chords_message = [["On", pluck_message[-1][4] + pluck_message[-1][1]+2]]
+
 
 
 
