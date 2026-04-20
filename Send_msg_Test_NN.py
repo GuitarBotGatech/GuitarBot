@@ -907,8 +907,48 @@ outro_segment = get_pluck_segment(string_theory, 150.0, 180.0)
 #pluck_message = Polyrhythmic_Phrase_1 #NA
 #pluck_message = Polyrhythmic_Phrase_2
 #pluck_message = string_theory
-test = [[60, 2, 10, 0, 1]]
-pluck_message = transition_segment
+test = [
+    # --- BAR 1: G Major (S1=43, S2=47, S3=50, S4=55, S5=62, S6=67) ---
+    # Measure Starts - HEAVY TREMOLO (Duration 1.5)
+    [43, 1.5, 5, 1, 1.0], [50, 1.5, 5, 0, 1.0], [62, 1.5, 5, 0, 1.0],
+    # String 2 - PULSED TREMOLO (Duration 0.8)
+    [47, 0.8, 8, 1, 1.0], [47, 0.8, 5, 0, 2.0],
+    # String 4 - PLUCKS (Duration 0.4)
+    [55, 0.4, 5, 1, 1.0], [55, 0.4, 5, 0, 1.666], [55, 0.4, 5, 0, 2.333],
+    # String 6 - PLUCKS (Duration 0.4)
+    [67, 0.4, 5, 1, 1.0], [67, 0.4, 5, 0, 1.4], [67, 0.4, 5, 0, 1.8], [67, 0.4, 5, 0, 2.2], [67, 0.4, 5, 0, 2.6],
+
+    # --- BAR 2: D Major/F# (S1=42, S2=45, S3=50, S4=57, S5=62, S6=66) ---
+    # Measure Starts - HEAVY TREMOLO (Duration 1.5)
+    [42, 1.5, 5, 0, 3.0], [50, 1.5, 5, 0, 3.0], [62, 1.5, 5, 0, 3.0],
+    # String 2 - PULSED TREMOLO (Duration 0.8)
+    [45, 0.8, 5, 1, 3.0], [45, 0.8, 5, 0, 4.0],
+    # String 4 - PLUCKS (Duration 0.4)
+    [57, 0.4, 5, 1, 3.0], [57, 0.4, 5, 0, 3.666], [57, 0.4, 5, 0, 4.333],
+    # String 6 - PLUCKS (Duration 0.4)
+    [66, 0.4, 5, 1, 3.0], [66, 0.4, 5, 0, 3.4], [66, 0.4, 5, 0, 3.8], [66, 0.4, 5, 0, 4.2], [66, 0.4, 5, 0, 4.6],
+
+    # --- BAR 3: E Minor (S1=40, S2=47, S3=52, S4=55, S5=59, S6=64) ---
+    # Measure Starts - HEAVY TREMOLO (Duration 1.5)
+    [40, 1.5, 5, 0, 5.0], [52, 1.5, 5, 0, 5.0], [59, 1.5, 5, 0, 5.0],
+    # String 2 - PULSED TREMOLO (Duration 0.8)
+    [47, 0.8, 5, 1, 5.0], [47, 0.8, 5, 0, 6.0],
+    # String 4 - PLUCKS (Duration 0.4)
+    [55, 0.4, 5, 1, 5.0], [55, 0.4, 5, 0, 5.666], [55, 0.4, 5, 0, 6.333],
+    # String 6 - PLUCKS (Duration 0.4)
+    [64, 0.4, 5, 1, 5.0], [64, 0.4, 5, 0, 5.4], [64, 0.4, 5, 0, 5.8], [64, 0.4, 5, 0, 6.2], [64, 0.4, 5, 0, 6.6],
+
+    # --- BAR 4: C Major/G (S1=43, S2=48, S3=52, S4=55, S5=60, S6=64) ---
+    # Measure Starts - HEAVY TREMOLO (Duration 1.5)
+    [43, 1.5, 5, 0, 7.0], [52, 1.5, 5, 0, 7.0], [60, 1.5, 5, 0, 7.0],
+    # String 2 - PULSED TREMOLO (Duration 0.8)
+    [48, 0.8, 5, 1, 7.0], [48, 0.8, 5, 0, 8.0],
+    # String 4 - PLUCKS (Duration 0.4)
+    [55, 0.4, 5, 1, 7.0], [55, 0.4, 5, 0, 7.666], [55, 0.4, 5, 0, 8.333],
+    # String 6 - PLUCKS (Duration 0.4)
+    [64, 0.4, 5, 1, 7.0], [64, 0.4, 5, 0, 7.4], [64, 0.4, 5, 0, 7.8], [64, 0.4, 5, 0, 8.2], [64, 0.4, 5, 0, 8.6]
+]
+pluck_message = test
 
 
 chords_message = [["On", pluck_message[-1][4] + pluck_message[-1][1]+2]]
