@@ -132,7 +132,7 @@ SLIDER_ENCODER_OFFSET = -2000
 # Multiplier to reverse the direction of specific slider motors if they are mounted mirrored.
 # A value of -1 reverses the motor, 1 keeps it the same.
 # Index corresponds to motor ID (String 1 = 0, String 2 = 1, etc.).
-SLIDER_MOTOR_DIRECTION = [-1, 1,1,-1, -1, 1]
+SLIDER_MOTOR_DIRECTION = [-1, 1, 1, -1, -1, 1]
 
 # ----------------------------------------------------------------------------
 # 4. Right Hand (RH) / Picker Physical Parameters
@@ -143,11 +143,11 @@ SLIDER_MOTOR_DIRECTION = [-1, 1,1,-1, -1, 1]
 # Calibrate the mm positions for the desired picking depth and tone.
 # Key is the motor ID.
 PICKER_MOTOR_INFO = {
-    0: {'down_pluck_mm': -6.0, 'up_pluck_mm': -9.5, 'resolution': 1024}, # E
-    1: {'down_pluck_mm': 6.1, 'up_pluck_mm': 10.0, 'resolution': 2048}, # A
-    2: {'down_pluck_mm': -6.4, 'up_pluck_mm': -9.5, 'resolution': 2048}, # D
-    3: {'down_pluck_mm': 6.2, 'up_pluck_mm': 9.7, 'resolution': 1024}, # G
-    4: {'down_pluck_mm': 5.7, 'up_pluck_mm': 8.8, 'resolution': 2048}, # B
+    0: {'down_pluck_mm': -6.5, 'up_pluck_mm': -9.9, 'resolution': 1024}, # E
+    1: {'down_pluck_mm': 5.1, 'up_pluck_mm': 9.0, 'resolution': 2048}, # A
+    2: {'down_pluck_mm': -5.9, 'up_pluck_mm': -9.6, 'resolution': 2048}, # D
+    3: {'down_pluck_mm': 5.2, 'up_pluck_mm': 8.7, 'resolution': 1024}, # G
+    4: {'down_pluck_mm': 5.2, 'up_pluck_mm': 8.3, 'resolution': 2048}, # B
     5: {'down_pluck_mm': -2.7, 'up_pluck_mm': -6.3, 'resolution': 2048} # E
 }
 
