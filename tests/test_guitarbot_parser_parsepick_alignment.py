@@ -57,6 +57,30 @@ def test_parse_pick_midi_honors_zero_based_string_override_for_ambiguous_note():
     assert assigned == [(2, 59), (4, 68)]
 
 
+def test_parse_pick_midi_honors_override_even_when_picker_is_busy():
+    parser = GuitarBotParser(initial_point=copy.deepcopy(tu.initial_point), graph=False)
+
+    # Regression: when a run of E2 notes is followed by F#2 forced to string 0,
+    # prep-time conflict previously caused a fallback to picker 1 (A string).
+    picks = [
+        [40, 0.25, 6, 0, 1.0],
+        [40, 0.25, 6, 0, 1.5],
+        [40, 0.25, 6, 0, 2.0],
+        [40, 0.25, 6, 0, 2.5],
+        [49, 0.25, 6, 0, 0, 3.0],
+        [49, 0.25, 6, 0, 0, 3.5],
+        [49, 0.25, 6, 0, 0, 4.0],
+        [49, 0.25, 6, 0, 0, 4.5],
+    ]
+
+    pick_motor_positions, _slide_toggles = parser.parsePickMIDI(picks)
+    assigned = [(int(event[0][0]), int(event[0][1]), float(event[1])) for event in pick_motor_positions]
+
+    forced_note_assignments = [(picker, note, ts) for picker, note, ts in assigned if note == 49]
+    assert forced_note_assignments
+    assert all(picker == 0 for picker, _note, _ts in forced_note_assignments)
+
+
 def test_lh_prep_time_adds_extra_caution_for_9th_fret_target():
     parser = GuitarBotParser(initial_point=copy.deepcopy(tu.initial_point), graph=False)
 

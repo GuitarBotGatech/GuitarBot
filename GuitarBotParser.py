@@ -706,8 +706,8 @@ class GuitarBotParser:
                 The tuple format can be either:
                 (note, duration, speed, slide_toggle, timestamp) for automatic string assignment,
                 OR
-                (note, duration, speed, slide_toggle, timestamp, string) for manual assignment,
-                where 'string' is an integer from 1 to 6.
+                (note, duration, speed, slide_toggle, string, timestamp) for manual assignment,
+                where 'string' is a 0-based index (1-based values are accepted for compatibility).
 
                 Special chord pluck format: when note is 0-5, it is treated as a direct
                 string index (0-based) that activates the matching string plucker without
@@ -717,6 +717,12 @@ class GuitarBotParser:
                 - pick_motor_positions (list): A list of motor position events for the picking mechanism.
                 - slide_toggles (list): A list of boolean slide toggles corresponding to each pick.
         """
+        explicit_override_indices = {
+            idx
+            for idx, pick in enumerate(picks)
+            if len(pick) == 6 and pick[4] is not None
+        }
+
         if self.use_path_planner:
             picks = self._preassign_strings(picks)
 
@@ -753,12 +759,13 @@ class GuitarBotParser:
                     return candidate
             return None
 
-        for pick_info in picks:
+        for pick_idx, pick_info in enumerate(picks):
             if len(pick_info) == 6:
                 note, duration, speed, slide_toggle, specified_string, timestamp = pick_info
             else:
                 note, duration, speed, slide_toggle, timestamp = pick_info
                 specified_string = None
+            explicit_override = pick_idx in explicit_override_indices
             assigned = False
             timestamp = round(timestamp * tu.TIMESTAMP_ROUNDING_FACTOR) / tu.TIMESTAMP_ROUNDING_FACTOR
 
@@ -789,14 +796,34 @@ class GuitarBotParser:
                         slide_toggle,
                         picker_id=pickerID,
                     )
-                    if last_notes[pickerID] == note or timestamp - prep_time >= active_pickers[pickerID]:
+                    picker_is_ready = (
+                        last_notes[pickerID] == note
+                        or timestamp - prep_time >= active_pickers[pickerID]
+                    )
+
+                    if explicit_override:
+                        if not picker_is_ready:
+                            print(
+                                f"Warning: Specified picker {pickerID} busy for note {note} at {timestamp}. "
+                                "Honoring explicit string override."
+                            )
+                        pick_events.append(["pick", [pickerID, note, duration, speed, timestamp]])
+                        slide_toggles.append(slide_toggle)
+                        active_pickers[pickerID] = timestamp
+                        last_notes[pickerID] = note
+                        assigned = True
+                    elif picker_is_ready:
+                        # Planner suggestion: keep existing availability checks.
                         pick_events.append(["pick", [pickerID, note, duration, speed, timestamp]])
                         slide_toggles.append(slide_toggle)
                         active_pickers[pickerID] = timestamp
                         last_notes[pickerID] = note
                         assigned = True
                     else:
-                        print(f"Warning: Specified picker {pickerID} busy for note {note} at {timestamp}. Falling back to auto-assignment.")
+                        print(
+                            f"Warning: Specified picker {pickerID} busy for note {note} at {timestamp}. "
+                            "Falling back to auto-assignment."
+                        )
                 else:
                     print(f"Warning: Note {note} is not playable on specified string {specified_string}. Falling back to auto-assignment.")
 
