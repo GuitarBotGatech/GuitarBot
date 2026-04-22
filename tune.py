@@ -146,9 +146,9 @@ SLIDER_MOTOR_DIRECTION = [-1, 1, 1, -1, -1, 1]
 PICKER_MOTOR_INFO = {
     0: {'down_pluck_mm': -6.0, 'up_pluck_mm': -9.5, 'resolution': 1024}, # E
     1: {'down_pluck_mm': 6.4, 'up_pluck_mm': 10.5, 'resolution': 2048}, # A
-    2: {'down_pluck_mm': -6.3, 'up_pluck_mm': -9.5, 'resolution': 2048}, # D
-    3: {'down_pluck_mm': 6.0, 'up_pluck_mm': 9.5, 'resolution': 1024}, # G
-    4: {'down_pluck_mm': 5.7, 'up_pluck_mm': 8.8, 'resolution': 2048}, # B
+    2: {'down_pluck_mm': -6.4, 'up_pluck_mm': -9.5, 'resolution': 2048}, # D
+    3: {'down_pluck_mm': 5.7, 'up_pluck_mm': 9.5, 'resolution': 1024}, # G
+    4: {'down_pluck_mm': 4.7, 'up_pluck_mm': 8.4, 'resolution': 2048}, # B
     5: {'down_pluck_mm': -2.7, 'up_pluck_mm': -6.3, 'resolution': 2048} # E
 }
 
