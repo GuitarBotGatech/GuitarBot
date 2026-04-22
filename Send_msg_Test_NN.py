@@ -907,7 +907,7 @@ outro_segment = get_pluck_segment(string_theory, 150.0, 180.0)
 #pluck_message = Polyrhythmic_Phrase_1 #NA
 #pluck_message = Polyrhythmic_Phrase_2
 #pluck_message = string_theory
-test = [
+test_phrase = [
     # --- BAR 1: G Major (S1=43, S2=47, S3=50, S4=55, S5=62, S6=67) ---
     # Measure Starts - HEAVY TREMOLO (Duration 1.5)
     [43, 1.5, 5, 1, 1.0], [50, 1.5, 5, 0, 1.0], [62, 1.5, 5, 0, 1.0],
@@ -948,7 +948,9 @@ test = [
     # String 6 - PLUCKS (Duration 0.4)
     [64, 0.4, 5, 1, 7.0], [64, 0.4, 5, 0, 7.4], [64, 0.4, 5, 0, 7.8], [64, 0.4, 5, 0, 8.2], [64, 0.4, 5, 0, 8.6]
 ]
-pluck_message = test
+
+test_pluck = [[60, 1, 10, 0, 1]]
+pluck_message = test_pluck
 
 
 chords_message = [["On", pluck_message[-1][4] + pluck_message[-1][1]+2]]
