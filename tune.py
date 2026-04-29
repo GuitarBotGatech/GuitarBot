@@ -13,7 +13,7 @@ TIME_STEP = .005
 
 #Graphing
 # Controls graphing the functions used on each motor. False turns off, true turns on.
-graph = False
+graph = True
 
 # Blend percentage for trajectory interpolation (0.0 to 1.0).
 # A higher value creates a more gradual acceleration and deceleration.
@@ -59,8 +59,16 @@ LH_PRESSER_SLIDE_PRESS_POS = 200
 # This is the maximum prep window; semitone-scaled moves can use less.
 LH_PREP_TIME_BEFORE_PICK = 0.450
 
+# Toggle for experimental LH prep timing (variable time step for close vs far notes).
+# When False, a uniform prep time is used for all slider moves.
+USE_EXPERIMENTAL_TRAJ = False
+
 # Minimum prep time for very small/zero-distance fret transitions.
-LH_PREP_TIME_MIN = 0.090
+LH_PREP_TIME_MIN = 0.1
+
+# Minimum time (seconds) allocated to the slide phase when experimental timing is enabled.
+# The total LH prep time will be bumped as needed to guarantee this slide duration.
+LH_SLIDE_MIN_TIME = 0.1
 
 # Semitone delta that maps to full LH_PREP_TIME_BEFORE_PICK.
 # Delta values above this are clamped to the max prep window.
@@ -68,12 +76,12 @@ LH_PREP_MAX_SEMITONE_DELTA = 18
 
 # Upper fret boundary used by prep-time safety near chassis/end-stop travel.
 # Guitar fret numbering: open = 0, then 1..N.
-LH_MIN_FRET = 0
-LH_MAX_FRET = 9
+LH_MIN_FRET = 1
+LH_MAX_FRET = 8
 
 # Extra prep headroom for transitions that start/end near either chassis edge.
-LH_EDGE_PREP_TIME_BONUS = 0.250
-LH_EDGE_PREP_TIME_CAP = 0.750
+LH_EDGE_PREP_TIME_BONUS = 0.30
+LH_EDGE_PREP_TIME_CAP = 0.90
 
 # Backward-compatible aliases for older scripts/tests.
 LH_HIGH_FRET_CAUTION_START_FRET = LH_MAX_FRET

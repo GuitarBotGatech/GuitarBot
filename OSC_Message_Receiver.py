@@ -1,3 +1,4 @@
+import argparse
 import threading
 import queue
 import time
@@ -165,6 +166,12 @@ def decode_osc_message(data):
     except Exception as exc:
         print(f"Failed to parse OSC message: {exc}")
     return None, None
+
+
+def _configure_runtime_from_args(args: argparse.Namespace) -> None:
+    tu.USE_EXPERIMENTAL_TRAJ = bool(args.experimental_traj)
+    mode = "enabled" if tu.USE_EXPERIMENTAL_TRAJ else "disabled"
+    print(f"[config] Experimental LH trajectory timing {mode}")
 
 
 def udp_listener():
@@ -1071,6 +1078,15 @@ def cleanup_and_reset():
         traceback.print_exc()
 
 if __name__ == "__main__":
+    parser = argparse.ArgumentParser(description="GuitarBot OSC message receiver")
+    parser.add_argument(
+        "--experimental-traj",
+        action="store_true",
+        help="Enable experimental variable LH prep timing for close vs far notes",
+    )
+    args = parser.parse_args()
+    _configure_runtime_from_args(args)
+
     udp_thread = threading.Thread(target=udp_listener, daemon=True)
     udp_thread.start()
 

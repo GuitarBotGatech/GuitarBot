@@ -644,6 +644,8 @@ class GuitarBotParser:
 
     def _lh_prep_time_for_event(self, prev_note, note, duration, slide_toggle, picker_id=None):
         max_prep = float(tu.LH_PREP_TIME_BEFORE_PICK)
+        if not getattr(tu, "USE_EXPERIMENTAL_TRAJ", False):
+            return max_prep
         min_prep = float(getattr(tu, "LH_PREP_TIME_MIN", max_prep * 0.2))
         min_prep = max(0.0, min(min_prep, max_prep))
         max_delta = int(getattr(tu, "LH_PREP_MAX_SEMITONE_DELTA", 9))
@@ -685,6 +687,12 @@ class GuitarBotParser:
                 # Add safety headroom whenever a move starts from or lands near a travel edge.
                 motion_time = max(motion_time, max_prep) + edge_prep_bonus
                 effective_max_prep = edge_prep_cap
+
+        min_slide_time = float(getattr(tu, "LH_SLIDE_MIN_TIME", 0.0))
+        if min_slide_time > 0.0:
+            min_total_time = max(min_prep, min_slide_time * 3.0)
+            motion_time = max(motion_time, min_total_time)
+            effective_max_prep = max(effective_max_prep, min_total_time)
 
         return min(effective_max_prep, max(min_prep, motion_time))
 
