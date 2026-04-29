@@ -272,6 +272,49 @@ class GuitarBotParser:
 
         # Use the filtered list for the rest of the function
         lh_pick_pos = filtered_lh_pick_pos
+        if lh_pick_pos:
+            idle_window = float(getattr(tu, "LH_SLOW_SLIDE_IDLE_WINDOW", 0.0))
+            slow_min = float(getattr(tu, "LH_SLOW_SLIDE_TIME_MIN", 0.0))
+            slow_max = float(getattr(tu, "LH_SLOW_SLIDE_TIME_MAX", 0.0))
+            slow_scale = (slow_max / idle_window) if idle_window > 0.0 else 0.0
+            slow_allowed = idle_window > 0.0 and slow_max > 0.0
+
+            pluck_times_by_motor: dict[int, list[float]] = {}
+            index_by_motor: dict[int, list[int]] = {}
+            for idx, raw_event in enumerate(lh_pick_pos):
+                motor_id, _position, _slide_toggle, timestamp, prep_time = unpack_lh_pick_event(raw_event)
+                pluck_time = float(timestamp) + float(prep_time)
+                pluck_times_by_motor.setdefault(motor_id, []).append(pluck_time)
+                index_by_motor.setdefault(motor_id, []).append(idx)
+
+            for motor_id, pluck_times in pluck_times_by_motor.items():
+                indices = index_by_motor.get(motor_id, [])
+                for local_idx, event_idx in enumerate(indices):
+                    if local_idx == 0:
+                        continue
+                    prev_pluck_time = pluck_times[local_idx - 1]
+                    pluck_time = pluck_times[local_idx]
+                    gap = pluck_time - prev_pluck_time
+
+                    motor_id_ev, position, slide_toggle, timestamp, prep_time = unpack_lh_pick_event(
+                        lh_pick_pos[event_idx]
+                    )
+                    if int(slide_toggle) == 1 or not slow_allowed:
+                        continue
+                    if gap < idle_window:
+                        continue
+
+                    target_slow = max(slow_min, slow_scale * gap) if slow_min > 0.0 else slow_scale * gap
+                    target_slow = min(slow_max, target_slow) if slow_max > 0.0 else target_slow
+                    if target_slow <= 0.0:
+                        continue
+
+                    pluck_time = float(timestamp) + float(prep_time)
+                    new_prep_time = max(float(prep_time), target_slow)
+                    if pluck_time > 0:
+                        new_prep_time = min(new_prep_time, pluck_time)
+                    new_timestamp = float(pluck_time - new_prep_time)
+                    lh_pick_pos[event_idx] = [motor_id_ev, position, slide_toggle, new_timestamp, new_prep_time]
         initial_point_lh = initial_point[0:12]
         all_events_for_sizing = []
         if lh_motor_positions:

@@ -70,6 +70,11 @@ LH_PREP_TIME_MIN = 0.1
 # The total LH prep time will be bumped as needed to guarantee this slide duration.
 LH_SLIDE_MIN_TIME = 0.1
 
+# Slow-slide tuning when a string is idle (no nearby pluck events).
+LH_SLOW_SLIDE_IDLE_WINDOW = 20.0
+LH_SLOW_SLIDE_TIME_MIN = 0.3
+LH_SLOW_SLIDE_TIME_MAX = 5.0
+
 # Semitone delta that maps to full LH_PREP_TIME_BEFORE_PICK.
 # Delta values above this are clamped to the max prep window.
 LH_PREP_MAX_SEMITONE_DELTA = 18
