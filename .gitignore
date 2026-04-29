@@ -243,3 +243,4 @@ fabric.properties
 Recording/output/*
 Recording/analysis/*
 Recording/cross_analysis/*
+/.idea
