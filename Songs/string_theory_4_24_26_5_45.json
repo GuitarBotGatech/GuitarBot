@@ -277,6 +277,13 @@
             "string_index": 1
           },
           {
+            "note": 69,
+            "duration_b": 1,
+            "speed": 6,
+            "slide": 0,
+            "beat": "13.3.1"
+          },
+          {
             "note": 45,
             "duration_b": 0.8,
             "speed": 3,
@@ -299,6 +306,14 @@
             "slide": 0,
             "beat": "14.1.1",
             "string_index": 4
+          },
+          {
+            "note": 64,
+            "duration_b": 1.75,
+            "speed": 1,
+            "slide": 0,
+            "beat": "14.1.1",
+            "string_index": 5
           },
           {
             "note": 45,
@@ -484,6 +499,14 @@
             "string_index": 2
           },
           {
+            "note": 57,
+            "duration_b": 2,
+            "speed": 8,
+            "slide": 0,
+            "beat": "19.3.1",
+            "string_index": 3
+          },
+          {
             "note": 45,
             "duration_b": 0.8,
             "speed": 3,
@@ -618,6 +641,14 @@
             "string_index": 4
           },
           {
+            "note": 57,
+            "duration_b": 6,
+            "speed": 6,
+            "slide": 0,
+            "beat": "22.3.1",
+            "string_index": 3
+          },
+          {
             "note": 45,
             "duration_b": 0.8,
             "speed": 3,
@@ -698,12 +729,12 @@
             "string_index": 3
           },
           {
-            "note": 64,
+            "note": 59,
             "duration_b": 4,
             "speed": 3,
             "slide": 0,
             "beat": "25.3.1",
-            "string_index": 5
+            "string_index": 4
           },
           {
             "note": 71,
@@ -729,12 +760,12 @@
             "string_index": 3
           },
           {
-            "note": 64,
+            "note": 59,
             "duration_b": 2,
             "speed": 3,
             "slide": 0,
             "beat": "27.1.1",
-            "string_index": 5
+            "string_index": 4
           },
           {
             "note": 47,
@@ -768,12 +799,12 @@
             "string_index": 3
           },
           {
-            "note": 64,
+            "note": 59,
             "duration_b": 0.8,
             "speed": 3,
             "slide": 0,
             "beat": "28.1.1",
-            "string_index": 5
+            "string_index": 4
           },
           {
             "note": 71,
@@ -799,12 +830,12 @@
             "string_index": 3
           },
           {
-            "note": 64,
+            "note": 59,
             "duration_b": 0.8,
             "speed": 3,
             "slide": 0,
             "beat": "28.2.1",
-            "string_index": 5
+            "string_index": 4
           },
           {
             "note": 71,
@@ -837,12 +868,12 @@
             "string_index": 3
           },
           {
-            "note": 64,
+            "note": 59,
             "duration_b": 0.8,
             "speed": 3,
             "slide": 0,
             "beat": "28.3.1",
-            "string_index": 5
+            "string_index": 4
           },
           {
             "note": 43,
@@ -869,23 +900,15 @@
             "string_index": 4
           },
           {
-            "note": 64,
-            "duration_b": 0.8,
-            "speed": 5,
+            "note": 71,
+            "duration_b": 0.75,
+            "speed": 6,
             "slide": 0,
             "beat": "29.1.1",
-            "string_index": 2
+            "string_index": 5
           },
           {
-            "note": 50,
-            "duration_b": 0.8,
-            "speed": 5,
-            "slide": 0,
-            "beat": "29.2.3",
-            "string_index": 2
-          },
-          {
-            "note": 64,
+            "note": 52,
             "duration_b": 0.8,
             "speed": 5,
             "slide": 0,
@@ -901,6 +924,14 @@
             "string_index": 4
           },
           {
+            "note": 69,
+            "duration_b": 1,
+            "speed": 8,
+            "slide": 0,
+            "beat": "29.2.4",
+            "string_index": 5
+          },
+          {
             "note": 43,
             "duration_b": 0.8,
             "speed": 3,
@@ -910,14 +941,6 @@
           },
           {
             "note": 50,
-            "duration_b": 0.8,
-            "speed": 5,
-            "slide": 0,
-            "beat": "29.4.1",
-            "string_index": 2
-          },
-          {
-            "note": 64,
             "duration_b": 0.8,
             "speed": 5,
             "slide": 0,
@@ -941,12 +964,12 @@
             "string_index": 0
           },
           {
-            "note": 50,
+            "note": 47,
             "duration_b": 0.8,
             "speed": 5,
             "slide": 0,
             "beat": "30.1.3",
-            "string_index": 2
+            "string_index": 1
           },
           {
             "note": 59,
@@ -957,12 +980,12 @@
             "string_index": 4
           },
           {
-            "note": 67,
+            "note": 69,
             "duration_b": 1.4,
-            "speed": 6,
+            "speed": 2,
             "slide": 0,
             "beat": "30.1.4",
-            "string_index": 4
+            "string_index": 5
           },
           {
             "note": 43,
@@ -994,10 +1017,10 @@
             "speed": 8,
             "slide": 0,
             "beat": "30.3.3",
-            "string_index": 4
+            "string_index": 5
           },
           {
-            "note": 50,
+            "note": 52,
             "duration_b": 0.8,
             "speed": 5,
             "slide": 0,
@@ -1025,7 +1048,8 @@
             "duration_b": 1,
             "speed": 2,
             "slide": 0,
-            "beat": "31.1.1"
+            "beat": "31.1.1",
+            "string_index": 5
           },
           {
             "note": 43,
@@ -1056,7 +1080,8 @@
             "duration_b": 1,
             "speed": 4,
             "slide": 0,
-            "beat": "31.2.3"
+            "beat": "31.2.3",
+            "string_index": 5
           },
           {
             "note": 43,
@@ -1067,12 +1092,12 @@
             "string_index": 0
           },
           {
-            "note": 50,
+            "note": 47,
             "duration_b": 0.8,
             "speed": 3,
             "slide": 0,
             "beat": "31.4.1",
-            "string_index": 2
+            "string_index": 1
           },
           {
             "note": 59,
@@ -1087,14 +1112,16 @@
             "duration_b": 0.75,
             "speed": 6,
             "slide": 0,
-            "beat": "31.4.1"
+            "beat": "31.4.1",
+            "string_index": 5
           },
           {
             "note": 71,
             "duration_b": 0.75,
             "speed": 6,
             "slide": 0,
-            "beat": "32.1.1"
+            "beat": "32.1.1",
+            "string_index": 5
           },
           {
             "note": 43,
@@ -1150,7 +1177,7 @@
             "speed": 3,
             "slide": 0,
             "beat": "32.3.1",
-            "string_index": 4
+            "string_index": 5
           },
           {
             "note": 59,
@@ -1161,12 +1188,12 @@
             "string_index": 4
           },
           {
-            "note": 64,
+            "note": 66,
             "duration_b": 1,
             "speed": 8,
             "slide": 0,
             "beat": "~127.32",
-            "string_index": 4
+            "string_index": 5
           },
           {
             "note": 54,
@@ -1190,14 +1217,6 @@
             "speed": 3,
             "slide": 0,
             "beat": "33.1.3",
-            "string_index": 4
-          },
-          {
-            "note": 64,
-            "duration_b": 0.8,
-            "speed": 3,
-            "slide": 0,
-            "beat": "~128.66",
             "string_index": 4
           },
           {
@@ -1225,12 +1244,12 @@
             "string_index": 0
           },
           {
-            "note": 64,
+            "note": 66,
             "duration_b": 1,
             "speed": 9,
             "slide": 0,
             "beat": "33.3.1",
-            "string_index": 4
+            "string_index": 5
           },
           {
             "note": 54,
@@ -1246,14 +1265,6 @@
             "speed": 3,
             "slide": 0,
             "beat": "33.4.1",
-            "string_index": 4
-          },
-          {
-            "note": 64,
-            "duration_b": 0.8,
-            "speed": 3,
-            "slide": 0,
-            "beat": "~131.32",
             "string_index": 4
           },
           {
@@ -1281,12 +1292,12 @@
             "string_index": 4
           },
           {
-            "note": 64,
+            "note": 66,
             "duration_b": 1,
             "speed": 10,
             "slide": 0,
             "beat": "~132.66",
-            "string_index": 4
+            "string_index": 5
           },
           {
             "note": 59,
@@ -1313,12 +1324,12 @@
             "string_index": 2
           },
           {
-            "note": 64,
+            "note": 66,
             "duration_b": 1,
             "speed": 10,
             "slide": 0,
-            "beat": "34.3.1",
-            "string_index": 4
+            "beat": "34.3.2",
+            "string_index": 5
           },
           {
             "note": 42,
@@ -1361,14 +1372,6 @@
             "string_index": 2
           },
           {
-            "note": 64,
-            "duration_b": 0.8,
-            "speed": 3,
-            "slide": 0,
-            "beat": "34.4.3",
-            "string_index": 4
-          },
-          {
             "note": 59,
             "duration_b": 0.8,
             "speed": 3,
@@ -1393,12 +1396,12 @@
             "string_index": 2
           },
           {
-            "note": 64,
+            "note": 66,
             "duration_b": 0.8,
             "speed": 3,
             "slide": 0,
             "beat": "35.2.1",
-            "string_index": 4
+            "string_index": 5
           },
           {
             "note": 40,
@@ -1409,19 +1412,19 @@
             "string_index": 0
           },
           {
-            "note": 64,
-            "duration_b": 1.2,
-            "speed": 7,
-            "slide": 0,
-            "beat": "35.4.1",
-            "string_index": 5
-          },
-          {
             "note": 71,
             "duration_b": 1.25,
             "speed": 6,
             "slide": 0,
             "beat": "35.4.1"
+          },
+          {
+            "note": 59,
+            "duration_b": 1.2,
+            "speed": 7,
+            "slide": 0,
+            "beat": "35.4.2",
+            "string_index": 4
           },
           {
             "note": 52,
@@ -1433,7 +1436,7 @@
           },
           {
             "note": 69,
-            "duration_b": 1,
+            "duration_b": 0.5,
             "speed": 6,
             "slide": 0,
             "beat": "36.1.3"
@@ -1446,14 +1449,6 @@
             "beat": "36.2.4"
           },
           {
-            "note": 64,
-            "duration_b": 1.2,
-            "speed": 8,
-            "slide": 0,
-            "beat": "36.3.1",
-            "string_index": 5
-          },
-          {
             "note": 71,
             "duration_b": 1.25,
             "speed": 6,
@@ -1461,35 +1456,36 @@
             "beat": "36.3.1"
           },
           {
+            "note": 59,
+            "duration_b": 0.5,
+            "speed": 8,
+            "slide": 0,
+            "beat": "36.3.2",
+            "string_index": 4
+          },
+          {
             "note": 40,
             "duration_b": 1.2,
-            "speed": 3,
+            "speed": 7,
             "slide": 0,
             "beat": "36.4.1",
             "string_index": 0
           },
           {
             "note": 52,
-            "duration_b": 1.2,
+            "duration_b": 0.5,
             "speed": 5,
             "slide": 0,
             "beat": "37.1.1",
             "string_index": 2
           },
           {
-            "note": 67,
-            "duration_b": 1.25,
-            "speed": 6,
-            "slide": 0,
-            "beat": "37.1.1"
-          },
-          {
-            "note": 64,
+            "note": 59,
             "duration_b": 1.2,
             "speed": 9,
             "slide": 0,
-            "beat": "37.2.1",
-            "string_index": 5
+            "beat": "37.2.2",
+            "string_index": 4
           },
           {
             "note": 40,
@@ -1508,19 +1504,19 @@
             "string_index": 2
           },
           {
-            "note": 64,
-            "duration_b": 1.2,
-            "speed": 10,
-            "slide": 0,
-            "beat": "38.1.1",
-            "string_index": 5
-          },
-          {
             "note": 71,
             "duration_b": 1.25,
             "speed": 6,
             "slide": 0,
             "beat": "38.1.1"
+          },
+          {
+            "note": 59,
+            "duration_b": 0.5,
+            "speed": 10,
+            "slide": 0,
+            "beat": "38.1.2",
+            "string_index": 4
           },
           {
             "note": 69,
@@ -1539,18 +1535,10 @@
           {
             "note": 40,
             "duration_b": 1.2,
-            "speed": 3,
+            "speed": 8,
             "slide": 0,
             "beat": "38.4.1",
             "string_index": 0
-          },
-          {
-            "note": 64,
-            "duration_b": 1.2,
-            "speed": 10,
-            "slide": 0,
-            "beat": "38.4.1",
-            "string_index": 5
           },
           {
             "note": 71,
@@ -1558,6 +1546,14 @@
             "speed": 6,
             "slide": 0,
             "beat": "38.4.1"
+          },
+          {
+            "note": 59,
+            "duration_b": 1.2,
+            "speed": 10,
+            "slide": 0,
+            "beat": "38.4.2",
+            "string_index": 4
           },
           {
             "note": 52,
@@ -1568,13 +1564,6 @@
             "string_index": 2
           },
           {
-            "note": 67,
-            "duration_b": 1.25,
-            "speed": 6,
-            "slide": 0,
-            "beat": "39.2.1"
-          },
-          {
             "note": 52,
             "duration_b": 1.75,
             "speed": 6,
@@ -1582,12 +1571,12 @@
             "beat": "39.2.4"
           },
           {
-            "note": 64,
+            "note": 59,
             "duration_b": 1.2,
             "speed": 10,
             "slide": 0,
-            "beat": "39.3.1",
-            "string_index": 5
+            "beat": "39.3.2",
+            "string_index": 4
           },
           {
             "note": 40,
@@ -1653,12 +1642,12 @@
             "string_index": 2
           },
           {
-            "note": 59,
+            "note": 57,
             "duration_b": 1.8,
             "speed": 6,
             "slide": 0,
             "beat": "41.1.1",
-            "string_index": 4
+            "string_index": 3
           },
           {
             "note": 64,
@@ -1684,7 +1673,7 @@
             "string_index": 2
           },
           {
-            "note": 59,
+            "note": 62,
             "duration_b": 1.8,
             "speed": 7,
             "slide": 0,
@@ -1730,6 +1719,14 @@
             "beat": "42.1.1"
           },
           {
+            "note": 40,
+            "duration_b": 4.25,
+            "speed": 3,
+            "slide": 0,
+            "beat": "42.2.4",
+            "string_index": 0
+          },
+          {
             "note": 45,
             "duration_b": 4,
             "speed": 8,
@@ -1742,23 +1739,23 @@
             "duration_b": 4,
             "speed": 9,
             "slide": 0,
-            "beat": "42.3.1",
+            "beat": "42.3.2",
             "string_index": 2
           },
           {
             "note": 59,
-            "duration_b": 4,
+            "duration_b": 3.75,
             "speed": 10,
             "slide": 0,
-            "beat": "42.3.1",
+            "beat": "42.3.3",
             "string_index": 4
           },
           {
             "note": 71,
-            "duration_b": 4,
+            "duration_b": 3.5,
             "speed": 9,
             "slide": 0,
-            "beat": "42.3.1"
+            "beat": "42.3.4"
           },
           {
             "note": 45,
@@ -1878,8 +1875,16 @@
             "string_index": 5
           },
           {
-            "note": 47,
+            "note": 52,
             "duration_b": 0.8,
+            "speed": 3,
+            "slide": 0,
+            "beat": "45.2.1",
+            "string_index": 2
+          },
+          {
+            "note": 47,
+            "duration_b": 1,
             "speed": 3,
             "slide": 0,
             "beat": "45.4.1",
@@ -1918,6 +1923,22 @@
             "string_index": 5
           },
           {
+            "note": 52,
+            "duration_b": 0.8,
+            "speed": 3,
+            "slide": 0,
+            "beat": "46.2.2",
+            "string_index": 2
+          },
+          {
+            "note": 52,
+            "duration_b": 0.8,
+            "speed": 3,
+            "slide": 0,
+            "beat": "46.3.2",
+            "string_index": 2
+          },
+          {
             "note": 57,
             "duration_b": 0.8,
             "speed": 3,
@@ -1927,7 +1948,7 @@
           },
           {
             "note": 47,
-            "duration_b": 0.8,
+            "duration_b": 1,
             "speed": 3,
             "slide": 0,
             "beat": "46.4.1",
@@ -1967,8 +1988,8 @@
           },
           {
             "note": 43,
-            "duration_b": 0.8,
-            "speed": 3,
+            "duration_b": 1,
+            "speed": 8,
             "slide": 0,
             "beat": "47.4.1",
             "string_index": 0
@@ -2015,8 +2036,8 @@
           },
           {
             "note": 43,
-            "duration_b": 0.8,
-            "speed": 3,
+            "duration_b": 1,
+            "speed": 5,
             "slide": 0,
             "beat": "48.4.1",
             "string_index": 0
@@ -2063,8 +2084,8 @@
           },
           {
             "note": 42,
-            "duration_b": 0.8,
-            "speed": 3,
+            "duration_b": 1,
+            "speed": 5,
             "slide": 0,
             "beat": "49.4.1",
             "string_index": 0
@@ -2079,8 +2100,8 @@
           },
           {
             "note": 54,
-            "duration_b": 0.8,
-            "speed": 3,
+            "duration_b": 1.05,
+            "speed": 7,
             "slide": 0,
             "beat": "~196.2",
             "string_index": 2
@@ -2111,8 +2132,8 @@
           },
           {
             "note": 42,
-            "duration_b": 0.8,
-            "speed": 3,
+            "duration_b": 1,
+            "speed": 6,
             "slide": 0,
             "beat": "50.4.1",
             "string_index": 0
@@ -2167,8 +2188,8 @@
           },
           {
             "note": 40,
-            "duration_b": 0.8,
-            "speed": 3,
+            "duration_b": 1,
+            "speed": 8,
             "slide": 0,
             "beat": "51.4.1",
             "string_index": 0
@@ -2207,16 +2228,16 @@
           },
           {
             "note": 52,
-            "duration_b": 0.8,
-            "speed": 3,
+            "duration_b": 1.2,
+            "speed": 5,
             "slide": 0,
             "beat": "~205.8",
             "string_index": 2
           },
           {
             "note": 40,
-            "duration_b": 0.8,
-            "speed": 3,
+            "duration_b": 1,
+            "speed": 7,
             "slide": 0,
             "beat": "52.4.1",
             "string_index": 0
@@ -2335,27 +2356,35 @@
           },
           {
             "note": 45,
-            "duration_b": 0.8,
-            "speed": 3,
+            "duration_b": 1,
+            "speed": 8,
             "slide": 0,
             "beat": "55.2.1",
             "string_index": 1
           },
           {
             "note": 52,
-            "duration_b": 0.8,
-            "speed": 3,
+            "duration_b": 1,
+            "speed": 6,
             "slide": 0,
             "beat": "55.2.1",
             "string_index": 2
           },
           {
-            "note": 59,
-            "duration_b": 0.8,
-            "speed": 3,
+            "note": 57,
+            "duration_b": 1,
+            "speed": 4,
             "slide": 0,
             "beat": "55.2.1",
             "string_index": 3
+          },
+          {
+            "note": 40,
+            "duration_b": 1,
+            "speed": 9,
+            "slide": 0,
+            "beat": "55.2.1",
+            "string_index": 0
           },
           {
             "note": 45,
@@ -4172,6 +4201,14 @@
             "slide": 0,
             "beat": "89.2.1",
             "string_index": 3
+          },
+          {
+            "note": 71,
+            "duration_b": 1.75,
+            "speed": 5,
+            "slide": 0,
+            "beat": "89.2.1",
+            "string_index": 5
           }
         ]
       }
