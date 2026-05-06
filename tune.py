@@ -13,7 +13,7 @@ TIME_STEP = .005
 
 #Graphing
 # Controls graphing the functions used on each motor. False turns off, true turns on.
-graph = True
+graph = False
 
 # Blend percentage for trajectory interpolation (0.0 to 1.0).
 # A higher value creates a more gradual acceleration and deceleration.
@@ -161,8 +161,8 @@ PICKER_MOTOR_INFO = {
     1: {'down_pluck_mm': 6.4, 'up_pluck_mm': 10.5, 'resolution': 2048}, # A
     2: {'down_pluck_mm': -7.0, 'up_pluck_mm': -10.5, 'resolution': 2048}, # D
     3: {'down_pluck_mm': 5.7, 'up_pluck_mm': 9.5, 'resolution': 1024}, # G
-    4: {'down_pluck_mm': 4.7, 'up_pluck_mm': 8.4, 'resolution': 2048}, # B
-    5: {'down_pluck_mm': -2.7, 'up_pluck_mm': -6.9, 'resolution': 2048} # E
+    4: {'down_pluck_mm': 5.1, 'up_pluck_mm': 8.6, 'resolution': 2048}, # B
+    5: {'down_pluck_mm': -2.0, 'up_pluck_mm': -6.2, 'resolution': 2048} # E
 }
 
 # ----------------------------------------------------------------------------

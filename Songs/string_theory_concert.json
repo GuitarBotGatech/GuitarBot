@@ -1,0 +1,4499 @@
+{
+  "song": {
+    "name": "String Theory 4.24.26 5:45",
+    "meta": {
+      "key": "C minor",
+      "time_signature": "4/4",
+      "bpm": 120,
+      "tempo_curve": [
+        {
+          "time": 0,
+          "bpm": 120
+        }
+      ],
+      "automation_lane_ranges": {
+        "1": {
+          "min": 0,
+          "max": 127
+        },
+        "2": {
+          "min": 0,
+          "max": 127
+        },
+        "3": {
+          "min": 0,
+          "max": 127
+        },
+        "4": {
+          "min": 0,
+          "max": 127
+        },
+        "7": {
+          "min": 0,
+          "max": 127
+        },
+        "tempo": {
+          "min": 20,
+          "max": 300
+        }
+      }
+    },
+    "arrangement": {
+      "sections": [],
+      "timeline": []
+    },
+    "tracks": [
+      {
+        "name": "chords_main",
+        "type": "chord",
+        "events": [
+          {
+            "chord": "Asus2",
+            "beat": "98.1.4"
+          }
+        ]
+      },
+      {
+        "name": "pluck_main",
+        "type": "pluck",
+        "events": [
+          {
+            "note": 45,
+            "duration_b": 0.8,
+            "speed": 3,
+            "slide": 0,
+            "beat": "3.3.2",
+            "string_index": 1
+          },
+          {
+            "note": 52,
+            "duration_b": 0.8,
+            "speed": 3,
+            "slide": 0,
+            "beat": "3.3.2",
+            "string_index": 2
+          },
+          {
+            "note": 59,
+            "duration_b": 0.8,
+            "speed": 3,
+            "slide": 0,
+            "beat": "3.3.2",
+            "string_index": 4
+          },
+          {
+            "note": 64,
+            "duration_b": 0.75,
+            "speed": 6,
+            "slide": 0,
+            "beat": "3.3.2"
+          },
+          {
+            "note": 45,
+            "duration_b": 1,
+            "speed": 2,
+            "slide": 0,
+            "beat": "3.4.1",
+            "string_index": 1
+          },
+          {
+            "note": 45,
+            "duration_b": 0.8,
+            "speed": 3,
+            "slide": 0,
+            "beat": "4.2.1",
+            "string_index": 1
+          },
+          {
+            "note": 45,
+            "duration_b": 0.8,
+            "speed": 3,
+            "slide": 0,
+            "beat": "5.1.2",
+            "string_index": 1
+          },
+          {
+            "note": 52,
+            "duration_b": 0.8,
+            "speed": 3,
+            "slide": 0,
+            "beat": "5.1.2",
+            "string_index": 2
+          },
+          {
+            "note": 59,
+            "duration_b": 0.8,
+            "speed": 3,
+            "slide": 0,
+            "beat": "5.1.2",
+            "string_index": 4
+          },
+          {
+            "note": 45,
+            "duration_b": 1,
+            "speed": 1,
+            "slide": 0,
+            "beat": "5.2.1",
+            "string_index": 1
+          },
+          {
+            "note": 45,
+            "duration_b": 0.8,
+            "speed": 3,
+            "slide": 0,
+            "beat": "5.4.1",
+            "string_index": 1
+          },
+          {
+            "note": 45,
+            "duration_b": 0.8,
+            "speed": 3,
+            "slide": 0,
+            "beat": "6.3.2",
+            "string_index": 1
+          },
+          {
+            "note": 52,
+            "duration_b": 0.8,
+            "speed": 3,
+            "slide": 0,
+            "beat": "6.3.2",
+            "string_index": 2
+          },
+          {
+            "note": 59,
+            "duration_b": 0.8,
+            "speed": 3,
+            "slide": 0,
+            "beat": "6.3.2",
+            "string_index": 4
+          },
+          {
+            "note": 64,
+            "duration_b": 0.75,
+            "speed": 6,
+            "slide": 0,
+            "beat": "6.3.2"
+          },
+          {
+            "note": 45,
+            "duration_b": 1,
+            "speed": 6,
+            "slide": 0,
+            "beat": "6.4.1",
+            "string_index": 1
+          },
+          {
+            "note": 45,
+            "duration_b": 0.8,
+            "speed": 3,
+            "slide": 0,
+            "beat": "7.2.1",
+            "string_index": 1
+          },
+          {
+            "note": 45,
+            "duration_b": 0.8,
+            "speed": 3,
+            "slide": 0,
+            "beat": "8.1.1",
+            "string_index": 1
+          },
+          {
+            "note": 52,
+            "duration_b": 0.8,
+            "speed": 3,
+            "slide": 0,
+            "beat": "8.1.1",
+            "string_index": 2
+          },
+          {
+            "note": 59,
+            "duration_b": 0.8,
+            "speed": 3,
+            "slide": 0,
+            "beat": "8.1.1",
+            "string_index": 4
+          },
+          {
+            "note": 64,
+            "duration_b": 0.75,
+            "speed": 6,
+            "slide": 0,
+            "beat": "8.1.1"
+          },
+          {
+            "note": 45,
+            "duration_b": 1,
+            "speed": 2,
+            "slide": 0,
+            "beat": "~28.8",
+            "string_index": 1
+          },
+          {
+            "note": 45,
+            "duration_b": 0.8,
+            "speed": 3,
+            "slide": 0,
+            "beat": "~30.8",
+            "string_index": 1
+          },
+          {
+            "note": 45,
+            "duration_b": 0.8,
+            "speed": 3,
+            "slide": 0,
+            "beat": "9.3.1",
+            "string_index": 1
+          },
+          {
+            "note": 52,
+            "duration_b": 0.8,
+            "speed": 3,
+            "slide": 0,
+            "beat": "9.3.1",
+            "string_index": 2
+          },
+          {
+            "note": 59,
+            "duration_b": 0.8,
+            "speed": 3,
+            "slide": 0,
+            "beat": "9.3.1",
+            "string_index": 4
+          },
+          {
+            "note": 45,
+            "duration_b": 1,
+            "speed": 1,
+            "slide": 0,
+            "beat": "~34.8",
+            "string_index": 1
+          },
+          {
+            "note": 45,
+            "duration_b": 0.8,
+            "speed": 3,
+            "slide": 0,
+            "beat": "~36.8",
+            "string_index": 1
+          },
+          {
+            "note": 45,
+            "duration_b": 0.8,
+            "speed": 3,
+            "slide": 0,
+            "beat": "11.1.1",
+            "string_index": 1
+          },
+          {
+            "note": 52,
+            "duration_b": 0.8,
+            "speed": 3,
+            "slide": 0,
+            "beat": "11.1.1",
+            "string_index": 2
+          },
+          {
+            "note": 59,
+            "duration_b": 0.8,
+            "speed": 3,
+            "slide": 0,
+            "beat": "11.1.1",
+            "string_index": 4
+          },
+          {
+            "note": 64,
+            "duration_b": 0.75,
+            "speed": 6,
+            "slide": 0,
+            "beat": "11.1.1"
+          },
+          {
+            "note": 45,
+            "duration_b": 1,
+            "speed": 6,
+            "slide": 0,
+            "beat": "~40.8",
+            "string_index": 1
+          },
+          {
+            "note": 45,
+            "duration_b": 0.8,
+            "speed": 3,
+            "slide": 0,
+            "beat": "~42.8",
+            "string_index": 1
+          },
+          {
+            "note": 45,
+            "duration_b": 0.8,
+            "speed": 3,
+            "slide": 0,
+            "beat": "12.3.1",
+            "string_index": 1
+          },
+          {
+            "note": 52,
+            "duration_b": 0.8,
+            "speed": 3,
+            "slide": 0,
+            "beat": "12.3.1",
+            "string_index": 2
+          },
+          {
+            "note": 59,
+            "duration_b": 0.8,
+            "speed": 3,
+            "slide": 0,
+            "beat": "12.3.1",
+            "string_index": 4
+          },
+          {
+            "note": 45,
+            "duration_b": 1,
+            "speed": 3,
+            "slide": 0,
+            "beat": "~46.8",
+            "string_index": 1
+          },
+          {
+            "note": 45,
+            "duration_b": 0.8,
+            "speed": 3,
+            "slide": 0,
+            "beat": "~48.8",
+            "string_index": 1
+          },
+          {
+            "note": 45,
+            "duration_b": 0.8,
+            "speed": 3,
+            "slide": 0,
+            "beat": "14.1.1",
+            "string_index": 1
+          },
+          {
+            "note": 52,
+            "duration_b": 0.8,
+            "speed": 3,
+            "slide": 0,
+            "beat": "14.1.1",
+            "string_index": 2
+          },
+          {
+            "note": 59,
+            "duration_b": 0.8,
+            "speed": 3,
+            "slide": 0,
+            "beat": "14.1.1",
+            "string_index": 4
+          },
+          {
+            "note": 64,
+            "duration_b": 1,
+            "speed": 6,
+            "slide": 0,
+            "beat": "14.1.1"
+          },
+          {
+            "note": 45,
+            "duration_b": 1,
+            "speed": 8,
+            "slide": 0,
+            "beat": "~52.8",
+            "string_index": 1
+          },
+          {
+            "note": 45,
+            "duration_b": 0.8,
+            "speed": 3,
+            "slide": 0,
+            "beat": "~54.8",
+            "string_index": 1
+          },
+          {
+            "note": 45,
+            "duration_b": 2,
+            "speed": 8,
+            "slide": 0,
+            "beat": "15.1.1",
+            "string_index": 1
+          },
+          {
+            "note": 69,
+            "duration_b": 1,
+            "speed": 6,
+            "slide": 0,
+            "beat": "15.1.1"
+          },
+          {
+            "note": 45,
+            "duration_b": 0.8,
+            "speed": 3,
+            "slide": 0,
+            "beat": "15.3.1",
+            "string_index": 1
+          },
+          {
+            "note": 52,
+            "duration_b": 0.8,
+            "speed": 3,
+            "slide": 0,
+            "beat": "15.3.1",
+            "string_index": 2
+          },
+          {
+            "note": 59,
+            "duration_b": 0.8,
+            "speed": 3,
+            "slide": 0,
+            "beat": "15.3.1",
+            "string_index": 4
+          },
+          {
+            "note": 64,
+            "duration_b": 1.75,
+            "speed": 1,
+            "slide": 0,
+            "beat": "15.3.1",
+            "string_index": 5
+          },
+          {
+            "note": 45,
+            "duration_b": 1,
+            "speed": 3,
+            "slide": 0,
+            "beat": "~58.8",
+            "string_index": 1
+          },
+          {
+            "note": 45,
+            "duration_b": 0.8,
+            "speed": 3,
+            "slide": 0,
+            "beat": "~60.8",
+            "string_index": 1
+          },
+          {
+            "note": 45,
+            "duration_b": 1,
+            "speed": 3,
+            "slide": 0,
+            "beat": "~61.6",
+            "string_index": 1
+          },
+          {
+            "note": 45,
+            "duration_b": 1.2,
+            "speed": 6,
+            "slide": 0,
+            "beat": "~62.6",
+            "string_index": 1
+          },
+          {
+            "note": 45,
+            "duration_b": 0.8,
+            "speed": 3,
+            "slide": 0,
+            "beat": "17.1.1",
+            "string_index": 1
+          },
+          {
+            "note": 52,
+            "duration_b": 0.8,
+            "speed": 3,
+            "slide": 0,
+            "beat": "17.1.1",
+            "string_index": 2
+          },
+          {
+            "note": 59,
+            "duration_b": 2,
+            "speed": 3,
+            "slide": 0,
+            "beat": "17.1.1",
+            "string_index": 4
+          },
+          {
+            "note": 45,
+            "duration_b": 1,
+            "speed": 2,
+            "slide": 0,
+            "beat": "~64.8",
+            "string_index": 1
+          },
+          {
+            "note": 45,
+            "duration_b": 0.8,
+            "speed": 3,
+            "slide": 0,
+            "beat": "~66.8",
+            "string_index": 1
+          },
+          {
+            "note": 52,
+            "duration_b": 2,
+            "speed": 3,
+            "slide": 0,
+            "beat": "18.1.1",
+            "string_index": 2
+          },
+          {
+            "note": 45,
+            "duration_b": 0.8,
+            "speed": 3,
+            "slide": 0,
+            "beat": "18.3.1",
+            "string_index": 1
+          },
+          {
+            "note": 52,
+            "duration_b": 0.8,
+            "speed": 3,
+            "slide": 0,
+            "beat": "18.3.1",
+            "string_index": 2
+          },
+          {
+            "note": 59,
+            "duration_b": 4,
+            "speed": 4,
+            "slide": 0,
+            "beat": "18.3.1",
+            "string_index": 4
+          },
+          {
+            "note": 45,
+            "duration_b": 1,
+            "speed": 1,
+            "slide": 0,
+            "beat": "~70.8",
+            "string_index": 1
+          },
+          {
+            "note": 45,
+            "duration_b": 0.8,
+            "speed": 3,
+            "slide": 0,
+            "beat": "~72.8",
+            "string_index": 1
+          },
+          {
+            "note": 52,
+            "duration_b": 2,
+            "speed": 6,
+            "slide": 0,
+            "beat": "19.3.1",
+            "string_index": 2
+          },
+          {
+            "note": 45,
+            "duration_b": 0.8,
+            "speed": 3,
+            "slide": 0,
+            "beat": "20.1.1",
+            "string_index": 1
+          },
+          {
+            "note": 52,
+            "duration_b": 0.8,
+            "speed": 3,
+            "slide": 0,
+            "beat": "20.1.1",
+            "string_index": 2
+          },
+          {
+            "note": 59,
+            "duration_b": 2,
+            "speed": 3,
+            "slide": 0,
+            "beat": "20.1.1",
+            "string_index": 4
+          },
+          {
+            "note": 64,
+            "duration_b": 2,
+            "speed": 3,
+            "slide": 0,
+            "beat": "20.1.1"
+          },
+          {
+            "note": 45,
+            "duration_b": 1,
+            "speed": 6,
+            "slide": 0,
+            "beat": "~76.8",
+            "string_index": 1
+          },
+          {
+            "note": 45,
+            "duration_b": 0.8,
+            "speed": 3,
+            "slide": 0,
+            "beat": "~78.8",
+            "string_index": 1
+          },
+          {
+            "note": 52,
+            "duration_b": 2,
+            "speed": 3,
+            "slide": 0,
+            "beat": "21.1.1",
+            "string_index": 2
+          },
+          {
+            "note": 57,
+            "duration_b": 2,
+            "speed": 8,
+            "slide": 0,
+            "beat": "21.1.1",
+            "string_index": 3
+          },
+          {
+            "note": 45,
+            "duration_b": 0.8,
+            "speed": 3,
+            "slide": 0,
+            "beat": "21.3.1",
+            "string_index": 1
+          },
+          {
+            "note": 52,
+            "duration_b": 0.8,
+            "speed": 3,
+            "slide": 0,
+            "beat": "21.3.1",
+            "string_index": 2
+          },
+          {
+            "note": 59,
+            "duration_b": 4,
+            "speed": 6,
+            "slide": 0,
+            "beat": "21.3.1",
+            "string_index": 4
+          },
+          {
+            "note": 45,
+            "duration_b": 1,
+            "speed": 3,
+            "slide": 0,
+            "beat": "~82.8",
+            "string_index": 1
+          },
+          {
+            "note": 45,
+            "duration_b": 0.8,
+            "speed": 3,
+            "slide": 0,
+            "beat": "~84.8",
+            "string_index": 1
+          },
+          {
+            "note": 52,
+            "duration_b": 2,
+            "speed": 7,
+            "slide": 0,
+            "beat": "22.3.1",
+            "string_index": 2
+          },
+          {
+            "note": 69,
+            "duration_b": 3,
+            "speed": 6,
+            "slide": 0,
+            "beat": "22.3.1"
+          },
+          {
+            "note": 45,
+            "duration_b": 0.8,
+            "speed": 3,
+            "slide": 0,
+            "beat": "23.1.1",
+            "string_index": 1
+          },
+          {
+            "note": 52,
+            "duration_b": 0.8,
+            "speed": 3,
+            "slide": 0,
+            "beat": "23.1.1",
+            "string_index": 2
+          },
+          {
+            "note": 59,
+            "duration_b": 2,
+            "speed": 8,
+            "slide": 0,
+            "beat": "23.1.1",
+            "string_index": 4
+          },
+          {
+            "note": 45,
+            "duration_b": 1,
+            "speed": 8,
+            "slide": 0,
+            "beat": "~88.8",
+            "string_index": 1
+          },
+          {
+            "note": 45,
+            "duration_b": 0.8,
+            "speed": 3,
+            "slide": 0,
+            "beat": "~90.8",
+            "string_index": 1
+          },
+          {
+            "note": 64,
+            "duration_b": 6.0844,
+            "speed": 4,
+            "slide": 0,
+            "beat": "~91.9266"
+          },
+          {
+            "note": 45,
+            "duration_b": 2,
+            "speed": 8,
+            "slide": 0,
+            "beat": "24.1.1",
+            "string_index": 1
+          },
+          {
+            "note": 52,
+            "duration_b": 2,
+            "speed": 3,
+            "slide": 0,
+            "beat": "24.1.1",
+            "string_index": 2
+          },
+          {
+            "note": 59,
+            "duration_b": 6,
+            "speed": 4,
+            "slide": 0,
+            "beat": "24.1.1",
+            "string_index": 4
+          },
+          {
+            "note": 57,
+            "duration_b": 6,
+            "speed": 4,
+            "slide": 0,
+            "beat": "24.1.1",
+            "string_index": 3
+          },
+          {
+            "note": 45,
+            "duration_b": 0.8,
+            "speed": 3,
+            "slide": 0,
+            "beat": "24.3.1",
+            "string_index": 1
+          },
+          {
+            "note": 52,
+            "duration_b": 0.8,
+            "speed": 3,
+            "slide": 0,
+            "beat": "24.3.1",
+            "string_index": 2
+          },
+          {
+            "note": 45,
+            "duration_b": 1,
+            "speed": 3,
+            "slide": 0,
+            "beat": "~94.8",
+            "string_index": 1
+          },
+          {
+            "note": 45,
+            "duration_b": 2,
+            "speed": 3,
+            "slide": 0,
+            "beat": "25.3.1",
+            "string_index": 1
+          },
+          {
+            "note": 52,
+            "duration_b": 2,
+            "speed": 9,
+            "slide": 0,
+            "beat": "25.3.1",
+            "string_index": 2
+          },
+          {
+            "note": 47,
+            "duration_b": 8,
+            "speed": 3,
+            "slide": 0,
+            "beat": "26.1.1",
+            "string_index": 1
+          },
+          {
+            "note": 57,
+            "duration_b": 6,
+            "speed": 3,
+            "slide": 0,
+            "beat": "26.3.1",
+            "string_index": 3
+          },
+          {
+            "note": 59,
+            "duration_b": 4,
+            "speed": 3,
+            "slide": 0,
+            "beat": "27.1.1",
+            "string_index": 4
+          },
+          {
+            "note": 71,
+            "duration_b": 1.9583,
+            "speed": 6,
+            "slide": 0,
+            "beat": "~106.0326"
+          },
+          {
+            "note": 47,
+            "duration_b": 2,
+            "speed": 3,
+            "slide": 0,
+            "beat": "28.1.1",
+            "string_index": 1
+          },
+          {
+            "note": 57,
+            "duration_b": 2,
+            "speed": 3,
+            "slide": 0,
+            "beat": "28.3.1",
+            "string_index": 3
+          },
+          {
+            "note": 59,
+            "duration_b": 2,
+            "speed": 3,
+            "slide": 0,
+            "beat": "28.3.1",
+            "string_index": 4
+          },
+          {
+            "note": 47,
+            "duration_b": 2,
+            "speed": 3,
+            "slide": 0,
+            "beat": "29.1.1",
+            "string_index": 1
+          },
+          {
+            "note": 71,
+            "duration_b": 1.9846,
+            "speed": 6,
+            "slide": 0,
+            "beat": "~112.0126"
+          },
+          {
+            "note": 47,
+            "duration_b": 0.8,
+            "speed": 3,
+            "slide": 0,
+            "beat": "29.3.1",
+            "string_index": 1
+          },
+          {
+            "note": 57,
+            "duration_b": 0.8,
+            "speed": 3,
+            "slide": 0,
+            "beat": "29.3.1",
+            "string_index": 3
+          },
+          {
+            "note": 59,
+            "duration_b": 0.8,
+            "speed": 3,
+            "slide": 0,
+            "beat": "29.3.1",
+            "string_index": 4
+          },
+          {
+            "note": 71,
+            "duration_b": 0.747,
+            "speed": 6,
+            "slide": 0,
+            "beat": "~114.003"
+          },
+          {
+            "note": 47,
+            "duration_b": 0.8,
+            "speed": 3,
+            "slide": 0,
+            "beat": "29.4.1",
+            "string_index": 1
+          },
+          {
+            "note": 57,
+            "duration_b": 0.8,
+            "speed": 3,
+            "slide": 0,
+            "beat": "29.4.1",
+            "string_index": 3
+          },
+          {
+            "note": 59,
+            "duration_b": 0.8,
+            "speed": 3,
+            "slide": 0,
+            "beat": "29.4.1",
+            "string_index": 4
+          },
+          {
+            "note": 71,
+            "duration_b": 0.7357,
+            "speed": 6,
+            "slide": 0,
+            "beat": "~115.0143"
+          },
+          {
+            "note": 71,
+            "duration_b": 0.7505,
+            "speed": 6,
+            "slide": 0,
+            "beat": "~115.9995"
+          },
+          {
+            "note": 47,
+            "duration_b": 0.8,
+            "speed": 3,
+            "slide": 0,
+            "beat": "30.1.1",
+            "string_index": 1
+          },
+          {
+            "note": 57,
+            "duration_b": 0.8,
+            "speed": 3,
+            "slide": 0,
+            "beat": "30.1.1",
+            "string_index": 3
+          },
+          {
+            "note": 59,
+            "duration_b": 0.8,
+            "speed": 3,
+            "slide": 0,
+            "beat": "30.1.1",
+            "string_index": 4
+          },
+          {
+            "note": 43,
+            "duration_b": 0.8,
+            "speed": 3,
+            "slide": 0,
+            "beat": "30.3.1",
+            "string_index": 0
+          },
+          {
+            "note": 50,
+            "duration_b": 0.8,
+            "speed": 5,
+            "slide": 0,
+            "beat": "30.3.1",
+            "string_index": 2
+          },
+          {
+            "note": 59,
+            "duration_b": 0.8,
+            "speed": 8,
+            "slide": 0,
+            "beat": "30.3.1",
+            "string_index": 4
+          },
+          {
+            "note": 71,
+            "duration_b": 0.75,
+            "speed": 6,
+            "slide": 0,
+            "beat": "30.3.1",
+            "string_index": 5
+          },
+          {
+            "note": 52,
+            "duration_b": 0.8,
+            "speed": 5,
+            "slide": 0,
+            "beat": "30.4.3",
+            "string_index": 2
+          },
+          {
+            "note": 59,
+            "duration_b": 1.2,
+            "speed": 3,
+            "slide": 0,
+            "beat": "~119.6",
+            "string_index": 4
+          },
+          {
+            "note": 43,
+            "duration_b": 0.8,
+            "speed": 3,
+            "slide": 0,
+            "beat": "31.1.1",
+            "string_index": 0
+          },
+          {
+            "note": 50,
+            "duration_b": 0.8,
+            "speed": 5,
+            "slide": 0,
+            "beat": "31.2.1",
+            "string_index": 2
+          },
+          {
+            "note": 59,
+            "duration_b": 1.2,
+            "speed": 8,
+            "slide": 0,
+            "beat": "~121.2",
+            "string_index": 4
+          },
+          {
+            "note": 43,
+            "duration_b": 0.8,
+            "speed": 3,
+            "slide": 0,
+            "beat": "31.3.1",
+            "string_index": 0
+          },
+          {
+            "note": 47,
+            "duration_b": 0.8,
+            "speed": 5,
+            "slide": 0,
+            "beat": "31.3.3",
+            "string_index": 1
+          },
+          {
+            "note": 59,
+            "duration_b": 1.4,
+            "speed": 6,
+            "slide": 0,
+            "beat": "31.3.4",
+            "string_index": 4
+          },
+          {
+            "note": 43,
+            "duration_b": 0.8,
+            "speed": 3,
+            "slide": 0,
+            "beat": "32.1.1",
+            "string_index": 0
+          },
+          {
+            "note": 50,
+            "duration_b": 0.8,
+            "speed": 5,
+            "slide": 0,
+            "beat": "32.1.1",
+            "string_index": 2
+          },
+          {
+            "note": 59,
+            "duration_b": 1,
+            "speed": 8,
+            "slide": 0,
+            "beat": "~124.4",
+            "string_index": 4
+          },
+          {
+            "note": 50,
+            "duration_b": 0.8,
+            "speed": 5,
+            "slide": 0,
+            "beat": "32.2.3",
+            "string_index": 2
+          },
+          {
+            "note": 43,
+            "duration_b": 0.8,
+            "speed": 3,
+            "slide": 0,
+            "beat": "32.3.1",
+            "string_index": 0
+          },
+          {
+            "note": 59,
+            "duration_b": 1.2,
+            "speed": 9,
+            "slide": 0,
+            "beat": "32.3.1",
+            "string_index": 4
+          },
+          {
+            "note": 71,
+            "duration_b": 1,
+            "speed": 2,
+            "slide": 0,
+            "beat": "32.3.1",
+            "string_index": 5
+          },
+          {
+            "note": 43,
+            "duration_b": 0.8,
+            "speed": 3,
+            "slide": 0,
+            "beat": "32.4.1",
+            "string_index": 0
+          },
+          {
+            "note": 50,
+            "duration_b": 0.8,
+            "speed": 3,
+            "slide": 0,
+            "beat": "32.4.1",
+            "string_index": 2
+          },
+          {
+            "note": 59,
+            "duration_b": 0.8,
+            "speed": 3,
+            "slide": 0,
+            "beat": "32.4.1",
+            "string_index": 4
+          },
+          {
+            "note": 71,
+            "duration_b": 1,
+            "speed": 4,
+            "slide": 0,
+            "beat": "32.4.3",
+            "string_index": 5
+          },
+          {
+            "note": 43,
+            "duration_b": 0.8,
+            "speed": 3,
+            "slide": 0,
+            "beat": "33.2.1",
+            "string_index": 0
+          },
+          {
+            "note": 47,
+            "duration_b": 0.8,
+            "speed": 3,
+            "slide": 0,
+            "beat": "33.2.1",
+            "string_index": 1
+          },
+          {
+            "note": 59,
+            "duration_b": 0.8,
+            "speed": 3,
+            "slide": 0,
+            "beat": "33.2.1",
+            "string_index": 4
+          },
+          {
+            "note": 71,
+            "duration_b": 0.75,
+            "speed": 6,
+            "slide": 0,
+            "beat": "33.2.1",
+            "string_index": 5
+          },
+          {
+            "note": 71,
+            "duration_b": 0.75,
+            "speed": 6,
+            "slide": 0,
+            "beat": "33.3.1",
+            "string_index": 5
+          },
+          {
+            "note": 43,
+            "duration_b": 0.8,
+            "speed": 3,
+            "slide": 0,
+            "beat": "33.3.1",
+            "string_index": 0
+          },
+          {
+            "note": 50,
+            "duration_b": 0.8,
+            "speed": 3,
+            "slide": 0,
+            "beat": "33.3.1",
+            "string_index": 2
+          },
+          {
+            "note": 59,
+            "duration_b": 0.8,
+            "speed": 3,
+            "slide": 0,
+            "beat": "33.3.1",
+            "string_index": 4
+          },
+          {
+            "note": 59,
+            "duration_b": 0.8,
+            "speed": 3,
+            "slide": 0,
+            "beat": "33.4.4",
+            "string_index": 4
+          },
+          {
+            "note": 42,
+            "duration_b": 0.8,
+            "speed": 3,
+            "slide": 0,
+            "beat": "34.1.1",
+            "string_index": 0
+          },
+          {
+            "note": 54,
+            "duration_b": 1,
+            "speed": 3,
+            "slide": 0,
+            "beat": "34.1.1",
+            "string_index": 2
+          },
+          {
+            "note": 64,
+            "duration_b": 0.8,
+            "speed": 3,
+            "slide": 0,
+            "beat": "34.1.1",
+            "string_index": 5
+          },
+          {
+            "note": 59,
+            "duration_b": 1,
+            "speed": 8,
+            "slide": 0,
+            "beat": "34.2.1",
+            "string_index": 4
+          },
+          {
+            "note": 66,
+            "duration_b": 1,
+            "speed": 8,
+            "slide": 0,
+            "beat": "~133.32",
+            "string_index": 5
+          },
+          {
+            "note": 54,
+            "duration_b": 0.8,
+            "speed": 3,
+            "slide": 0,
+            "beat": "~133.6",
+            "string_index": 2
+          },
+          {
+            "note": 42,
+            "duration_b": 0.8,
+            "speed": 3,
+            "slide": 0,
+            "beat": "34.3.1",
+            "string_index": 0
+          },
+          {
+            "note": 59,
+            "duration_b": 0.8,
+            "speed": 3,
+            "slide": 0,
+            "beat": "34.3.3",
+            "string_index": 4
+          },
+          {
+            "note": 54,
+            "duration_b": 1,
+            "speed": 5,
+            "slide": 0,
+            "beat": "~135.2",
+            "string_index": 2
+          },
+          {
+            "note": 59,
+            "duration_b": 1,
+            "speed": 9,
+            "slide": 0,
+            "beat": "34.4.4",
+            "string_index": 4
+          },
+          {
+            "note": 42,
+            "duration_b": 0.8,
+            "speed": 3,
+            "slide": 0,
+            "beat": "35.1.1",
+            "string_index": 0
+          },
+          {
+            "note": 66,
+            "duration_b": 1,
+            "speed": 9,
+            "slide": 0,
+            "beat": "35.1.1",
+            "string_index": 5
+          },
+          {
+            "note": 59,
+            "duration_b": 0.8,
+            "speed": 3,
+            "slide": 0,
+            "beat": "35.2.1",
+            "string_index": 4
+          },
+          {
+            "note": 54,
+            "duration_b": 0.8,
+            "speed": 3,
+            "slide": 0,
+            "beat": "~137.05",
+            "string_index": 2
+          },
+          {
+            "note": 42,
+            "duration_b": 0.8,
+            "speed": 3,
+            "slide": 0,
+            "beat": "35.3.1",
+            "string_index": 0
+          },
+          {
+            "note": 54,
+            "duration_b": 1,
+            "speed": 6,
+            "slide": 0,
+            "beat": "~138.4",
+            "string_index": 2
+          },
+          {
+            "note": 59,
+            "duration_b": 1,
+            "speed": 10,
+            "slide": 0,
+            "beat": "35.3.3",
+            "string_index": 4
+          },
+          {
+            "note": 66,
+            "duration_b": 1,
+            "speed": 10,
+            "slide": 0,
+            "beat": "~138.66",
+            "string_index": 5
+          },
+          {
+            "note": 59,
+            "duration_b": 1,
+            "speed": 10,
+            "slide": 0,
+            "beat": "35.4.4",
+            "string_index": 4
+          },
+          {
+            "note": 42,
+            "duration_b": 0.8,
+            "speed": 3,
+            "slide": 0,
+            "beat": "36.1.1",
+            "string_index": 0
+          },
+          {
+            "note": 54,
+            "duration_b": 1,
+            "speed": 6,
+            "slide": 0,
+            "beat": "36.1.1",
+            "string_index": 2
+          },
+          {
+            "note": 66,
+            "duration_b": 1,
+            "speed": 10,
+            "slide": 0,
+            "beat": "36.1.2",
+            "string_index": 5
+          },
+          {
+            "note": 42,
+            "duration_b": 0.8,
+            "speed": 3,
+            "slide": 0,
+            "beat": "36.2.1",
+            "string_index": 0
+          },
+          {
+            "note": 59,
+            "duration_b": 0.8,
+            "speed": 3,
+            "slide": 0,
+            "beat": "36.2.2",
+            "string_index": 4
+          },
+          {
+            "note": 42,
+            "duration_b": 0.8,
+            "speed": 3,
+            "slide": 0,
+            "beat": "36.2.3",
+            "string_index": 0
+          },
+          {
+            "note": 54,
+            "duration_b": 0.8,
+            "speed": 3,
+            "slide": 0,
+            "beat": "36.2.3",
+            "string_index": 2
+          },
+          {
+            "note": 59,
+            "duration_b": 0.8,
+            "speed": 3,
+            "slide": 0,
+            "beat": "36.4.1",
+            "string_index": 4
+          },
+          {
+            "note": 42,
+            "duration_b": 0.8,
+            "speed": 3,
+            "slide": 0,
+            "beat": "36.4.1",
+            "string_index": 0
+          },
+          {
+            "note": 54,
+            "duration_b": 0.8,
+            "speed": 3,
+            "slide": 0,
+            "beat": "36.4.1",
+            "string_index": 2
+          },
+          {
+            "note": 66,
+            "duration_b": 0.8,
+            "speed": 3,
+            "slide": 0,
+            "beat": "36.4.1",
+            "string_index": 5
+          },
+          {
+            "note": 40,
+            "duration_b": 1.2,
+            "speed": 3,
+            "slide": 0,
+            "beat": "37.2.1",
+            "string_index": 0
+          },
+          {
+            "note": 71,
+            "duration_b": 1.25,
+            "speed": 6,
+            "slide": 0,
+            "beat": "37.2.1"
+          },
+          {
+            "note": 59,
+            "duration_b": 1.2,
+            "speed": 7,
+            "slide": 0,
+            "beat": "37.2.2",
+            "string_index": 4
+          },
+          {
+            "note": 52,
+            "duration_b": 1.2,
+            "speed": 5,
+            "slide": 0,
+            "beat": "37.3.1",
+            "string_index": 2
+          },
+          {
+            "note": 52,
+            "duration_b": 1.75,
+            "speed": 6,
+            "slide": 0,
+            "beat": "37.4.4"
+          },
+          {
+            "note": 71,
+            "duration_b": 1.25,
+            "speed": 6,
+            "slide": 0,
+            "beat": "38.1.1"
+          },
+          {
+            "note": 59,
+            "duration_b": 0.5,
+            "speed": 8,
+            "slide": 0,
+            "beat": "38.1.2",
+            "string_index": 4
+          },
+          {
+            "note": 40,
+            "duration_b": 1.2,
+            "speed": 7,
+            "slide": 0,
+            "beat": "38.2.1",
+            "string_index": 0
+          },
+          {
+            "note": 52,
+            "duration_b": 0.5,
+            "speed": 5,
+            "slide": 0,
+            "beat": "38.3.1",
+            "string_index": 2
+          },
+          {
+            "note": 59,
+            "duration_b": 1.2,
+            "speed": 9,
+            "slide": 0,
+            "beat": "38.4.2",
+            "string_index": 4
+          },
+          {
+            "note": 40,
+            "duration_b": 1.2,
+            "speed": 3,
+            "slide": 0,
+            "beat": "39.2.1",
+            "string_index": 0
+          },
+          {
+            "note": 52,
+            "duration_b": 1.2,
+            "speed": 5,
+            "slide": 0,
+            "beat": "39.3.1",
+            "string_index": 2
+          },
+          {
+            "note": 71,
+            "duration_b": 1.25,
+            "speed": 6,
+            "slide": 0,
+            "beat": "39.3.1"
+          },
+          {
+            "note": 52,
+            "duration_b": 1.75,
+            "speed": 6,
+            "slide": 0,
+            "beat": "39.4.4"
+          },
+          {
+            "note": 40,
+            "duration_b": 1.2,
+            "speed": 8,
+            "slide": 0,
+            "beat": "40.2.1",
+            "string_index": 0
+          },
+          {
+            "note": 71,
+            "duration_b": 1.25,
+            "speed": 6,
+            "slide": 0,
+            "beat": "40.2.1"
+          },
+          {
+            "note": 59,
+            "duration_b": 1.2,
+            "speed": 10,
+            "slide": 0,
+            "beat": "40.2.2",
+            "string_index": 4
+          },
+          {
+            "note": 52,
+            "duration_b": 1.2,
+            "speed": 5,
+            "slide": 0,
+            "beat": "40.3.1",
+            "string_index": 2
+          },
+          {
+            "note": 52,
+            "duration_b": 1.75,
+            "speed": 6,
+            "slide": 0,
+            "beat": "40.4.4"
+          },
+          {
+            "note": 40,
+            "duration_b": 1.2,
+            "speed": 3,
+            "slide": 0,
+            "beat": "41.2.1",
+            "string_index": 0
+          },
+          {
+            "note": 52,
+            "duration_b": 1.2,
+            "speed": 5,
+            "slide": 0,
+            "beat": "41.3.1",
+            "string_index": 2
+          },
+          {
+            "note": 45,
+            "duration_b": 1.8,
+            "speed": 1,
+            "slide": 0,
+            "beat": "42.1.1",
+            "string_index": 1
+          },
+          {
+            "note": 52,
+            "duration_b": 1.8,
+            "speed": 3,
+            "slide": 0,
+            "beat": "42.1.1",
+            "string_index": 2
+          },
+          {
+            "note": 59,
+            "duration_b": 1.8,
+            "speed": 5,
+            "slide": 0,
+            "beat": "42.1.1",
+            "string_index": 4
+          },
+          {
+            "note": 64,
+            "duration_b": 1.75,
+            "speed": 9,
+            "slide": 0,
+            "beat": "42.1.1"
+          },
+          {
+            "note": 45,
+            "duration_b": 1.8,
+            "speed": 5,
+            "slide": 0,
+            "beat": "42.3.1",
+            "string_index": 1
+          },
+          {
+            "note": 52,
+            "duration_b": 1.8,
+            "speed": 5,
+            "slide": 0,
+            "beat": "42.3.1",
+            "string_index": 2
+          },
+          {
+            "note": 57,
+            "duration_b": 1.8,
+            "speed": 6,
+            "slide": 0,
+            "beat": "42.3.1",
+            "string_index": 3
+          },
+          {
+            "note": 64,
+            "duration_b": 1.75,
+            "speed": 4,
+            "slide": 0,
+            "beat": "42.3.1"
+          },
+          {
+            "note": 45,
+            "duration_b": 1.8,
+            "speed": 6,
+            "slide": 0,
+            "beat": "43.1.1",
+            "string_index": 1
+          },
+          {
+            "note": 52,
+            "duration_b": 1.8,
+            "speed": 7,
+            "slide": 0,
+            "beat": "43.1.1",
+            "string_index": 2
+          },
+          {
+            "note": 62,
+            "duration_b": 1.8,
+            "speed": 7,
+            "slide": 0,
+            "beat": "43.1.1",
+            "string_index": 4
+          },
+          {
+            "note": 67,
+            "duration_b": 1.75,
+            "speed": 5,
+            "slide": 0,
+            "beat": "43.1.1"
+          },
+          {
+            "note": 45,
+            "duration_b": 1.8,
+            "speed": 7,
+            "slide": 0,
+            "beat": "43.3.1",
+            "string_index": 1
+          },
+          {
+            "note": 52,
+            "duration_b": 1.8,
+            "speed": 8,
+            "slide": 0,
+            "beat": "43.3.1",
+            "string_index": 2
+          },
+          {
+            "note": 59,
+            "duration_b": 1.8,
+            "speed": 8,
+            "slide": 0,
+            "beat": "43.3.1",
+            "string_index": 4
+          },
+          {
+            "note": 69,
+            "duration_b": 1.75,
+            "speed": 7,
+            "slide": 0,
+            "beat": "43.3.1"
+          },
+          {
+            "note": 40,
+            "duration_b": 4.25,
+            "speed": 3,
+            "slide": 0,
+            "beat": "43.4.4",
+            "string_index": 0
+          },
+          {
+            "note": 45,
+            "duration_b": 4,
+            "speed": 8,
+            "slide": 0,
+            "beat": "44.1.1",
+            "string_index": 1
+          },
+          {
+            "note": 52,
+            "duration_b": 4,
+            "speed": 9,
+            "slide": 0,
+            "beat": "44.1.2",
+            "string_index": 2
+          },
+          {
+            "note": 59,
+            "duration_b": 3.75,
+            "speed": 10,
+            "slide": 0,
+            "beat": "44.1.3",
+            "string_index": 4
+          },
+          {
+            "note": 71,
+            "duration_b": 3.5,
+            "speed": 9,
+            "slide": 0,
+            "beat": "44.1.4"
+          },
+          {
+            "note": 45,
+            "duration_b": 0.8,
+            "speed": 3,
+            "slide": 0,
+            "beat": "45.2.1",
+            "string_index": 1
+          },
+          {
+            "note": 52,
+            "duration_b": 0.8,
+            "speed": 3,
+            "slide": 0,
+            "beat": "45.2.1",
+            "string_index": 2
+          },
+          {
+            "note": 59,
+            "duration_b": 0.8,
+            "speed": 3,
+            "slide": 0,
+            "beat": "45.2.1",
+            "string_index": 4
+          },
+          {
+            "note": 71,
+            "duration_b": 0.75,
+            "speed": 6,
+            "slide": 0,
+            "beat": "45.2.1"
+          },
+          {
+            "note": 45,
+            "duration_b": 0.8,
+            "speed": 3,
+            "slide": 0,
+            "beat": "45.4.1",
+            "string_index": 1
+          },
+          {
+            "note": 52,
+            "duration_b": 0.8,
+            "speed": 3,
+            "slide": 0,
+            "beat": "45.4.1",
+            "string_index": 2
+          },
+          {
+            "note": 59,
+            "duration_b": 0.8,
+            "speed": 3,
+            "slide": 0,
+            "beat": "45.4.1",
+            "string_index": 4
+          },
+          {
+            "note": 71,
+            "duration_b": 0.75,
+            "speed": 6,
+            "slide": 0,
+            "beat": "45.4.1"
+          },
+          {
+            "note": 45,
+            "duration_b": 0.8,
+            "speed": 3,
+            "slide": 0,
+            "beat": "46.1.1",
+            "string_index": 1
+          },
+          {
+            "note": 52,
+            "duration_b": 0.8,
+            "speed": 3,
+            "slide": 0,
+            "beat": "46.1.1",
+            "string_index": 2
+          },
+          {
+            "note": 59,
+            "duration_b": 0.8,
+            "speed": 3,
+            "slide": 0,
+            "beat": "46.1.1",
+            "string_index": 4
+          },
+          {
+            "note": 71,
+            "duration_b": 0.75,
+            "speed": 6,
+            "slide": 0,
+            "beat": "46.1.1"
+          },
+          {
+            "note": 47,
+            "duration_b": 0.8,
+            "speed": 3,
+            "slide": 0,
+            "beat": "46.4.1",
+            "string_index": 1
+          },
+          {
+            "note": 57,
+            "duration_b": 0.8,
+            "speed": 3,
+            "slide": 0,
+            "beat": "46.4.1",
+            "string_index": 3
+          },
+          {
+            "note": 64,
+            "duration_b": 1.4,
+            "speed": 8,
+            "slide": 1,
+            "beat": "46.4.1",
+            "string_index": 5
+          },
+          {
+            "note": 52,
+            "duration_b": 0.8,
+            "speed": 3,
+            "slide": 0,
+            "beat": "46.4.1",
+            "string_index": 2
+          },
+          {
+            "note": 47,
+            "duration_b": 1,
+            "speed": 3,
+            "slide": 0,
+            "beat": "47.2.1",
+            "string_index": 1
+          },
+          {
+            "note": 66,
+            "duration_b": 1.4,
+            "speed": 9,
+            "slide": 1,
+            "beat": "47.2.1",
+            "string_index": 5
+          },
+          {
+            "note": 57,
+            "duration_b": 1.2,
+            "speed": 4,
+            "slide": 1,
+            "beat": "~185.66",
+            "string_index": 3
+          },
+          {
+            "note": 52,
+            "duration_b": 0.8,
+            "speed": 3,
+            "slide": 0,
+            "beat": "~186.9948",
+            "string_index": 2
+          },
+          {
+            "note": 47,
+            "duration_b": 0.8,
+            "speed": 3,
+            "slide": 0,
+            "beat": "47.4.1",
+            "string_index": 1
+          },
+          {
+            "note": 64,
+            "duration_b": 0.98,
+            "speed": 0,
+            "slide": 0,
+            "beat": "47.4.1",
+            "string_index": 5
+          },
+          {
+            "note": 52,
+            "duration_b": 0.8,
+            "speed": 3,
+            "slide": 0,
+            "beat": "48.1.2",
+            "string_index": 2
+          },
+          {
+            "note": 57,
+            "duration_b": 0.8,
+            "speed": 3,
+            "slide": 0,
+            "beat": "~188.32",
+            "string_index": 3
+          },
+          {
+            "note": 47,
+            "duration_b": 1,
+            "speed": 3,
+            "slide": 0,
+            "beat": "48.2.1",
+            "string_index": 1
+          },
+          {
+            "note": 64,
+            "duration_b": 0.8,
+            "speed": 0,
+            "slide": 0,
+            "beat": "48.2.1",
+            "string_index": 5
+          },
+          {
+            "note": 43,
+            "duration_b": 0.8,
+            "speed": 3,
+            "slide": 0,
+            "beat": "48.4.1",
+            "string_index": 0
+          },
+          {
+            "note": 50,
+            "duration_b": 0.8,
+            "speed": 3,
+            "slide": 0,
+            "beat": "48.4.1",
+            "string_index": 2
+          },
+          {
+            "note": 59,
+            "duration_b": 0.8,
+            "speed": 0,
+            "slide": 0,
+            "beat": "48.4.1",
+            "string_index": 4
+          },
+          {
+            "note": 43,
+            "duration_b": 1,
+            "speed": 8,
+            "slide": 0,
+            "beat": "49.2.1",
+            "string_index": 0
+          },
+          {
+            "note": 67,
+            "duration_b": 1.6,
+            "speed": 10,
+            "slide": 1,
+            "beat": "49.2.1",
+            "string_index": 5
+          },
+          {
+            "note": 50,
+            "duration_b": 0.8,
+            "speed": 3,
+            "slide": 0,
+            "beat": "~193.66",
+            "string_index": 2
+          },
+          {
+            "note": 43,
+            "duration_b": 0.8,
+            "speed": 3,
+            "slide": 0,
+            "beat": "49.4.1",
+            "string_index": 0
+          },
+          {
+            "note": 59,
+            "duration_b": 1.6,
+            "speed": 10,
+            "slide": 1,
+            "beat": "49.4.1",
+            "string_index": 4
+          },
+          {
+            "note": 50,
+            "duration_b": 1.2,
+            "speed": 5,
+            "slide": 1,
+            "beat": "~196.32",
+            "string_index": 2
+          },
+          {
+            "note": 43,
+            "duration_b": 1,
+            "speed": 5,
+            "slide": 0,
+            "beat": "50.2.1",
+            "string_index": 0
+          },
+          {
+            "note": 59,
+            "duration_b": 0.8,
+            "speed": 0,
+            "slide": 0,
+            "beat": "50.2.1",
+            "string_index": 4
+          },
+          {
+            "note": 42,
+            "duration_b": 0.8,
+            "speed": 3,
+            "slide": 0,
+            "beat": "50.4.1",
+            "string_index": 0
+          },
+          {
+            "note": 54,
+            "duration_b": 0.8,
+            "speed": 3,
+            "slide": 0,
+            "beat": "50.4.1",
+            "string_index": 2
+          },
+          {
+            "note": 59,
+            "duration_b": 0.8,
+            "speed": 0,
+            "slide": 0,
+            "beat": "50.4.1",
+            "string_index": 4
+          },
+          {
+            "note": 54,
+            "duration_b": 0.8,
+            "speed": 3,
+            "slide": 0,
+            "beat": "~200.6",
+            "string_index": 2
+          },
+          {
+            "note": 42,
+            "duration_b": 1,
+            "speed": 5,
+            "slide": 0,
+            "beat": "51.2.1",
+            "string_index": 0
+          },
+          {
+            "note": 61,
+            "duration_b": 1.4,
+            "speed": 9,
+            "slide": 1,
+            "beat": "51.2.1",
+            "string_index": 4
+          },
+          {
+            "note": 54,
+            "duration_b": 1.05,
+            "speed": 7,
+            "slide": 0,
+            "beat": "~202.2",
+            "string_index": 2
+          },
+          {
+            "note": 42,
+            "duration_b": 0.8,
+            "speed": 3,
+            "slide": 0,
+            "beat": "51.4.1",
+            "string_index": 0
+          },
+          {
+            "note": 59,
+            "duration_b": 1.4,
+            "speed": 8,
+            "slide": 1,
+            "beat": "51.4.1",
+            "string_index": 4
+          },
+          {
+            "note": 54,
+            "duration_b": 0.8,
+            "speed": 3,
+            "slide": 0,
+            "beat": "~203.8",
+            "string_index": 2
+          },
+          {
+            "note": 42,
+            "duration_b": 1,
+            "speed": 6,
+            "slide": 0,
+            "beat": "52.2.1",
+            "string_index": 0
+          },
+          {
+            "note": 59,
+            "duration_b": 0.8,
+            "speed": 0,
+            "slide": 0,
+            "beat": "52.2.1",
+            "string_index": 4
+          },
+          {
+            "note": 54,
+            "duration_b": 0.8,
+            "speed": 3,
+            "slide": 0,
+            "beat": "~205.4",
+            "string_index": 2
+          },
+          {
+            "note": 40,
+            "duration_b": 0.8,
+            "speed": 3,
+            "slide": 0,
+            "beat": "52.4.1",
+            "string_index": 0
+          },
+          {
+            "note": 52,
+            "duration_b": 1.2,
+            "speed": 5,
+            "slide": 1,
+            "beat": "52.4.1",
+            "string_index": 2
+          },
+          {
+            "note": 64,
+            "duration_b": 1.6,
+            "speed": 10,
+            "slide": 1,
+            "beat": "52.4.1",
+            "string_index": 4
+          },
+          {
+            "note": 52,
+            "duration_b": 0.8,
+            "speed": 3,
+            "slide": 0,
+            "beat": "~208.6",
+            "string_index": 2
+          },
+          {
+            "note": 40,
+            "duration_b": 1,
+            "speed": 8,
+            "slide": 0,
+            "beat": "53.2.1",
+            "string_index": 0
+          },
+          {
+            "note": 68,
+            "duration_b": 1.6,
+            "speed": 10,
+            "slide": 1,
+            "beat": "53.2.1",
+            "string_index": 5
+          },
+          {
+            "note": 52,
+            "duration_b": 0.8,
+            "speed": 3,
+            "slide": 0,
+            "beat": "~210.2",
+            "string_index": 2
+          },
+          {
+            "note": 40,
+            "duration_b": 0.8,
+            "speed": 3,
+            "slide": 0,
+            "beat": "53.4.1",
+            "string_index": 0
+          },
+          {
+            "note": 64,
+            "duration_b": 0.8,
+            "speed": 0,
+            "slide": 0,
+            "beat": "53.4.1",
+            "string_index": 4
+          },
+          {
+            "note": 52,
+            "duration_b": 1.2,
+            "speed": 5,
+            "slide": 0,
+            "beat": "~211.8",
+            "string_index": 2
+          },
+          {
+            "note": 40,
+            "duration_b": 1,
+            "speed": 7,
+            "slide": 0,
+            "beat": "54.2.1",
+            "string_index": 0
+          },
+          {
+            "note": 66,
+            "duration_b": 1.2,
+            "speed": 8,
+            "slide": 1,
+            "beat": "54.2.1",
+            "string_index": 4
+          },
+          {
+            "note": 52,
+            "duration_b": 0.8,
+            "speed": 3,
+            "slide": 0,
+            "beat": "~213.4",
+            "string_index": 2
+          },
+          {
+            "note": 45,
+            "duration_b": 0.8,
+            "speed": 3,
+            "slide": 0,
+            "beat": "54.4.1",
+            "string_index": 1
+          },
+          {
+            "note": 52,
+            "duration_b": 0.8,
+            "speed": 3,
+            "slide": 0,
+            "beat": "54.4.1",
+            "string_index": 2
+          },
+          {
+            "note": 59,
+            "duration_b": 0.8,
+            "speed": 0,
+            "slide": 0,
+            "beat": "54.4.1",
+            "string_index": 3
+          },
+          {
+            "note": 45,
+            "duration_b": 0.8,
+            "speed": 3,
+            "slide": 0,
+            "beat": "55.2.1",
+            "string_index": 1
+          },
+          {
+            "note": 52,
+            "duration_b": 0.8,
+            "speed": 3,
+            "slide": 0,
+            "beat": "55.2.1",
+            "string_index": 2
+          },
+          {
+            "note": 61,
+            "duration_b": 1.4,
+            "speed": 7,
+            "slide": 1,
+            "beat": "55.2.1",
+            "string_index": 3
+          },
+          {
+            "note": 45,
+            "duration_b": 0.8,
+            "speed": 3,
+            "slide": 0,
+            "beat": "55.4.1",
+            "string_index": 1
+          },
+          {
+            "note": 52,
+            "duration_b": 0.8,
+            "speed": 3,
+            "slide": 0,
+            "beat": "55.4.1",
+            "string_index": 2
+          },
+          {
+            "note": 59,
+            "duration_b": 1.4,
+            "speed": 7,
+            "slide": 1,
+            "beat": "55.4.1",
+            "string_index": 3
+          },
+          {
+            "note": 45,
+            "duration_b": 0.8,
+            "speed": 3,
+            "slide": 0,
+            "beat": "56.2.1",
+            "string_index": 1
+          },
+          {
+            "note": 52,
+            "duration_b": 0.8,
+            "speed": 3,
+            "slide": 0,
+            "beat": "56.2.1",
+            "string_index": 2
+          },
+          {
+            "note": 59,
+            "duration_b": 0.8,
+            "speed": 0,
+            "slide": 0,
+            "beat": "56.2.1",
+            "string_index": 3
+          },
+          {
+            "note": 45,
+            "duration_b": 1,
+            "speed": 5,
+            "slide": 0,
+            "beat": "56.4.1",
+            "string_index": 1
+          },
+          {
+            "note": 52,
+            "duration_b": 1,
+            "speed": 5,
+            "slide": 0,
+            "beat": "56.4.1",
+            "string_index": 2
+          },
+          {
+            "note": 57,
+            "duration_b": 1,
+            "speed": 5,
+            "slide": 0,
+            "beat": "56.4.1",
+            "string_index": 3
+          },
+          {
+            "note": 40,
+            "duration_b": 1,
+            "speed": 5,
+            "slide": 0,
+            "beat": "56.4.1",
+            "string_index": 0
+          },
+          {
+            "note": 45,
+            "duration_b": 0.8,
+            "speed": 3,
+            "slide": 0,
+            "beat": "57.2.1",
+            "string_index": 1
+          },
+          {
+            "note": 52,
+            "duration_b": 0.8,
+            "speed": 3,
+            "slide": 0,
+            "beat": "57.2.1",
+            "string_index": 2
+          },
+          {
+            "note": 59,
+            "duration_b": 0.8,
+            "speed": 3,
+            "slide": 0,
+            "beat": "57.2.1",
+            "string_index": 3
+          },
+          {
+            "note": 45,
+            "duration_b": 0.8,
+            "speed": 3,
+            "slide": 0,
+            "beat": "57.3.1",
+            "string_index": 1
+          },
+          {
+            "note": 52,
+            "duration_b": 0.8,
+            "speed": 3,
+            "slide": 0,
+            "beat": "57.3.1",
+            "string_index": 2
+          },
+          {
+            "note": 59,
+            "duration_b": 0.8,
+            "speed": 3,
+            "slide": 0,
+            "beat": "57.3.1",
+            "string_index": 3
+          },
+          {
+            "note": 47,
+            "duration_b": 8,
+            "speed": 3,
+            "slide": 0,
+            "beat": "57.4.1",
+            "string_index": 1
+          },
+          {
+            "note": 57,
+            "duration_b": 6,
+            "speed": 3,
+            "slide": 0,
+            "beat": "58.2.1",
+            "string_index": 3
+          },
+          {
+            "note": 64,
+            "duration_b": 4,
+            "speed": 3,
+            "slide": 0,
+            "beat": "58.4.1",
+            "string_index": 4
+          },
+          {
+            "note": 71,
+            "duration_b": 2.5,
+            "speed": 3,
+            "slide": 0,
+            "beat": "59.1.3",
+            "string_index": 5
+          },
+          {
+            "note": 47,
+            "duration_b": 2,
+            "speed": 3,
+            "slide": 0,
+            "beat": "59.4.1",
+            "string_index": 1
+          },
+          {
+            "note": 57,
+            "duration_b": 2,
+            "speed": 3,
+            "slide": 0,
+            "beat": "60.2.1",
+            "string_index": 3
+          },
+          {
+            "note": 64,
+            "duration_b": 2,
+            "speed": 3,
+            "slide": 0,
+            "beat": "60.2.1",
+            "string_index": 4
+          },
+          {
+            "note": 71,
+            "duration_b": 2,
+            "speed": 3,
+            "slide": 0,
+            "beat": "60.2.1",
+            "string_index": 5
+          },
+          {
+            "note": 47,
+            "duration_b": 2,
+            "speed": 3,
+            "slide": 0,
+            "beat": "60.4.1",
+            "string_index": 1
+          },
+          {
+            "note": 47,
+            "duration_b": 0.8,
+            "speed": 3,
+            "slide": 0,
+            "beat": "61.2.1",
+            "string_index": 1
+          },
+          {
+            "note": 57,
+            "duration_b": 0.8,
+            "speed": 3,
+            "slide": 0,
+            "beat": "61.2.1",
+            "string_index": 3
+          },
+          {
+            "note": 64,
+            "duration_b": 0.8,
+            "speed": 3,
+            "slide": 0,
+            "beat": "61.2.1",
+            "string_index": 4
+          },
+          {
+            "note": 71,
+            "duration_b": 0.75,
+            "speed": 3,
+            "slide": 0,
+            "beat": "61.2.1",
+            "string_index": 5
+          },
+          {
+            "note": 47,
+            "duration_b": 0.8,
+            "speed": 3,
+            "slide": 0,
+            "beat": "61.3.1",
+            "string_index": 1
+          },
+          {
+            "note": 57,
+            "duration_b": 0.8,
+            "speed": 3,
+            "slide": 0,
+            "beat": "61.3.1",
+            "string_index": 3
+          },
+          {
+            "note": 64,
+            "duration_b": 0.8,
+            "speed": 3,
+            "slide": 0,
+            "beat": "61.3.1",
+            "string_index": 4
+          },
+          {
+            "note": 71,
+            "duration_b": 0.75,
+            "speed": 3,
+            "slide": 0,
+            "beat": "61.3.1",
+            "string_index": 5
+          },
+          {
+            "note": 47,
+            "duration_b": 0.8,
+            "speed": 3,
+            "slide": 0,
+            "beat": "61.4.1",
+            "string_index": 1
+          },
+          {
+            "note": 57,
+            "duration_b": 0.8,
+            "speed": 3,
+            "slide": 0,
+            "beat": "61.4.1",
+            "string_index": 3
+          },
+          {
+            "note": 64,
+            "duration_b": 0.8,
+            "speed": 3,
+            "slide": 0,
+            "beat": "61.4.1",
+            "string_index": 4
+          },
+          {
+            "note": 71,
+            "duration_b": 0.7316,
+            "speed": 3,
+            "slide": 0,
+            "beat": "61.4.1",
+            "string_index": 5
+          },
+          {
+            "note": 43,
+            "duration_b": 0.8,
+            "speed": 3,
+            "slide": 0,
+            "beat": "62.2.1",
+            "string_index": 0
+          },
+          {
+            "note": 50,
+            "duration_b": 0.8,
+            "speed": 5,
+            "slide": 0,
+            "beat": "62.2.1",
+            "string_index": 2
+          },
+          {
+            "note": 59,
+            "duration_b": 0.8,
+            "speed": 8,
+            "slide": 0,
+            "beat": "62.2.1",
+            "string_index": 3
+          },
+          {
+            "note": 67,
+            "duration_b": 1.5,
+            "speed": 3,
+            "slide": 0,
+            "beat": "62.2.1",
+            "string_index": 5
+          },
+          {
+            "note": 50,
+            "duration_b": 0.8,
+            "speed": 5,
+            "slide": 0,
+            "beat": "62.3.3",
+            "string_index": 2
+          },
+          {
+            "note": 59,
+            "duration_b": 1.2,
+            "speed": 3,
+            "slide": 0,
+            "beat": "~246.6",
+            "string_index": 3
+          },
+          {
+            "note": 43,
+            "duration_b": 0.8,
+            "speed": 3,
+            "slide": 0,
+            "beat": "62.4.1",
+            "string_index": 0
+          },
+          {
+            "note": 67,
+            "duration_b": 1,
+            "speed": 3,
+            "slide": 0,
+            "beat": "62.4.1",
+            "string_index": 5
+          },
+          {
+            "note": 50,
+            "duration_b": 0.8,
+            "speed": 5,
+            "slide": 0,
+            "beat": "63.1.1",
+            "string_index": 2
+          },
+          {
+            "note": 59,
+            "duration_b": 1.2,
+            "speed": 8,
+            "slide": 0,
+            "beat": "~248.2",
+            "string_index": 3
+          },
+          {
+            "note": 43,
+            "duration_b": 0.8,
+            "speed": 3,
+            "slide": 0,
+            "beat": "63.2.1",
+            "string_index": 0
+          },
+          {
+            "note": 50,
+            "duration_b": 0.8,
+            "speed": 5,
+            "slide": 0,
+            "beat": "63.2.3",
+            "string_index": 2
+          },
+          {
+            "note": 67,
+            "duration_b": 1.5,
+            "speed": 3,
+            "slide": 0,
+            "beat": "63.2.4",
+            "string_index": 5
+          },
+          {
+            "note": 59,
+            "duration_b": 1.4,
+            "speed": 6,
+            "slide": 0,
+            "beat": "~249.8",
+            "string_index": 3
+          },
+          {
+            "note": 43,
+            "duration_b": 0.8,
+            "speed": 3,
+            "slide": 0,
+            "beat": "63.4.1",
+            "string_index": 0
+          },
+          {
+            "note": 50,
+            "duration_b": 0.8,
+            "speed": 5,
+            "slide": 0,
+            "beat": "63.4.1",
+            "string_index": 2
+          },
+          {
+            "note": 59,
+            "duration_b": 1,
+            "speed": 8,
+            "slide": 0,
+            "beat": "~251.4",
+            "string_index": 3
+          },
+          {
+            "note": 50,
+            "duration_b": 0.8,
+            "speed": 5,
+            "slide": 0,
+            "beat": "64.1.3",
+            "string_index": 2
+          },
+          {
+            "note": 43,
+            "duration_b": 0.8,
+            "speed": 3,
+            "slide": 0,
+            "beat": "64.2.1",
+            "string_index": 0
+          },
+          {
+            "note": 59,
+            "duration_b": 1.2,
+            "speed": 9,
+            "slide": 0,
+            "beat": "64.2.1",
+            "string_index": 3
+          },
+          {
+            "note": 43,
+            "duration_b": 0.8,
+            "speed": 3,
+            "slide": 0,
+            "beat": "64.3.1",
+            "string_index": 0
+          },
+          {
+            "note": 50,
+            "duration_b": 0.8,
+            "speed": 3,
+            "slide": 0,
+            "beat": "64.3.1",
+            "string_index": 2
+          },
+          {
+            "note": 59,
+            "duration_b": 0.8,
+            "speed": 3,
+            "slide": 0,
+            "beat": "64.3.1",
+            "string_index": 3
+          },
+          {
+            "note": 67,
+            "duration_b": 1.5,
+            "speed": 3,
+            "slide": 0,
+            "beat": "64.3.1",
+            "string_index": 5
+          },
+          {
+            "note": 43,
+            "duration_b": 0.8,
+            "speed": 3,
+            "slide": 0,
+            "beat": "65.1.1",
+            "string_index": 0
+          },
+          {
+            "note": 50,
+            "duration_b": 0.8,
+            "speed": 3,
+            "slide": 0,
+            "beat": "65.1.1",
+            "string_index": 2
+          },
+          {
+            "note": 59,
+            "duration_b": 0.8,
+            "speed": 3,
+            "slide": 0,
+            "beat": "65.1.1",
+            "string_index": 3
+          },
+          {
+            "note": 67,
+            "duration_b": 0.75,
+            "speed": 10,
+            "slide": 0,
+            "beat": "65.1.1",
+            "string_index": 5
+          },
+          {
+            "note": 43,
+            "duration_b": 0.8,
+            "speed": 3,
+            "slide": 0,
+            "beat": "65.2.1",
+            "string_index": 0
+          },
+          {
+            "note": 50,
+            "duration_b": 0.8,
+            "speed": 3,
+            "slide": 0,
+            "beat": "65.2.1",
+            "string_index": 2
+          },
+          {
+            "note": 59,
+            "duration_b": 0.8,
+            "speed": 3,
+            "slide": 0,
+            "beat": "65.2.1",
+            "string_index": 3
+          },
+          {
+            "note": 67,
+            "duration_b": 0.75,
+            "speed": 10,
+            "slide": 0,
+            "beat": "65.2.1",
+            "string_index": 5
+          },
+          {
+            "note": 42,
+            "duration_b": 0.8,
+            "speed": 3,
+            "slide": 0,
+            "beat": "65.4.1",
+            "string_index": 0
+          },
+          {
+            "note": 47,
+            "duration_b": 1,
+            "speed": 3,
+            "slide": 0,
+            "beat": "65.4.1",
+            "string_index": 1
+          },
+          {
+            "note": 59,
+            "duration_b": 0.8,
+            "speed": 3,
+            "slide": 0,
+            "beat": "65.4.1",
+            "string_index": 3
+          },
+          {
+            "note": 64,
+            "duration_b": 2.25,
+            "speed": 3,
+            "slide": 0,
+            "beat": "65.4.1",
+            "string_index": 5
+          },
+          {
+            "note": 59,
+            "duration_b": 1,
+            "speed": 8,
+            "slide": 0,
+            "beat": "~260.32",
+            "string_index": 3
+          },
+          {
+            "note": 47,
+            "duration_b": 0.8,
+            "speed": 3,
+            "slide": 0,
+            "beat": "~260.6",
+            "string_index": 1
+          },
+          {
+            "note": 42,
+            "duration_b": 0.8,
+            "speed": 3,
+            "slide": 0,
+            "beat": "66.2.1",
+            "string_index": 0
+          },
+          {
+            "note": 59,
+            "duration_b": 0.8,
+            "speed": 3,
+            "slide": 0,
+            "beat": "~261.66",
+            "string_index": 3
+          },
+          {
+            "note": 54,
+            "duration_b": 1,
+            "speed": 5,
+            "slide": 0,
+            "beat": "~262.2",
+            "string_index": 2
+          },
+          {
+            "note": 42,
+            "duration_b": 0.8,
+            "speed": 3,
+            "slide": 0,
+            "beat": "66.4.1",
+            "string_index": 0
+          },
+          {
+            "note": 59,
+            "duration_b": 1,
+            "speed": 9,
+            "slide": 0,
+            "beat": "66.4.1",
+            "string_index": 3
+          },
+          {
+            "note": 64,
+            "duration_b": 1,
+            "speed": 3,
+            "slide": 0,
+            "beat": "66.4.1",
+            "string_index": 5
+          },
+          {
+            "note": 47,
+            "duration_b": 0.8,
+            "speed": 3,
+            "slide": 0,
+            "beat": "~263.8",
+            "string_index": 1
+          },
+          {
+            "note": 59,
+            "duration_b": 0.8,
+            "speed": 3,
+            "slide": 0,
+            "beat": "~264.32",
+            "string_index": 3
+          },
+          {
+            "note": 42,
+            "duration_b": 0.8,
+            "speed": 3,
+            "slide": 0,
+            "beat": "67.2.1",
+            "string_index": 0
+          },
+          {
+            "note": 54,
+            "duration_b": 1,
+            "speed": 6,
+            "slide": 0,
+            "beat": "~265.4",
+            "string_index": 2
+          },
+          {
+            "note": 59,
+            "duration_b": 1,
+            "speed": 10,
+            "slide": 0,
+            "beat": "~265.66",
+            "string_index": 3
+          },
+          {
+            "note": 64,
+            "duration_b": 1,
+            "speed": 3,
+            "slide": 0,
+            "beat": "67.3.1",
+            "string_index": 5
+          },
+          {
+            "note": 42,
+            "duration_b": 0.8,
+            "speed": 3,
+            "slide": 0,
+            "beat": "67.4.1",
+            "string_index": 0
+          },
+          {
+            "note": 59,
+            "duration_b": 1,
+            "speed": 10,
+            "slide": 0,
+            "beat": "67.4.1",
+            "string_index": 3
+          },
+          {
+            "note": 42,
+            "duration_b": 0.8,
+            "speed": 3,
+            "slide": 0,
+            "beat": "68.1.1",
+            "string_index": 0
+          },
+          {
+            "note": 47,
+            "duration_b": 0.8,
+            "speed": 3,
+            "slide": 0,
+            "beat": "68.1.1",
+            "string_index": 1
+          },
+          {
+            "note": 59,
+            "duration_b": 0.8,
+            "speed": 3,
+            "slide": 0,
+            "beat": "68.1.1",
+            "string_index": 3
+          },
+          {
+            "note": 42,
+            "duration_b": 0.8,
+            "speed": 3,
+            "slide": 0,
+            "beat": "68.1.3",
+            "string_index": 0
+          },
+          {
+            "note": 59,
+            "duration_b": 0.8,
+            "speed": 3,
+            "slide": 0,
+            "beat": "68.1.3",
+            "string_index": 3
+          },
+          {
+            "note": 42,
+            "duration_b": 0.8,
+            "speed": 3,
+            "slide": 0,
+            "beat": "68.3.1",
+            "string_index": 0
+          },
+          {
+            "note": 54,
+            "duration_b": 0.8,
+            "speed": 3,
+            "slide": 0,
+            "beat": "68.3.1",
+            "string_index": 2
+          },
+          {
+            "note": 59,
+            "duration_b": 0.8,
+            "speed": 3,
+            "slide": 0,
+            "beat": "68.3.1",
+            "string_index": 3
+          },
+          {
+            "note": 64,
+            "duration_b": 0.75,
+            "speed": 3,
+            "slide": 0,
+            "beat": "68.3.1",
+            "string_index": 5
+          },
+          {
+            "note": 40,
+            "duration_b": 0.75,
+            "speed": 3,
+            "slide": 0,
+            "beat": "69.1.1",
+            "string_index": 0
+          },
+          {
+            "note": 64,
+            "duration_b": 0.5,
+            "speed": 7,
+            "slide": 0,
+            "beat": "69.1.1",
+            "string_index": 4
+          },
+          {
+            "note": 47,
+            "duration_b": 0.75,
+            "speed": 6,
+            "slide": 0,
+            "beat": "69.1.3"
+          },
+          {
+            "note": 52,
+            "duration_b": 0.75,
+            "speed": 5,
+            "slide": 0,
+            "beat": "69.2.1",
+            "string_index": 2
+          },
+          {
+            "note": 56,
+            "duration_b": 0.75,
+            "speed": 6,
+            "slide": 0,
+            "beat": "69.2.3"
+          },
+          {
+            "note": 66,
+            "duration_b": 0.75,
+            "speed": 6,
+            "slide": 0,
+            "beat": "69.3.1"
+          },
+          {
+            "note": 52,
+            "duration_b": 0.75,
+            "speed": 5,
+            "slide": 0,
+            "beat": "69.3.2",
+            "string_index": 2
+          },
+          {
+            "note": 47,
+            "duration_b": 0.75,
+            "speed": 6,
+            "slide": 0,
+            "beat": "69.3.4"
+          },
+          {
+            "note": 64,
+            "duration_b": 1.2,
+            "speed": 8,
+            "slide": 0,
+            "beat": "69.4.1",
+            "string_index": 4
+          },
+          {
+            "note": 40,
+            "duration_b": 0.75,
+            "speed": 3,
+            "slide": 0,
+            "beat": "69.4.2",
+            "string_index": 0
+          },
+          {
+            "note": 40,
+            "duration_b": 0.75,
+            "speed": 3,
+            "slide": 0,
+            "beat": "70.1.3",
+            "string_index": 0
+          },
+          {
+            "note": 47,
+            "duration_b": 0.75,
+            "speed": 6,
+            "slide": 0,
+            "beat": "70.2.1"
+          },
+          {
+            "note": 52,
+            "duration_b": 0.75,
+            "speed": 5,
+            "slide": 0,
+            "beat": "70.2.2",
+            "string_index": 2
+          },
+          {
+            "note": 64,
+            "duration_b": 1.2,
+            "speed": 9,
+            "slide": 0,
+            "beat": "70.3.1",
+            "string_index": 4
+          },
+          {
+            "note": 56,
+            "duration_b": 0.75,
+            "speed": 6,
+            "slide": 0,
+            "beat": "70.3.1"
+          },
+          {
+            "note": 66,
+            "duration_b": 0.75,
+            "speed": 6,
+            "slide": 0,
+            "beat": "70.3.3"
+          },
+          {
+            "note": 52,
+            "duration_b": 0.75,
+            "speed": 5,
+            "slide": 0,
+            "beat": "70.3.4",
+            "string_index": 2
+          },
+          {
+            "note": 47,
+            "duration_b": 0.75,
+            "speed": 6,
+            "slide": 0,
+            "beat": "70.4.2"
+          },
+          {
+            "note": 40,
+            "duration_b": 0.75,
+            "speed": 3,
+            "slide": 0,
+            "beat": "70.4.4",
+            "string_index": 0
+          },
+          {
+            "note": 47,
+            "duration_b": 0.75,
+            "speed": 6,
+            "slide": 0,
+            "beat": "71.1.3"
+          },
+          {
+            "note": 52,
+            "duration_b": 0.75,
+            "speed": 5,
+            "slide": 0,
+            "beat": "71.1.4",
+            "string_index": 2
+          },
+          {
+            "note": 56,
+            "duration_b": 0.75,
+            "speed": 6,
+            "slide": 0,
+            "beat": "71.2.3"
+          },
+          {
+            "note": 64,
+            "duration_b": 1.2,
+            "speed": 10,
+            "slide": 0,
+            "beat": "71.3.1",
+            "string_index": 4
+          },
+          {
+            "note": 52,
+            "duration_b": 0.75,
+            "speed": 5,
+            "slide": 0,
+            "beat": "71.3.2",
+            "string_index": 2
+          },
+          {
+            "note": 47,
+            "duration_b": 0.75,
+            "speed": 6,
+            "slide": 0,
+            "beat": "71.3.4"
+          },
+          {
+            "note": 66,
+            "duration_b": 0.75,
+            "speed": 6,
+            "slide": 0,
+            "beat": "71.4.1"
+          },
+          {
+            "note": 40,
+            "duration_b": 0.75,
+            "speed": 3,
+            "slide": 0,
+            "beat": "71.4.2",
+            "string_index": 0
+          },
+          {
+            "note": 47,
+            "duration_b": 0.7168,
+            "speed": 6,
+            "slide": 0,
+            "beat": "72.1.2"
+          },
+          {
+            "note": 52,
+            "duration_b": 0.7092,
+            "speed": 3,
+            "slide": 0,
+            "beat": "72.2.1",
+            "string_index": 2
+          },
+          {
+            "note": 56,
+            "duration_b": 0.7376,
+            "speed": 3,
+            "slide": 0,
+            "beat": "72.2.2"
+          },
+          {
+            "note": 40,
+            "duration_b": 0.75,
+            "speed": 3,
+            "slide": 0,
+            "beat": "72.3.2",
+            "string_index": 0
+          },
+          {
+            "note": 47,
+            "duration_b": 0.75,
+            "speed": 6,
+            "slide": 0,
+            "beat": "72.3.4"
+          },
+          {
+            "note": 52,
+            "duration_b": 0.75,
+            "speed": 5,
+            "slide": 0,
+            "beat": "72.4.1",
+            "string_index": 2
+          },
+          {
+            "note": 56,
+            "duration_b": 0.75,
+            "speed": 1,
+            "slide": 0,
+            "beat": "72.4.4"
+          },
+          {
+            "note": 64,
+            "duration_b": 1,
+            "speed": 5,
+            "slide": 0,
+            "beat": "72.4.4"
+          },
+          {
+            "note": 52,
+            "duration_b": 1,
+            "speed": 5,
+            "slide": 0,
+            "beat": "73.1.2",
+            "string_index": 2
+          },
+          {
+            "note": 47,
+            "duration_b": 1,
+            "speed": 5,
+            "slide": 0,
+            "beat": "73.1.2",
+            "string_index": 1
+          },
+          {
+            "note": 40,
+            "duration_b": 0.75,
+            "speed": 3,
+            "slide": 0,
+            "beat": "73.3.2",
+            "string_index": 0
+          },
+          {
+            "note": 47,
+            "duration_b": 0.75,
+            "speed": 6,
+            "slide": 0,
+            "beat": "73.3.4"
+          },
+          {
+            "note": 52,
+            "duration_b": 0.75,
+            "speed": 5,
+            "slide": 0,
+            "beat": "73.4.1",
+            "string_index": 2
+          },
+          {
+            "note": 56,
+            "duration_b": 0.75,
+            "speed": 1,
+            "slide": 0,
+            "beat": "73.4.4"
+          },
+          {
+            "note": 52,
+            "duration_b": 1,
+            "speed": 5,
+            "slide": 0,
+            "beat": "74.1.2",
+            "string_index": 2
+          },
+          {
+            "note": 59,
+            "duration_b": 1,
+            "speed": 5,
+            "slide": 0,
+            "beat": "74.1.2",
+            "string_index": 4
+          },
+          {
+            "note": 40,
+            "duration_b": 0.75,
+            "speed": 3,
+            "slide": 0,
+            "beat": "74.3.2",
+            "string_index": 0
+          },
+          {
+            "note": 47,
+            "duration_b": 0.75,
+            "speed": 6,
+            "slide": 0,
+            "beat": "74.3.4"
+          },
+          {
+            "note": 52,
+            "duration_b": 0.75,
+            "speed": 5,
+            "slide": 0,
+            "beat": "74.4.1",
+            "string_index": 2
+          },
+          {
+            "note": 56,
+            "duration_b": 0.75,
+            "speed": 1,
+            "slide": 0,
+            "beat": "74.4.4"
+          },
+          {
+            "note": 64,
+            "duration_b": 1,
+            "speed": 5,
+            "slide": 0,
+            "beat": "74.4.4"
+          },
+          {
+            "note": 52,
+            "duration_b": 1,
+            "speed": 5,
+            "slide": 0,
+            "beat": "75.1.2",
+            "string_index": 2
+          },
+          {
+            "note": 47,
+            "duration_b": 1,
+            "speed": 5,
+            "slide": 0,
+            "beat": "75.1.2",
+            "string_index": 1
+          },
+          {
+            "note": 40,
+            "duration_b": 0.75,
+            "speed": 3,
+            "slide": 0,
+            "beat": "75.3.2",
+            "string_index": 0
+          },
+          {
+            "note": 47,
+            "duration_b": 0.75,
+            "speed": 6,
+            "slide": 0,
+            "beat": "75.3.4"
+          },
+          {
+            "note": 52,
+            "duration_b": 0.75,
+            "speed": 5,
+            "slide": 0,
+            "beat": "75.4.1",
+            "string_index": 2
+          },
+          {
+            "note": 56,
+            "duration_b": 0.75,
+            "speed": 1,
+            "slide": 0,
+            "beat": "75.4.4"
+          },
+          {
+            "note": 52,
+            "duration_b": 1,
+            "speed": 5,
+            "slide": 0,
+            "beat": "76.1.2",
+            "string_index": 2
+          },
+          {
+            "note": 59,
+            "duration_b": 1,
+            "speed": 5,
+            "slide": 0,
+            "beat": "76.1.2",
+            "string_index": 4
+          },
+          {
+            "note": 45,
+            "duration_b": 0.8,
+            "speed": 3,
+            "slide": 0,
+            "beat": "76.3.1",
+            "string_index": 1
+          },
+          {
+            "note": 52,
+            "duration_b": 0.8,
+            "speed": 3,
+            "slide": 0,
+            "beat": "76.3.1",
+            "string_index": 2
+          },
+          {
+            "note": 59,
+            "duration_b": 0.8,
+            "speed": 3,
+            "slide": 0,
+            "beat": "76.3.1",
+            "string_index": 3
+          },
+          {
+            "note": 45,
+            "duration_b": 0.8,
+            "speed": 3,
+            "slide": 0,
+            "beat": "77.1.1",
+            "string_index": 1
+          },
+          {
+            "note": 52,
+            "duration_b": 0.8,
+            "speed": 3,
+            "slide": 0,
+            "beat": "77.1.1",
+            "string_index": 2
+          },
+          {
+            "note": 59,
+            "duration_b": 0.8,
+            "speed": 3,
+            "slide": 0,
+            "beat": "77.1.1",
+            "string_index": 3
+          },
+          {
+            "note": 45,
+            "duration_b": 0.8,
+            "speed": 3,
+            "slide": 0,
+            "beat": "77.2.1",
+            "string_index": 1
+          },
+          {
+            "note": 52,
+            "duration_b": 0.8,
+            "speed": 3,
+            "slide": 0,
+            "beat": "77.2.1",
+            "string_index": 2
+          },
+          {
+            "note": 59,
+            "duration_b": 0.8,
+            "speed": 3,
+            "slide": 0,
+            "beat": "77.2.1",
+            "string_index": 3
+          },
+          {
+            "note": 71,
+            "duration_b": 1.75,
+            "speed": 3,
+            "slide": 0,
+            "beat": "77.4.1",
+            "string_index": 5
+          },
+          {
+            "note": 57,
+            "duration_b": 1.6,
+            "speed": 6,
+            "slide": 1,
+            "beat": "77.4.1",
+            "string_index": 3
+          },
+          {
+            "note": 64,
+            "duration_b": 1.8,
+            "speed": 10,
+            "slide": 1,
+            "beat": "77.4.1",
+            "string_index": 4
+          },
+          {
+            "note": 61,
+            "duration_b": 1.8,
+            "speed": 10,
+            "slide": 1,
+            "beat": "78.2.1",
+            "string_index": 4
+          },
+          {
+            "note": 69,
+            "duration_b": 1.8,
+            "speed": 7,
+            "slide": 1,
+            "beat": "78.2.1",
+            "string_index": 5
+          },
+          {
+            "note": 57,
+            "duration_b": 1.6,
+            "speed": 7,
+            "slide": 1,
+            "beat": "~309.66",
+            "string_index": 3
+          },
+          {
+            "note": 66,
+            "duration_b": 1.4,
+            "speed": 5,
+            "slide": 0,
+            "beat": "78.4.1",
+            "string_index": 5
+          },
+          {
+            "note": 59,
+            "duration_b": 1.5,
+            "speed": 10,
+            "slide": 1,
+            "beat": "78.4.1",
+            "string_index": 3
+          },
+          {
+            "note": 66,
+            "duration_b": 1.25,
+            "speed": 10,
+            "slide": 0,
+            "beat": "79.2.1",
+            "string_index": 5
+          },
+          {
+            "note": 57,
+            "duration_b": 1.18,
+            "speed": 6,
+            "slide": 1,
+            "beat": "~313.07",
+            "string_index": 3
+          },
+          {
+            "note": 74,
+            "duration_b": 0.8,
+            "speed": 3,
+            "slide": 0,
+            "beat": "79.4.1",
+            "string_index": 5
+          },
+          {
+            "note": 43,
+            "duration_b": 0.8,
+            "speed": 3,
+            "slide": 0,
+            "beat": "79.4.1",
+            "string_index": 0
+          },
+          {
+            "note": 50,
+            "duration_b": 1.6,
+            "speed": 8,
+            "slide": 1,
+            "beat": "79.4.1",
+            "string_index": 2
+          },
+          {
+            "note": 59,
+            "duration_b": 1.8,
+            "speed": 10,
+            "slide": 0,
+            "beat": "79.4.1",
+            "string_index": 3
+          },
+          {
+            "note": 74,
+            "duration_b": 1.2,
+            "speed": 10,
+            "slide": 0,
+            "beat": "80.2.1",
+            "string_index": 5
+          },
+          {
+            "note": 43,
+            "duration_b": 0.8,
+            "speed": 3,
+            "slide": 0,
+            "beat": "80.2.1",
+            "string_index": 0
+          },
+          {
+            "note": 62,
+            "duration_b": 1.8,
+            "speed": 10,
+            "slide": 1,
+            "beat": "80.2.1",
+            "string_index": 4
+          },
+          {
+            "note": 50,
+            "duration_b": 0.8,
+            "speed": 3,
+            "slide": 0,
+            "beat": "~317.66",
+            "string_index": 2
+          },
+          {
+            "note": 74,
+            "duration_b": 1.75,
+            "speed": 3,
+            "slide": 0,
+            "beat": "80.4.1",
+            "string_index": 5
+          },
+          {
+            "note": 43,
+            "duration_b": 0.8,
+            "speed": 3,
+            "slide": 0,
+            "beat": "80.4.1",
+            "string_index": 0
+          },
+          {
+            "note": 67,
+            "duration_b": 1.8,
+            "speed": 10,
+            "slide": 1,
+            "beat": "80.4.1",
+            "string_index": 4
+          },
+          {
+            "note": 50,
+            "duration_b": 1.6,
+            "speed": 4,
+            "slide": 1,
+            "beat": "~320.32",
+            "string_index": 2
+          },
+          {
+            "note": 74,
+            "duration_b": 0.8,
+            "speed": 3,
+            "slide": 0,
+            "beat": "81.2.1",
+            "string_index": 5
+          },
+          {
+            "note": 43,
+            "duration_b": 0.8,
+            "speed": 3,
+            "slide": 0,
+            "beat": "81.2.1",
+            "string_index": 0
+          },
+          {
+            "note": 67,
+            "duration_b": 0.8,
+            "speed": 0,
+            "slide": 0,
+            "beat": "81.2.1",
+            "string_index": 4
+          },
+          {
+            "note": 71,
+            "duration_b": 0.8,
+            "speed": 3,
+            "slide": 0,
+            "beat": "81.4.1",
+            "string_index": 5
+          },
+          {
+            "note": 42,
+            "duration_b": 1,
+            "speed": 3,
+            "slide": 0,
+            "beat": "81.4.1",
+            "string_index": 0
+          },
+          {
+            "note": 54,
+            "duration_b": 1.6,
+            "speed": 3,
+            "slide": 1,
+            "beat": "81.4.1",
+            "string_index": 2
+          },
+          {
+            "note": 59,
+            "duration_b": 1.8,
+            "speed": 8,
+            "slide": 1,
+            "beat": "81.4.1",
+            "string_index": 3
+          },
+          {
+            "note": 71,
+            "duration_b": 0.8,
+            "speed": 7,
+            "slide": 0,
+            "beat": "82.1.1",
+            "string_index": 5
+          },
+          {
+            "note": 71,
+            "duration_b": 1.2,
+            "speed": 8,
+            "slide": 0,
+            "beat": "82.2.1",
+            "string_index": 5
+          },
+          {
+            "note": 42,
+            "duration_b": 0.8,
+            "speed": 3,
+            "slide": 0,
+            "beat": "82.2.1",
+            "string_index": 0
+          },
+          {
+            "note": 61,
+            "duration_b": 1.8,
+            "speed": 8,
+            "slide": 1,
+            "beat": "82.2.1",
+            "string_index": 3
+          },
+          {
+            "note": 54,
+            "duration_b": 1.6,
+            "speed": 3,
+            "slide": 1,
+            "beat": "~326.2",
+            "string_index": 2
+          },
+          {
+            "note": 42,
+            "duration_b": 1,
+            "speed": 3,
+            "slide": 0,
+            "beat": "82.4.1",
+            "string_index": 0
+          },
+          {
+            "note": 66,
+            "duration_b": 1.8,
+            "speed": 8,
+            "slide": 1,
+            "beat": "82.4.1",
+            "string_index": 4
+          },
+          {
+            "note": 42,
+            "duration_b": 0.8,
+            "speed": 3,
+            "slide": 0,
+            "beat": "83.2.1",
+            "string_index": 0
+          },
+          {
+            "note": 66,
+            "duration_b": 0.8,
+            "speed": 0,
+            "slide": 0,
+            "beat": "83.2.1",
+            "string_index": 4
+          },
+          {
+            "note": 54,
+            "duration_b": 1.6,
+            "speed": 2,
+            "slide": 1,
+            "beat": "~329.4",
+            "string_index": 2
+          },
+          {
+            "note": 40,
+            "duration_b": 1,
+            "speed": 3,
+            "slide": 0,
+            "beat": "83.4.1",
+            "string_index": 0
+          },
+          {
+            "note": 52,
+            "duration_b": 1.8,
+            "speed": 3,
+            "slide": 1,
+            "beat": "83.4.1",
+            "string_index": 2
+          },
+          {
+            "note": 68,
+            "duration_b": 1.8,
+            "speed": 8,
+            "slide": 1,
+            "beat": "83.4.1",
+            "string_index": 4
+          },
+          {
+            "note": 71,
+            "duration_b": 1.75,
+            "speed": 3,
+            "slide": 0,
+            "beat": "~331.0232",
+            "string_index": 5
+          },
+          {
+            "note": 40,
+            "duration_b": 0.8,
+            "speed": 3,
+            "slide": 0,
+            "beat": "84.2.1",
+            "string_index": 0
+          },
+          {
+            "note": 66,
+            "duration_b": 1.8,
+            "speed": 8,
+            "slide": 1,
+            "beat": "84.2.1",
+            "string_index": 4
+          },
+          {
+            "note": 52,
+            "duration_b": 1.8,
+            "speed": 4,
+            "slide": 1,
+            "beat": "~334.2",
+            "string_index": 2
+          },
+          {
+            "note": 40,
+            "duration_b": 0.8,
+            "speed": 3,
+            "slide": 0,
+            "beat": "84.4.1",
+            "string_index": 0
+          },
+          {
+            "note": 64,
+            "duration_b": 1.8,
+            "speed": 8,
+            "slide": 1,
+            "beat": "84.4.1",
+            "string_index": 4
+          },
+          {
+            "note": 40,
+            "duration_b": 1,
+            "speed": 3,
+            "slide": 0,
+            "beat": "85.2.1",
+            "string_index": 0
+          },
+          {
+            "note": 59,
+            "duration_b": 1.8,
+            "speed": 8,
+            "slide": 1,
+            "beat": "85.2.1",
+            "string_index": 3
+          },
+          {
+            "note": 52,
+            "duration_b": 0.8,
+            "speed": 3,
+            "slide": 0,
+            "beat": "~337.4",
+            "string_index": 2
+          },
+          {
+            "note": 45,
+            "duration_b": 0.8,
+            "speed": 3,
+            "slide": 0,
+            "beat": "85.4.1",
+            "string_index": 1
+          },
+          {
+            "note": 52,
+            "duration_b": 0.8,
+            "speed": 3,
+            "slide": 0,
+            "beat": "85.4.1",
+            "string_index": 2
+          },
+          {
+            "note": 59,
+            "duration_b": 1.8,
+            "speed": 7,
+            "slide": 1,
+            "beat": "85.4.1",
+            "string_index": 3
+          },
+          {
+            "note": 45,
+            "duration_b": 0.8,
+            "speed": 3,
+            "slide": 0,
+            "beat": "86.2.1",
+            "string_index": 1
+          },
+          {
+            "note": 52,
+            "duration_b": 0.8,
+            "speed": 3,
+            "slide": 0,
+            "beat": "86.2.1",
+            "string_index": 2
+          },
+          {
+            "note": 61,
+            "duration_b": 1.8,
+            "speed": 5,
+            "slide": 1,
+            "beat": "86.2.1",
+            "string_index": 3
+          },
+          {
+            "note": 45,
+            "duration_b": 0.8,
+            "speed": 3,
+            "slide": 0,
+            "beat": "86.4.1",
+            "string_index": 1
+          },
+          {
+            "note": 52,
+            "duration_b": 0.8,
+            "speed": 3,
+            "slide": 0,
+            "beat": "86.4.1",
+            "string_index": 2
+          },
+          {
+            "note": 59,
+            "duration_b": 1.8,
+            "speed": 3,
+            "slide": 1,
+            "beat": "86.4.1",
+            "string_index": 3
+          },
+          {
+            "note": 45,
+            "duration_b": 0.8,
+            "speed": 3,
+            "slide": 0,
+            "beat": "87.2.1",
+            "string_index": 1
+          },
+          {
+            "note": 52,
+            "duration_b": 0.8,
+            "speed": 3,
+            "slide": 0,
+            "beat": "87.2.1",
+            "string_index": 2
+          },
+          {
+            "note": 59,
+            "duration_b": 0.8,
+            "speed": 0,
+            "slide": 0,
+            "beat": "87.2.1",
+            "string_index": 3
+          },
+          {
+            "note": 71,
+            "duration_b": 0.8,
+            "speed": 3,
+            "slide": 0,
+            "beat": "87.4.1",
+            "string_index": 5
+          },
+          {
+            "note": 45,
+            "duration_b": 0.8,
+            "speed": 3,
+            "slide": 0,
+            "beat": "87.4.1",
+            "string_index": 1
+          },
+          {
+            "note": 52,
+            "duration_b": 0.8,
+            "speed": 3,
+            "slide": 0,
+            "beat": "87.4.1",
+            "string_index": 2
+          },
+          {
+            "note": 59,
+            "duration_b": 0.8,
+            "speed": 3,
+            "slide": 0,
+            "beat": "87.4.1",
+            "string_index": 3
+          },
+          {
+            "note": 71,
+            "duration_b": 0.8,
+            "speed": 3,
+            "slide": 0,
+            "beat": "88.2.1",
+            "string_index": 5
+          },
+          {
+            "note": 45,
+            "duration_b": 0.8,
+            "speed": 3,
+            "slide": 0,
+            "beat": "88.2.1",
+            "string_index": 1
+          },
+          {
+            "note": 52,
+            "duration_b": 0.8,
+            "speed": 3,
+            "slide": 0,
+            "beat": "88.2.1",
+            "string_index": 2
+          },
+          {
+            "note": 59,
+            "duration_b": 0.8,
+            "speed": 3,
+            "slide": 0,
+            "beat": "88.2.1",
+            "string_index": 3
+          },
+          {
+            "note": 45,
+            "duration_b": 0.8,
+            "speed": 3,
+            "slide": 0,
+            "beat": "88.3.1",
+            "string_index": 1
+          },
+          {
+            "note": 52,
+            "duration_b": 0.8,
+            "speed": 3,
+            "slide": 0,
+            "beat": "88.3.1",
+            "string_index": 2
+          },
+          {
+            "note": 59,
+            "duration_b": 0.8,
+            "speed": 3,
+            "slide": 0,
+            "beat": "88.3.1",
+            "string_index": 3
+          },
+          {
+            "note": 71,
+            "duration_b": 0.8,
+            "speed": 3,
+            "slide": 0,
+            "beat": "88.4.1",
+            "string_index": 5
+          },
+          {
+            "note": 45,
+            "duration_b": 1.4,
+            "speed": 3,
+            "slide": 0,
+            "beat": "88.4.1",
+            "string_index": 1
+          },
+          {
+            "note": 52,
+            "duration_b": 1.4,
+            "speed": 3,
+            "slide": 0,
+            "beat": "88.4.1",
+            "string_index": 2
+          },
+          {
+            "note": 59,
+            "duration_b": 0.8,
+            "speed": 3,
+            "slide": 0,
+            "beat": "88.4.1",
+            "string_index": 3
+          },
+          {
+            "note": 71,
+            "duration_b": 0.8,
+            "speed": 3,
+            "slide": 0,
+            "beat": "89.3.1",
+            "string_index": 5
+          },
+          {
+            "note": 45,
+            "duration_b": 1.4,
+            "speed": 3,
+            "slide": 0,
+            "beat": "89.3.1",
+            "string_index": 1
+          },
+          {
+            "note": 52,
+            "duration_b": 1.4,
+            "speed": 6,
+            "slide": 0,
+            "beat": "89.3.1",
+            "string_index": 2
+          },
+          {
+            "note": 59,
+            "duration_b": 0.8,
+            "speed": 3,
+            "slide": 0,
+            "beat": "89.3.1",
+            "string_index": 3
+          },
+          {
+            "note": 45,
+            "duration_b": 0.8,
+            "speed": 3,
+            "slide": 0,
+            "beat": "90.1.1",
+            "string_index": 1
+          },
+          {
+            "note": 52,
+            "duration_b": 0.8,
+            "speed": 3,
+            "slide": 0,
+            "beat": "90.1.1",
+            "string_index": 2
+          },
+          {
+            "note": 59,
+            "duration_b": 0.8,
+            "speed": 3,
+            "slide": 0,
+            "beat": "90.1.1",
+            "string_index": 3
+          },
+          {
+            "note": 45,
+            "duration_b": 0.8,
+            "speed": 3,
+            "slide": 0,
+            "beat": "90.2.1",
+            "string_index": 1
+          },
+          {
+            "note": 52,
+            "duration_b": 0.8,
+            "speed": 3,
+            "slide": 0,
+            "beat": "90.2.1",
+            "string_index": 2
+          },
+          {
+            "note": 59,
+            "duration_b": 0.8,
+            "speed": 3,
+            "slide": 0,
+            "beat": "90.2.1",
+            "string_index": 3
+          },
+          {
+            "note": 45,
+            "duration_b": 1.4,
+            "speed": 3,
+            "slide": 0,
+            "beat": "~359.0335",
+            "string_index": 1
+          },
+          {
+            "note": 52,
+            "duration_b": 1.4,
+            "speed": 5,
+            "slide": 0,
+            "beat": "~359.0335",
+            "string_index": 2
+          },
+          {
+            "note": 59,
+            "duration_b": 0.8,
+            "speed": 3,
+            "slide": 0,
+            "beat": "~359.0335",
+            "string_index": 3
+          },
+          {
+            "note": 71,
+            "duration_b": 0.8,
+            "speed": 3,
+            "slide": 0,
+            "beat": "~359.0808",
+            "string_index": 5
+          },
+          {
+            "note": 45,
+            "duration_b": 0.8,
+            "speed": 3,
+            "slide": 0,
+            "beat": "~361.0336",
+            "string_index": 1
+          },
+          {
+            "note": 57,
+            "duration_b": 0.8,
+            "speed": 3,
+            "slide": 0,
+            "beat": "~361.0336",
+            "string_index": 3
+          },
+          {
+            "note": 57,
+            "duration_b": 0.8,
+            "speed": 3,
+            "slide": 0,
+            "beat": "~362.0336",
+            "string_index": 3
+          },
+          {
+            "note": 45,
+            "duration_b": 0.8,
+            "speed": 3,
+            "slide": 0,
+            "beat": "~362.0429",
+            "string_index": 1
+          },
+          {
+            "note": 45,
+            "duration_b": 1.4,
+            "speed": 3,
+            "slide": 0,
+            "beat": "~363.7864",
+            "string_index": 1
+          },
+          {
+            "note": 52,
+            "duration_b": 1.4,
+            "speed": 3,
+            "slide": 0,
+            "beat": "~363.7864",
+            "string_index": 2
+          },
+          {
+            "note": 59,
+            "duration_b": 0.8,
+            "speed": 3,
+            "slide": 0,
+            "beat": "~363.7864",
+            "string_index": 3
+          },
+          {
+            "note": 71,
+            "duration_b": 0.8,
+            "speed": 3,
+            "slide": 0,
+            "beat": "~363.8574",
+            "string_index": 5
+          },
+          {
+            "note": 45,
+            "duration_b": 0.8,
+            "speed": 3,
+            "slide": 0,
+            "beat": "~365.7864",
+            "string_index": 1
+          },
+          {
+            "note": 52,
+            "duration_b": 0.8,
+            "speed": 3,
+            "slide": 0,
+            "beat": "~365.7864",
+            "string_index": 2
+          },
+          {
+            "note": 59,
+            "duration_b": 0.8,
+            "speed": 3,
+            "slide": 0,
+            "beat": "~365.7864",
+            "string_index": 3
+          },
+          {
+            "note": 45,
+            "duration_b": 1.4,
+            "speed": 3,
+            "slide": 0,
+            "beat": "~368.5361",
+            "string_index": 1
+          },
+          {
+            "note": 52,
+            "duration_b": 1.4,
+            "speed": 2,
+            "slide": 0,
+            "beat": "~368.5361",
+            "string_index": 2
+          },
+          {
+            "note": 69,
+            "duration_b": 0.8,
+            "speed": 3,
+            "slide": 0,
+            "beat": "~368.5361",
+            "string_index": 5
+          },
+          {
+            "note": 57,
+            "duration_b": 0.8,
+            "speed": 3,
+            "slide": 0,
+            "beat": "~368.5598",
+            "string_index": 3
+          }
+        ]
+      }
+    ]
+  }
+}
