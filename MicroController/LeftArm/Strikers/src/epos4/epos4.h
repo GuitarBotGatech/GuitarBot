@@ -159,6 +159,13 @@ public:
         return m_iEncoderResolution;
     }
 
+    // Nodes whose TPDO feedback is consumed (the pressers) must not have
+    // m_iEncoderPosition overwritten by commanded positions in PDO_setPosition,
+    // otherwise position feedback reads as the last commanded target.
+    void setHasPositionFeedback(bool bHasFeedback) {
+        m_bHasPositionFeedback = bHasFeedback;
+    }
+
     bool isEncoderInverted() const {
         return m_iDirMultiplier == -1;
     }
@@ -211,6 +218,7 @@ private:
     bool m_bIsPDO = false;
 
     volatile bool m_bFault = false;
+    bool m_bHasPositionFeedback = false;
 
     // write
     // Interpolation time period

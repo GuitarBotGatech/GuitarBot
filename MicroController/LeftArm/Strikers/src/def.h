@@ -35,6 +35,17 @@ const int FRET_LENGTHS[10] = {0, 43, 76, 107, 134, 163, 187, 210, 234, 256};
 #define DISCONTINUITY_THRESHOLD 10000
 #define BUFFER_TIME 1
 
+// --- Presser mode state machine ---
+// Encoder position (ticks) at or below which a presser is considered fully
+// released and can safely switch from torque mode to position-hold at 0.
+#define PRESSER_RELEASED_POS_THRESHOLD 15
+// Number of consecutive PDO cycles the op-mode switch frame is re-sent after a
+// mode change. The switch is fire-and-forget CAN; redundant sends make a single
+// lost/failed frame a non-event.
+#define PRESSER_MODE_RESEND_CYCLES 3
+// How often the main loop verifies actual drive op modes via SDO read-back.
+#define PRESSER_MODE_VERIFY_INTERVAL_MS 500
+
 #define CLEAR_FAULT_TIMER_INTERVAL 100   // ms
 
 

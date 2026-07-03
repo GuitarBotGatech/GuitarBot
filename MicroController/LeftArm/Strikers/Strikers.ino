@@ -75,6 +75,12 @@ void loop() {
             }
         }
     }
+
+    // 3. Background CAN robustness: verify presser op modes via SDO read-back
+    //    (rate-limited, idle-only; re-commands the mode on mismatch).
+    if (pController != nullptr) {
+        pController->verifyPresserModes();
+    }
 }
 
 void ethernetEvent() {
