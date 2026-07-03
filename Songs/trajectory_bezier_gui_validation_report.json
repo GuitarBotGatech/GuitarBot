@@ -1,0 +1,81 @@
+{
+  "curves_tested": 5,
+  "all_passed": true,
+  "results": [
+    {
+      "curve": [
+        0.1,
+        0.1
+      ],
+      "overall_pass": true,
+      "payload_fidelity_pass": true,
+      "trajectory_diff_pass": true,
+      "slide_continuity_pass": true,
+      "slide_violations_python": 0,
+      "tremolo_readiness_pass": true,
+      "tremolo_checked_python": 1,
+      "tremolo_violations_python": 0,
+      "slider_max_abs_diff_vs_default": 0.0
+    },
+    {
+      "curve": [
+        0.25,
+        0.75
+      ],
+      "overall_pass": true,
+      "payload_fidelity_pass": true,
+      "trajectory_diff_pass": true,
+      "slide_continuity_pass": true,
+      "slide_violations_python": 0,
+      "tremolo_readiness_pass": true,
+      "tremolo_checked_python": 1,
+      "tremolo_violations_python": 0,
+      "slider_max_abs_diff_vs_default": 5554.0
+    },
+    {
+      "curve": [
+        0.5,
+        0.5
+      ],
+      "overall_pass": true,
+      "payload_fidelity_pass": true,
+      "trajectory_diff_pass": true,
+      "slide_continuity_pass": true,
+      "slide_violations_python": 0,
+      "tremolo_readiness_pass": true,
+      "tremolo_checked_python": 1,
+      "tremolo_violations_python": 0,
+      "slider_max_abs_diff_vs_default": 0.0
+    },
+    {
+      "curve": [
+        0.75,
+        0.25
+      ],
+      "overall_pass": true,
+      "payload_fidelity_pass": true,
+      "trajectory_diff_pass": true,
+      "slide_continuity_pass": true,
+      "slide_violations_python": 0,
+      "tremolo_readiness_pass": true,
+      "tremolo_checked_python": 1,
+      "tremolo_violations_python": 0,
+      "slider_max_abs_diff_vs_default": 5554.0
+    },
+    {
+      "curve": [
+        0.9,
+        0.9
+      ],
+      "overall_pass": true,
+      "payload_fidelity_pass": true,
+      "trajectory_diff_pass": true,
+      "slide_continuity_pass": true,
+      "slide_violations_python": 0,
+      "tremolo_readiness_pass": true,
+      "tremolo_checked_python": 1,
+      "tremolo_violations_python": 0,
+      "slider_max_abs_diff_vs_default": 0.0
+    }
+  ]
+}

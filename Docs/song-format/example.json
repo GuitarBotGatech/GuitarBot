@@ -1,0 +1,46 @@
+{
+  "song": {
+    "name": "MVP Example Song",
+    "meta": {
+      "key": "E minor",
+      "time_signature": "4/4",
+      "bpm": 92,
+      "tempo_curve": [
+        {"time": 0.0, "bpm": 92},
+        {"time": 3.0, "bpm": 84},
+        {"time": 7.0, "bpm": 96}
+      ]
+    },
+    "tracks": [
+      {
+        "name": "chords_main",
+        "type": "chord",
+        "events": [
+          {"chord": "Em", "beat": "1.1"},
+          {"chord": "C", "beat": "2.1"},
+          {"chord": "G", "beat": "3.1"},
+          {"chord": "D", "beat": "4.1"}
+        ]
+      },
+      {
+        "name": "pluck_main",
+        "type": "pluck",
+        "events": [
+          {"note": 52, "duration_b": 0.5, "speed": 5, "slide": 0, "beat": "1.2", "string_index": 2},
+          {"note": 55, "duration_b": 0.5, "speed": 5, "slide": 0, "beat": "1.4"},
+          {"note": 59, "duration_b": 0.5, "speed": 5, "slide": 0, "beat": "2.2"},
+          {"note": 62, "duration_b": 0.5, "speed": 5, "slide": 0, "beat": "2.4"}
+        ]
+      },
+      {
+        "name": "midi_fx",
+        "type": "midi",
+        "events": [
+          {"address": "/cc", "args": [7, 30], "interp": 1, "beat": "1.1"},
+          {"address": "/cc", "args": [7, 100], "interp": 0, "beat": "2.1"},
+          {"address": "/cc", "args": [7, 70], "interp": 0, "beat": "4.1"}
+        ]
+      }
+    ]
+  }
+}

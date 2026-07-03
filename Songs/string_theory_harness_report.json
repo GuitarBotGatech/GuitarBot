@@ -1,0 +1,532 @@
+{
+  "pass": false,
+  "analyses": {
+    "payload_fidelity": {
+      "pass": false,
+      "python_events": 442,
+      "json_events": 442,
+      "mismatch_count": 10,
+      "mismatch_examples": [
+        {
+          "index": 190,
+          "python": [
+            64,
+            0.49,
+            0.0,
+            0,
+            null,
+            90.5
+          ],
+          "json": [
+            64,
+            0.49,
+            6.0,
+            0,
+            null,
+            90.5
+          ]
+        },
+        {
+          "index": 193,
+          "python": [
+            64,
+            0.4,
+            0.0,
+            0,
+            null,
+            91.5
+          ],
+          "json": [
+            64,
+            0.4,
+            6.0,
+            0,
+            null,
+            91.5
+          ]
+        },
+        {
+          "index": 196,
+          "python": [
+            59,
+            0.4,
+            0.0,
+            0,
+            null,
+            92.5
+          ],
+          "json": [
+            59,
+            0.4,
+            6.0,
+            0,
+            null,
+            92.5
+          ]
+        },
+        {
+          "index": 204,
+          "python": [
+            59,
+            0.4,
+            0.0,
+            0,
+            null,
+            95.5
+          ],
+          "json": [
+            59,
+            0.4,
+            6.0,
+            0,
+            null,
+            95.5
+          ]
+        },
+        {
+          "index": 207,
+          "python": [
+            59,
+            0.4,
+            0.0,
+            0,
+            null,
+            96.5
+          ],
+          "json": [
+            59,
+            0.4,
+            6.0,
+            0,
+            null,
+            96.5
+          ]
+        },
+        {
+          "index": 216,
+          "python": [
+            59,
+            0.4,
+            0.0,
+            0,
+            null,
+            99.5
+          ],
+          "json": [
+            59,
+            0.4,
+            6.0,
+            0,
+            null,
+            99.5
+          ]
+        },
+        {
+          "index": 226,
+          "python": [
+            64,
+            0.4,
+            0.0,
+            0,
+            null,
+            102.5
+          ],
+          "json": [
+            64,
+            0.4,
+            6.0,
+            0,
+            null,
+            102.5
+          ]
+        },
+        {
+          "index": 233,
+          "python": [
+            59,
+            0.4,
+            0.0,
+            0,
+            null,
+            104.5
+          ],
+          "json": [
+            59,
+            0.4,
+            6.0,
+            0,
+            null,
+            104.5
+          ]
+        },
+        {
+          "index": 242,
+          "python": [
+            59,
+            0.4,
+            0.0,
+            0,
+            null,
+            107.5
+          ],
+          "json": [
+            59,
+            0.4,
+            6.0,
+            0,
+            null,
+            107.5
+          ]
+        },
+        {
+          "index": 371,
+          "python": [
+            59,
+            0.4,
+            0.0,
+            0,
+            null,
+            154.5
+          ],
+          "json": [
+            59,
+            0.4,
+            6.0,
+            0,
+            null,
+            154.5
+          ]
+        }
+      ],
+      "python_slide_events": 44,
+      "json_slide_events": 44
+    },
+    "trajectory_diff": {
+      "pass": true,
+      "tolerance": 1e-06,
+      "python_shape": [
+        35450,
+        15
+      ],
+      "json_shape": [
+        35450,
+        15
+      ],
+      "overlap_shape": [
+        35450,
+        15
+      ],
+      "max_abs_diff": 0.0,
+      "mean_abs_diff": 0.0
+    },
+    "slide_continuity": {
+      "pass": false,
+      "python": {
+        "label": "python",
+        "slide_events_checked": 44,
+        "violations": [
+          {
+            "motor_id": 2,
+            "timestamp": 88.05,
+            "segment_start": 17610,
+            "segment_end": 17750,
+            "segment_min": -650.0
+          },
+          {
+            "motor_id": 1,
+            "timestamp": 94.71,
+            "segment_start": 18942,
+            "segment_end": 19082,
+            "segment_min": -650.0
+          },
+          {
+            "motor_id": 2,
+            "timestamp": 93.05,
+            "segment_start": 18610,
+            "segment_end": 18750,
+            "segment_min": -650.0
+          },
+          {
+            "motor_id": 2,
+            "timestamp": 94.05,
+            "segment_start": 18810,
+            "segment_end": 18950,
+            "segment_min": -650.0
+          },
+          {
+            "motor_id": 2,
+            "timestamp": 97.05,
+            "segment_start": 19410,
+            "segment_end": 19550,
+            "segment_min": -650.0
+          },
+          {
+            "motor_id": 2,
+            "timestamp": 98.05,
+            "segment_start": 19610,
+            "segment_end": 19750,
+            "segment_min": -650.0
+          },
+          {
+            "motor_id": 2,
+            "timestamp": 100.05,
+            "segment_start": 20010,
+            "segment_end": 20150,
+            "segment_min": -650.0
+          },
+          {
+            "motor_id": 2,
+            "timestamp": 105.05,
+            "segment_start": 21010,
+            "segment_end": 21150,
+            "segment_min": -650.0
+          },
+          {
+            "motor_id": 2,
+            "timestamp": 106.05,
+            "segment_start": 21210,
+            "segment_end": 21350,
+            "segment_min": -650.0
+          },
+          {
+            "motor_id": 2,
+            "timestamp": 151.05,
+            "segment_start": 30210,
+            "segment_end": 30350,
+            "segment_min": -650.0
+          },
+          {
+            "motor_id": 2,
+            "timestamp": 153.05,
+            "segment_start": 30610,
+            "segment_end": 30750,
+            "segment_min": -650.0
+          },
+          {
+            "motor_id": 1,
+            "timestamp": 155.05,
+            "segment_start": 31010,
+            "segment_end": 31150,
+            "segment_min": -650.0
+          },
+          {
+            "motor_id": 1,
+            "timestamp": 157.71,
+            "segment_start": 31542,
+            "segment_end": 31682,
+            "segment_min": -650.0
+          },
+          {
+            "motor_id": 2,
+            "timestamp": 155.05,
+            "segment_start": 31010,
+            "segment_end": 31150,
+            "segment_min": -650.0
+          },
+          {
+            "motor_id": 2,
+            "timestamp": 156.05,
+            "segment_start": 31210,
+            "segment_end": 31350,
+            "segment_min": -650.0
+          },
+          {
+            "motor_id": 1,
+            "timestamp": 159.05,
+            "segment_start": 31810,
+            "segment_end": 31950,
+            "segment_min": -650.0
+          },
+          {
+            "motor_id": 2,
+            "timestamp": 159.05,
+            "segment_start": 31810,
+            "segment_end": 31950,
+            "segment_min": -650.0
+          },
+          {
+            "motor_id": 2,
+            "timestamp": 160.05,
+            "segment_start": 32010,
+            "segment_end": 32150,
+            "segment_min": -650.0
+          },
+          {
+            "motor_id": 2,
+            "timestamp": 166.05,
+            "segment_start": 33210,
+            "segment_end": 33350,
+            "segment_min": -650.0
+          },
+          {
+            "motor_id": 2,
+            "timestamp": 167.05,
+            "segment_start": 33410,
+            "segment_end": 33550,
+            "segment_min": -650.0
+          }
+        ],
+        "violation_count": 20,
+        "pass": false
+      },
+      "json": {
+        "label": "json",
+        "slide_events_checked": 44,
+        "violations": [
+          {
+            "motor_id": 2,
+            "timestamp": 88.05,
+            "segment_start": 17610,
+            "segment_end": 17750,
+            "segment_min": -650.0
+          },
+          {
+            "motor_id": 2,
+            "timestamp": 93.05,
+            "segment_start": 18610,
+            "segment_end": 18750,
+            "segment_min": -650.0
+          },
+          {
+            "motor_id": 2,
+            "timestamp": 94.05,
+            "segment_start": 18810,
+            "segment_end": 18950,
+            "segment_min": -650.0
+          },
+          {
+            "motor_id": 1,
+            "timestamp": 94.71,
+            "segment_start": 18942,
+            "segment_end": 19082,
+            "segment_min": -650.0
+          },
+          {
+            "motor_id": 2,
+            "timestamp": 97.05,
+            "segment_start": 19410,
+            "segment_end": 19550,
+            "segment_min": -650.0
+          },
+          {
+            "motor_id": 2,
+            "timestamp": 98.05,
+            "segment_start": 19610,
+            "segment_end": 19750,
+            "segment_min": -650.0
+          },
+          {
+            "motor_id": 2,
+            "timestamp": 100.05,
+            "segment_start": 20010,
+            "segment_end": 20150,
+            "segment_min": -650.0
+          },
+          {
+            "motor_id": 2,
+            "timestamp": 105.05,
+            "segment_start": 21010,
+            "segment_end": 21150,
+            "segment_min": -650.0
+          },
+          {
+            "motor_id": 2,
+            "timestamp": 106.05,
+            "segment_start": 21210,
+            "segment_end": 21350,
+            "segment_min": -650.0
+          },
+          {
+            "motor_id": 2,
+            "timestamp": 151.05,
+            "segment_start": 30210,
+            "segment_end": 30350,
+            "segment_min": -650.0
+          },
+          {
+            "motor_id": 2,
+            "timestamp": 153.05,
+            "segment_start": 30610,
+            "segment_end": 30750,
+            "segment_min": -650.0
+          },
+          {
+            "motor_id": 1,
+            "timestamp": 155.05,
+            "segment_start": 31010,
+            "segment_end": 31150,
+            "segment_min": -650.0
+          },
+          {
+            "motor_id": 2,
+            "timestamp": 155.05,
+            "segment_start": 31010,
+            "segment_end": 31150,
+            "segment_min": -650.0
+          },
+          {
+            "motor_id": 2,
+            "timestamp": 156.05,
+            "segment_start": 31210,
+            "segment_end": 31350,
+            "segment_min": -650.0
+          },
+          {
+            "motor_id": 1,
+            "timestamp": 157.71,
+            "segment_start": 31542,
+            "segment_end": 31682,
+            "segment_min": -650.0
+          },
+          {
+            "motor_id": 1,
+            "timestamp": 159.05,
+            "segment_start": 31810,
+            "segment_end": 31950,
+            "segment_min": -650.0
+          },
+          {
+            "motor_id": 2,
+            "timestamp": 159.05,
+            "segment_start": 31810,
+            "segment_end": 31950,
+            "segment_min": -650.0
+          },
+          {
+            "motor_id": 2,
+            "timestamp": 160.05,
+            "segment_start": 32010,
+            "segment_end": 32150,
+            "segment_min": -650.0
+          },
+          {
+            "motor_id": 2,
+            "timestamp": 166.05,
+            "segment_start": 33210,
+            "segment_end": 33350,
+            "segment_min": -650.0
+          },
+          {
+            "motor_id": 2,
+            "timestamp": 167.05,
+            "segment_start": 33410,
+            "segment_end": 33550,
+            "segment_min": -650.0
+          }
+        ],
+        "violation_count": 20,
+        "pass": false
+      }
+    }
+  },
+  "python_payload": {
+    "chords": 0,
+    "pluck": 442,
+    "midi": 0
+  },
+  "json_payload": {
+    "chords": 0,
+    "pluck": 442,
+    "midi": 1572
+  }
+}

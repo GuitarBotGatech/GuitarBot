@@ -1,0 +1,122 @@
+{
+  "song": {
+    "name": "Untitled Song",
+    "meta": {
+      "key": "E minor",
+      "time_signature": "4/4",
+      "bpm": 120,
+      "tempo_curve": [
+        {
+          "time": 0,
+          "bpm": 120
+        }
+      ]
+    },
+    "tracks": [
+      {
+        "name": "pluck_main",
+        "type": "pluck",
+        "events": [
+          {
+            "note": 45,
+            "duration_b": 2,
+            "speed": 1,
+            "slide": 0,
+            "beat": "2.3.1"
+          },
+          {
+            "note": 49,
+            "duration_b": 2,
+            "speed": 6,
+            "slide": 0,
+            "beat": "3.1.1"
+          },
+          {
+            "note": 49,
+            "duration_b": 2,
+            "speed": 6,
+            "slide": 0,
+            "beat": "3.1.1"
+          },
+          {
+            "note": 53,
+            "duration_b": 0.6666666666666666,
+            "speed": 6,
+            "slide": 0,
+            "beat": "~8.6667"
+          },
+          {
+            "note": 67,
+            "duration_b": 0.6666666666666666,
+            "speed": 6,
+            "slide": 0,
+            "beat": "~9.3333"
+          },
+          {
+            "note": 46,
+            "duration_b": 0.6666666666666666,
+            "speed": 6,
+            "slide": 0,
+            "beat": "~10.6667"
+          },
+          {
+            "note": 59,
+            "duration_b": 0.6666666666666666,
+            "speed": 6,
+            "slide": 0,
+            "beat": "~11.3333"
+          },
+          {
+            "note": 44,
+            "duration_b": 2,
+            "speed": 6,
+            "slide": 0,
+            "beat": "4.1.1"
+          },
+          {
+            "note": 53,
+            "duration_b": 2,
+            "speed": 6,
+            "slide": 0,
+            "beat": "4.1.1"
+          },
+          {
+            "note": 60,
+            "duration_b": 0.6666666666666666,
+            "speed": 6,
+            "slide": 0,
+            "beat": "~12.6667"
+          },
+          {
+            "note": 42,
+            "duration_b": 0.6666666666666666,
+            "speed": 6,
+            "slide": 0,
+            "beat": "5.1.1"
+          },
+          {
+            "note": 56,
+            "duration_b": 2,
+            "speed": 6,
+            "slide": 0,
+            "beat": "6.1.1"
+          },
+          {
+            "note": 68,
+            "duration_b": 0.6666666666666666,
+            "speed": 6,
+            "slide": 0,
+            "beat": "6.1.1"
+          },
+          {
+            "note": 51,
+            "duration_b": 0.6666666666666666,
+            "speed": 6,
+            "slide": 0,
+            "beat": "7.1.1"
+          }
+        ]
+      }
+    ]
+  }
+}

@@ -1,96 +1,67 @@
+import numpy as np
 import socket
-import struct
 import time
+import struct
 
-def send_msg(type, command):
+
+def main(song_trajs):
+    """
+    Sends the entire song trajectory in timed chunks without an ACK mechanism.
+    It calculates the duration of a chunk and waits for that amount of time
+    before sending the next, creating a predictive, open-loop timing system.
+    """
+    # --- Configuration ---
+    UDP_IP = "10.2.1.177"  # Arduino's IP address
+    UDP_PORT = 8888  # Arduino's listening port
+
+    # --- Tunable Parameters ---
+    # Set the number of points to bundle into a single network message.
+    BATCH_SIZE_POINTS = 20
+
+    # Each trajectory point represents a 5ms step.
+    TIME_PER_POINT_S = 0.005
+
+    # --- Socket Setup ---
     sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-    udp_ip = "10.2.1.177"
-    udp_port = 8888
-    LH = bytes('L', 'utf8')
-    strum = bytes('S', 'utf8')
-    pick = bytes('P', 'utf8')
 
-    message = None
-    flattened = []
-    if type == 'LH':
-        message = LH
-        flattened = [i for list in command for i in list]
-    elif type == 'strum':
-        message = strum
-        flattened.append(command)
-    elif type == 'pick':
-        message = pick
-        flattened = [i for i in command]
+    # --- Calculation ---
+    # The time interval to wait after sending a batch is the number of points
+    # multiplied by the time each point represents.
+    batch_interval_seconds = BATCH_SIZE_POINTS * TIME_PER_POINT_S
 
-    print(type, ": ", flattened)
-    pCommand = struct.pack(f'<{len(flattened)}b', *flattened)
-    packed_data = message + pCommand
-    time.sleep(0.005)
-    # self.sock.sendto(bytes(msg, 'utf8'), (self.udp_ip, self.udp_port))
-    sock.sendto(packed_data, (udp_ip, udp_port))
 
-    time.sleep(0.01)
-    return 0
+    num_total_points = len(song_trajs)
+    print(f"Starting song with {num_total_points} points.")
+    print(f"Sending in batches of {BATCH_SIZE_POINTS} points every {batch_interval_seconds:.2f} seconds.")
 
-def main(strum, LH):
-    #Format of event is:
-    # [event type (LH/strum/pick),
-    # properties (LH can be press, slide lists, strum can be pick angle--45==down strum, -45==up strum, pick can be pick/don't pick),
-    # time]
+    # --- Timed Sending Loop ---
+    total_start_time = time.time()
+    for i in range(0, num_total_points, BATCH_SIZE_POINTS):
+        start_time = time.time()
 
-    Events = []
-    for event in LH:
-        Events.append(event)
+        # Slice the next batch from the full song trajectory
+        chunk = song_trajs[i:i + BATCH_SIZE_POINTS]
 
-    for event in strum:
-        #print("rh event", event)
-        Events.append(event)
+        # Convert the numpy chunk to a flat byte array (using float32)
+        byte_payload = chunk.astype(np.float32).tobytes()
 
-    # TODO: When UI adds picking, uncomment code below
-    # for event in pick:
-    #     Events.append(event)
+        # Send the entire chunk as a single UDP packet
+        sock.sendto(byte_payload, (UDP_IP, UDP_PORT))
 
-    Events.sort(key=lambda x: x[2])
+        num_points_in_chunk = len(chunk)
+        print(f"Sent batch {i // BATCH_SIZE_POINTS + 1}: {num_points_in_chunk} points ({len(byte_payload)} bytes).")
+        elapsed_time = time.time() - start_time
 
-    print("4")
-    time.sleep(1)
-    print("3")
-    time.sleep(1)
-    print("2")
-    time.sleep(1)
-    print("1")
-    time.sleep(1)
+        # The last chunk might be smaller, so we find specific duration
+        actual_chunk_interval = num_points_in_chunk * TIME_PER_POINT_S
+        sleep_time = max(0, actual_chunk_interval - elapsed_time)
 
-    start = time.time()
-    for e in Events:
-        tNextEvent = e[2]
-        eventType = e[0]
+        # Only sleep if there's another chunk to send
+        #if (i + BATCH_SIZE_POINTS) < num_total_points:
+        print(f"--> Sleeping for {sleep_time:.4f} seconds...\n")
+        time.sleep(sleep_time)
 
-        # Calculate the target time for the next event
-        target_time = start + tNextEvent
-
-        # Wait until the target time
-        tElapsed = time.time()
-        while tElapsed < target_time:
-            time.sleep(0.0001)  # Small sleep to avoid busy waiting
-            tElapsed = time.time()  # Update elapsed time
-
-        # Send the event message
-        if eventType == 'LH':
-            send_msg(type='LH', command=e[1])
-        elif eventType == 'strum':
-            send_msg(type='strum', command=e[1])
-        elif eventType == 'pick':
-            send_msg(type='pick', command=e[1])
-
-        # Print elapsed time for debugging
-        tElapsed = time.time() - start
-        print("Elapsed time:", tElapsed)
-
-    print("done, exiting song")
-    time.sleep(2)
-    lastLHidx = len(LH) - 1
-    lastLHCommand = LH[lastLHidx]
-    print("This is the last command: ", lastLHCommand)
-    send_msg(type='LH', command= [lastLHCommand[1][0], [1,1,1,1,1,1]])
+    total_elapsed_time = time.time() - total_start_time
+    print(f"Total elapsed time: {total_elapsed_time:.4f} seconds")
+    print("All batches sent. Song Complete.")
     return 0

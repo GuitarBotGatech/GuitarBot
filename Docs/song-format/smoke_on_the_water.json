@@ -1,0 +1,21 @@
+{
+  "song": {
+    "name": "Smoke on the Water",
+    "meta": {
+      "key": "E minor",
+      "time_signature": "4/4",
+      "bpm": 120
+    },
+    "tracks": [
+      {
+        "name": "pluck_main",
+        "type": "pluck",
+        "events": [
+          {"note": 40, "duration": 0.2, "speed": 5, "slide": 0, "beat": "2.1"},
+          {"note": 43, "duration": 0.2, "speed": 5, "slide": 1, "beat": "2.3"},
+          {"note": 45, "duration": 0.2, "speed": 5, "slide": 1, "beat": "3.1"}
+        ]
+      }
+    ]
+  }
+}

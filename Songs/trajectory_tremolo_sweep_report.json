@@ -1,0 +1,2743 @@
+{
+  "total_cases": 72,
+  "failed_cases": 0,
+  "pass_rate": 1.0,
+  "cases": [
+    {
+      "note_a": 43,
+      "note_b": 45,
+      "interval_s": 0.5,
+      "middle_duration_s": 0.6,
+      "slide_on_middle": 0,
+      "rows": [
+        [
+          43,
+          0.25,
+          6,
+          0,
+          4.0
+        ],
+        [
+          45,
+          0.6,
+          6,
+          0,
+          4.5
+        ],
+        [
+          43,
+          0.25,
+          6,
+          0,
+          5.5
+        ]
+      ],
+      "result": {
+        "pass": true,
+        "checked": 0,
+        "python_violations": 0,
+        "json_violations": 0,
+        "python_examples": [],
+        "json_examples": []
+      }
+    },
+    {
+      "note_a": 43,
+      "note_b": 45,
+      "interval_s": 0.5,
+      "middle_duration_s": 0.6,
+      "slide_on_middle": 1,
+      "rows": [
+        [
+          43,
+          0.25,
+          6,
+          0,
+          4.0
+        ],
+        [
+          45,
+          0.6,
+          6,
+          1,
+          4.5
+        ],
+        [
+          43,
+          0.25,
+          6,
+          0,
+          5.5
+        ]
+      ],
+      "result": {
+        "pass": true,
+        "checked": 0,
+        "python_violations": 0,
+        "json_violations": 0,
+        "python_examples": [],
+        "json_examples": []
+      }
+    },
+    {
+      "note_a": 43,
+      "note_b": 45,
+      "interval_s": 0.5,
+      "middle_duration_s": 1.0,
+      "slide_on_middle": 0,
+      "rows": [
+        [
+          43,
+          0.25,
+          6,
+          0,
+          4.0
+        ],
+        [
+          45,
+          1.0,
+          6,
+          0,
+          4.5
+        ],
+        [
+          43,
+          0.25,
+          6,
+          0,
+          5.5
+        ]
+      ],
+      "result": {
+        "pass": true,
+        "checked": 0,
+        "python_violations": 0,
+        "json_violations": 0,
+        "python_examples": [],
+        "json_examples": []
+      }
+    },
+    {
+      "note_a": 43,
+      "note_b": 45,
+      "interval_s": 0.5,
+      "middle_duration_s": 1.0,
+      "slide_on_middle": 1,
+      "rows": [
+        [
+          43,
+          0.25,
+          6,
+          0,
+          4.0
+        ],
+        [
+          45,
+          1.0,
+          6,
+          1,
+          4.5
+        ],
+        [
+          43,
+          0.25,
+          6,
+          0,
+          5.5
+        ]
+      ],
+      "result": {
+        "pass": true,
+        "checked": 0,
+        "python_violations": 0,
+        "json_violations": 0,
+        "python_examples": [],
+        "json_examples": []
+      }
+    },
+    {
+      "note_a": 43,
+      "note_b": 45,
+      "interval_s": 0.5,
+      "middle_duration_s": 2.0,
+      "slide_on_middle": 0,
+      "rows": [
+        [
+          43,
+          0.25,
+          6,
+          0,
+          4.0
+        ],
+        [
+          45,
+          2.0,
+          6,
+          0,
+          4.5
+        ],
+        [
+          43,
+          0.25,
+          6,
+          0,
+          5.5
+        ]
+      ],
+      "result": {
+        "pass": true,
+        "checked": 0,
+        "python_violations": 0,
+        "json_violations": 0,
+        "python_examples": [],
+        "json_examples": []
+      }
+    },
+    {
+      "note_a": 43,
+      "note_b": 45,
+      "interval_s": 0.5,
+      "middle_duration_s": 2.0,
+      "slide_on_middle": 1,
+      "rows": [
+        [
+          43,
+          0.25,
+          6,
+          0,
+          4.0
+        ],
+        [
+          45,
+          2.0,
+          6,
+          1,
+          4.5
+        ],
+        [
+          43,
+          0.25,
+          6,
+          0,
+          5.5
+        ]
+      ],
+      "result": {
+        "pass": true,
+        "checked": 0,
+        "python_violations": 0,
+        "json_violations": 0,
+        "python_examples": [],
+        "json_examples": []
+      }
+    },
+    {
+      "note_a": 43,
+      "note_b": 45,
+      "interval_s": 1.0,
+      "middle_duration_s": 0.6,
+      "slide_on_middle": 0,
+      "rows": [
+        [
+          43,
+          0.25,
+          6,
+          0,
+          4.0
+        ],
+        [
+          45,
+          0.6,
+          6,
+          0,
+          5.0
+        ],
+        [
+          43,
+          0.25,
+          6,
+          0,
+          6.0
+        ]
+      ],
+      "result": {
+        "pass": true,
+        "checked": 1,
+        "python_violations": 0,
+        "json_violations": 0,
+        "python_examples": [],
+        "json_examples": []
+      }
+    },
+    {
+      "note_a": 43,
+      "note_b": 45,
+      "interval_s": 1.0,
+      "middle_duration_s": 0.6,
+      "slide_on_middle": 1,
+      "rows": [
+        [
+          43,
+          0.25,
+          6,
+          0,
+          4.0
+        ],
+        [
+          45,
+          0.6,
+          6,
+          1,
+          5.0
+        ],
+        [
+          43,
+          0.25,
+          6,
+          0,
+          6.0
+        ]
+      ],
+      "result": {
+        "pass": true,
+        "checked": 1,
+        "python_violations": 0,
+        "json_violations": 0,
+        "python_examples": [],
+        "json_examples": []
+      }
+    },
+    {
+      "note_a": 43,
+      "note_b": 45,
+      "interval_s": 1.0,
+      "middle_duration_s": 1.0,
+      "slide_on_middle": 0,
+      "rows": [
+        [
+          43,
+          0.25,
+          6,
+          0,
+          4.0
+        ],
+        [
+          45,
+          1.0,
+          6,
+          0,
+          5.0
+        ],
+        [
+          43,
+          0.25,
+          6,
+          0,
+          6.0
+        ]
+      ],
+      "result": {
+        "pass": true,
+        "checked": 1,
+        "python_violations": 0,
+        "json_violations": 0,
+        "python_examples": [],
+        "json_examples": []
+      }
+    },
+    {
+      "note_a": 43,
+      "note_b": 45,
+      "interval_s": 1.0,
+      "middle_duration_s": 1.0,
+      "slide_on_middle": 1,
+      "rows": [
+        [
+          43,
+          0.25,
+          6,
+          0,
+          4.0
+        ],
+        [
+          45,
+          1.0,
+          6,
+          1,
+          5.0
+        ],
+        [
+          43,
+          0.25,
+          6,
+          0,
+          6.0
+        ]
+      ],
+      "result": {
+        "pass": true,
+        "checked": 1,
+        "python_violations": 0,
+        "json_violations": 0,
+        "python_examples": [],
+        "json_examples": []
+      }
+    },
+    {
+      "note_a": 43,
+      "note_b": 45,
+      "interval_s": 1.0,
+      "middle_duration_s": 2.0,
+      "slide_on_middle": 0,
+      "rows": [
+        [
+          43,
+          0.25,
+          6,
+          0,
+          4.0
+        ],
+        [
+          45,
+          2.0,
+          6,
+          0,
+          5.0
+        ],
+        [
+          43,
+          0.25,
+          6,
+          0,
+          6.0
+        ]
+      ],
+      "result": {
+        "pass": true,
+        "checked": 1,
+        "python_violations": 0,
+        "json_violations": 0,
+        "python_examples": [],
+        "json_examples": []
+      }
+    },
+    {
+      "note_a": 43,
+      "note_b": 45,
+      "interval_s": 1.0,
+      "middle_duration_s": 2.0,
+      "slide_on_middle": 1,
+      "rows": [
+        [
+          43,
+          0.25,
+          6,
+          0,
+          4.0
+        ],
+        [
+          45,
+          2.0,
+          6,
+          1,
+          5.0
+        ],
+        [
+          43,
+          0.25,
+          6,
+          0,
+          6.0
+        ]
+      ],
+      "result": {
+        "pass": true,
+        "checked": 1,
+        "python_violations": 0,
+        "json_violations": 0,
+        "python_examples": [],
+        "json_examples": []
+      }
+    },
+    {
+      "note_a": 43,
+      "note_b": 45,
+      "interval_s": 1.5,
+      "middle_duration_s": 0.6,
+      "slide_on_middle": 0,
+      "rows": [
+        [
+          43,
+          0.25,
+          6,
+          0,
+          4.0
+        ],
+        [
+          45,
+          0.6,
+          6,
+          0,
+          5.5
+        ],
+        [
+          43,
+          0.25,
+          6,
+          0,
+          6.5
+        ]
+      ],
+      "result": {
+        "pass": true,
+        "checked": 1,
+        "python_violations": 0,
+        "json_violations": 0,
+        "python_examples": [],
+        "json_examples": []
+      }
+    },
+    {
+      "note_a": 43,
+      "note_b": 45,
+      "interval_s": 1.5,
+      "middle_duration_s": 0.6,
+      "slide_on_middle": 1,
+      "rows": [
+        [
+          43,
+          0.25,
+          6,
+          0,
+          4.0
+        ],
+        [
+          45,
+          0.6,
+          6,
+          1,
+          5.5
+        ],
+        [
+          43,
+          0.25,
+          6,
+          0,
+          6.5
+        ]
+      ],
+      "result": {
+        "pass": true,
+        "checked": 1,
+        "python_violations": 0,
+        "json_violations": 0,
+        "python_examples": [],
+        "json_examples": []
+      }
+    },
+    {
+      "note_a": 43,
+      "note_b": 45,
+      "interval_s": 1.5,
+      "middle_duration_s": 1.0,
+      "slide_on_middle": 0,
+      "rows": [
+        [
+          43,
+          0.25,
+          6,
+          0,
+          4.0
+        ],
+        [
+          45,
+          1.0,
+          6,
+          0,
+          5.5
+        ],
+        [
+          43,
+          0.25,
+          6,
+          0,
+          6.5
+        ]
+      ],
+      "result": {
+        "pass": true,
+        "checked": 1,
+        "python_violations": 0,
+        "json_violations": 0,
+        "python_examples": [],
+        "json_examples": []
+      }
+    },
+    {
+      "note_a": 43,
+      "note_b": 45,
+      "interval_s": 1.5,
+      "middle_duration_s": 1.0,
+      "slide_on_middle": 1,
+      "rows": [
+        [
+          43,
+          0.25,
+          6,
+          0,
+          4.0
+        ],
+        [
+          45,
+          1.0,
+          6,
+          1,
+          5.5
+        ],
+        [
+          43,
+          0.25,
+          6,
+          0,
+          6.5
+        ]
+      ],
+      "result": {
+        "pass": true,
+        "checked": 1,
+        "python_violations": 0,
+        "json_violations": 0,
+        "python_examples": [],
+        "json_examples": []
+      }
+    },
+    {
+      "note_a": 43,
+      "note_b": 45,
+      "interval_s": 1.5,
+      "middle_duration_s": 2.0,
+      "slide_on_middle": 0,
+      "rows": [
+        [
+          43,
+          0.25,
+          6,
+          0,
+          4.0
+        ],
+        [
+          45,
+          2.0,
+          6,
+          0,
+          5.5
+        ],
+        [
+          43,
+          0.25,
+          6,
+          0,
+          6.5
+        ]
+      ],
+      "result": {
+        "pass": true,
+        "checked": 1,
+        "python_violations": 0,
+        "json_violations": 0,
+        "python_examples": [],
+        "json_examples": []
+      }
+    },
+    {
+      "note_a": 43,
+      "note_b": 45,
+      "interval_s": 1.5,
+      "middle_duration_s": 2.0,
+      "slide_on_middle": 1,
+      "rows": [
+        [
+          43,
+          0.25,
+          6,
+          0,
+          4.0
+        ],
+        [
+          45,
+          2.0,
+          6,
+          1,
+          5.5
+        ],
+        [
+          43,
+          0.25,
+          6,
+          0,
+          6.5
+        ]
+      ],
+      "result": {
+        "pass": true,
+        "checked": 1,
+        "python_violations": 0,
+        "json_violations": 0,
+        "python_examples": [],
+        "json_examples": []
+      }
+    },
+    {
+      "note_a": 45,
+      "note_b": 43,
+      "interval_s": 0.5,
+      "middle_duration_s": 0.6,
+      "slide_on_middle": 0,
+      "rows": [
+        [
+          45,
+          0.25,
+          6,
+          0,
+          4.0
+        ],
+        [
+          43,
+          0.6,
+          6,
+          0,
+          4.5
+        ],
+        [
+          45,
+          0.25,
+          6,
+          0,
+          5.5
+        ]
+      ],
+      "result": {
+        "pass": true,
+        "checked": 0,
+        "python_violations": 0,
+        "json_violations": 0,
+        "python_examples": [],
+        "json_examples": []
+      }
+    },
+    {
+      "note_a": 45,
+      "note_b": 43,
+      "interval_s": 0.5,
+      "middle_duration_s": 0.6,
+      "slide_on_middle": 1,
+      "rows": [
+        [
+          45,
+          0.25,
+          6,
+          0,
+          4.0
+        ],
+        [
+          43,
+          0.6,
+          6,
+          1,
+          4.5
+        ],
+        [
+          45,
+          0.25,
+          6,
+          0,
+          5.5
+        ]
+      ],
+      "result": {
+        "pass": true,
+        "checked": 0,
+        "python_violations": 0,
+        "json_violations": 0,
+        "python_examples": [],
+        "json_examples": []
+      }
+    },
+    {
+      "note_a": 45,
+      "note_b": 43,
+      "interval_s": 0.5,
+      "middle_duration_s": 1.0,
+      "slide_on_middle": 0,
+      "rows": [
+        [
+          45,
+          0.25,
+          6,
+          0,
+          4.0
+        ],
+        [
+          43,
+          1.0,
+          6,
+          0,
+          4.5
+        ],
+        [
+          45,
+          0.25,
+          6,
+          0,
+          5.5
+        ]
+      ],
+      "result": {
+        "pass": true,
+        "checked": 0,
+        "python_violations": 0,
+        "json_violations": 0,
+        "python_examples": [],
+        "json_examples": []
+      }
+    },
+    {
+      "note_a": 45,
+      "note_b": 43,
+      "interval_s": 0.5,
+      "middle_duration_s": 1.0,
+      "slide_on_middle": 1,
+      "rows": [
+        [
+          45,
+          0.25,
+          6,
+          0,
+          4.0
+        ],
+        [
+          43,
+          1.0,
+          6,
+          1,
+          4.5
+        ],
+        [
+          45,
+          0.25,
+          6,
+          0,
+          5.5
+        ]
+      ],
+      "result": {
+        "pass": true,
+        "checked": 0,
+        "python_violations": 0,
+        "json_violations": 0,
+        "python_examples": [],
+        "json_examples": []
+      }
+    },
+    {
+      "note_a": 45,
+      "note_b": 43,
+      "interval_s": 0.5,
+      "middle_duration_s": 2.0,
+      "slide_on_middle": 0,
+      "rows": [
+        [
+          45,
+          0.25,
+          6,
+          0,
+          4.0
+        ],
+        [
+          43,
+          2.0,
+          6,
+          0,
+          4.5
+        ],
+        [
+          45,
+          0.25,
+          6,
+          0,
+          5.5
+        ]
+      ],
+      "result": {
+        "pass": true,
+        "checked": 0,
+        "python_violations": 0,
+        "json_violations": 0,
+        "python_examples": [],
+        "json_examples": []
+      }
+    },
+    {
+      "note_a": 45,
+      "note_b": 43,
+      "interval_s": 0.5,
+      "middle_duration_s": 2.0,
+      "slide_on_middle": 1,
+      "rows": [
+        [
+          45,
+          0.25,
+          6,
+          0,
+          4.0
+        ],
+        [
+          43,
+          2.0,
+          6,
+          1,
+          4.5
+        ],
+        [
+          45,
+          0.25,
+          6,
+          0,
+          5.5
+        ]
+      ],
+      "result": {
+        "pass": true,
+        "checked": 0,
+        "python_violations": 0,
+        "json_violations": 0,
+        "python_examples": [],
+        "json_examples": []
+      }
+    },
+    {
+      "note_a": 45,
+      "note_b": 43,
+      "interval_s": 1.0,
+      "middle_duration_s": 0.6,
+      "slide_on_middle": 0,
+      "rows": [
+        [
+          45,
+          0.25,
+          6,
+          0,
+          4.0
+        ],
+        [
+          43,
+          0.6,
+          6,
+          0,
+          5.0
+        ],
+        [
+          45,
+          0.25,
+          6,
+          0,
+          6.0
+        ]
+      ],
+      "result": {
+        "pass": true,
+        "checked": 1,
+        "python_violations": 0,
+        "json_violations": 0,
+        "python_examples": [],
+        "json_examples": []
+      }
+    },
+    {
+      "note_a": 45,
+      "note_b": 43,
+      "interval_s": 1.0,
+      "middle_duration_s": 0.6,
+      "slide_on_middle": 1,
+      "rows": [
+        [
+          45,
+          0.25,
+          6,
+          0,
+          4.0
+        ],
+        [
+          43,
+          0.6,
+          6,
+          1,
+          5.0
+        ],
+        [
+          45,
+          0.25,
+          6,
+          0,
+          6.0
+        ]
+      ],
+      "result": {
+        "pass": true,
+        "checked": 1,
+        "python_violations": 0,
+        "json_violations": 0,
+        "python_examples": [],
+        "json_examples": []
+      }
+    },
+    {
+      "note_a": 45,
+      "note_b": 43,
+      "interval_s": 1.0,
+      "middle_duration_s": 1.0,
+      "slide_on_middle": 0,
+      "rows": [
+        [
+          45,
+          0.25,
+          6,
+          0,
+          4.0
+        ],
+        [
+          43,
+          1.0,
+          6,
+          0,
+          5.0
+        ],
+        [
+          45,
+          0.25,
+          6,
+          0,
+          6.0
+        ]
+      ],
+      "result": {
+        "pass": true,
+        "checked": 1,
+        "python_violations": 0,
+        "json_violations": 0,
+        "python_examples": [],
+        "json_examples": []
+      }
+    },
+    {
+      "note_a": 45,
+      "note_b": 43,
+      "interval_s": 1.0,
+      "middle_duration_s": 1.0,
+      "slide_on_middle": 1,
+      "rows": [
+        [
+          45,
+          0.25,
+          6,
+          0,
+          4.0
+        ],
+        [
+          43,
+          1.0,
+          6,
+          1,
+          5.0
+        ],
+        [
+          45,
+          0.25,
+          6,
+          0,
+          6.0
+        ]
+      ],
+      "result": {
+        "pass": true,
+        "checked": 1,
+        "python_violations": 0,
+        "json_violations": 0,
+        "python_examples": [],
+        "json_examples": []
+      }
+    },
+    {
+      "note_a": 45,
+      "note_b": 43,
+      "interval_s": 1.0,
+      "middle_duration_s": 2.0,
+      "slide_on_middle": 0,
+      "rows": [
+        [
+          45,
+          0.25,
+          6,
+          0,
+          4.0
+        ],
+        [
+          43,
+          2.0,
+          6,
+          0,
+          5.0
+        ],
+        [
+          45,
+          0.25,
+          6,
+          0,
+          6.0
+        ]
+      ],
+      "result": {
+        "pass": true,
+        "checked": 1,
+        "python_violations": 0,
+        "json_violations": 0,
+        "python_examples": [],
+        "json_examples": []
+      }
+    },
+    {
+      "note_a": 45,
+      "note_b": 43,
+      "interval_s": 1.0,
+      "middle_duration_s": 2.0,
+      "slide_on_middle": 1,
+      "rows": [
+        [
+          45,
+          0.25,
+          6,
+          0,
+          4.0
+        ],
+        [
+          43,
+          2.0,
+          6,
+          1,
+          5.0
+        ],
+        [
+          45,
+          0.25,
+          6,
+          0,
+          6.0
+        ]
+      ],
+      "result": {
+        "pass": true,
+        "checked": 1,
+        "python_violations": 0,
+        "json_violations": 0,
+        "python_examples": [],
+        "json_examples": []
+      }
+    },
+    {
+      "note_a": 45,
+      "note_b": 43,
+      "interval_s": 1.5,
+      "middle_duration_s": 0.6,
+      "slide_on_middle": 0,
+      "rows": [
+        [
+          45,
+          0.25,
+          6,
+          0,
+          4.0
+        ],
+        [
+          43,
+          0.6,
+          6,
+          0,
+          5.5
+        ],
+        [
+          45,
+          0.25,
+          6,
+          0,
+          6.5
+        ]
+      ],
+      "result": {
+        "pass": true,
+        "checked": 1,
+        "python_violations": 0,
+        "json_violations": 0,
+        "python_examples": [],
+        "json_examples": []
+      }
+    },
+    {
+      "note_a": 45,
+      "note_b": 43,
+      "interval_s": 1.5,
+      "middle_duration_s": 0.6,
+      "slide_on_middle": 1,
+      "rows": [
+        [
+          45,
+          0.25,
+          6,
+          0,
+          4.0
+        ],
+        [
+          43,
+          0.6,
+          6,
+          1,
+          5.5
+        ],
+        [
+          45,
+          0.25,
+          6,
+          0,
+          6.5
+        ]
+      ],
+      "result": {
+        "pass": true,
+        "checked": 1,
+        "python_violations": 0,
+        "json_violations": 0,
+        "python_examples": [],
+        "json_examples": []
+      }
+    },
+    {
+      "note_a": 45,
+      "note_b": 43,
+      "interval_s": 1.5,
+      "middle_duration_s": 1.0,
+      "slide_on_middle": 0,
+      "rows": [
+        [
+          45,
+          0.25,
+          6,
+          0,
+          4.0
+        ],
+        [
+          43,
+          1.0,
+          6,
+          0,
+          5.5
+        ],
+        [
+          45,
+          0.25,
+          6,
+          0,
+          6.5
+        ]
+      ],
+      "result": {
+        "pass": true,
+        "checked": 1,
+        "python_violations": 0,
+        "json_violations": 0,
+        "python_examples": [],
+        "json_examples": []
+      }
+    },
+    {
+      "note_a": 45,
+      "note_b": 43,
+      "interval_s": 1.5,
+      "middle_duration_s": 1.0,
+      "slide_on_middle": 1,
+      "rows": [
+        [
+          45,
+          0.25,
+          6,
+          0,
+          4.0
+        ],
+        [
+          43,
+          1.0,
+          6,
+          1,
+          5.5
+        ],
+        [
+          45,
+          0.25,
+          6,
+          0,
+          6.5
+        ]
+      ],
+      "result": {
+        "pass": true,
+        "checked": 1,
+        "python_violations": 0,
+        "json_violations": 0,
+        "python_examples": [],
+        "json_examples": []
+      }
+    },
+    {
+      "note_a": 45,
+      "note_b": 43,
+      "interval_s": 1.5,
+      "middle_duration_s": 2.0,
+      "slide_on_middle": 0,
+      "rows": [
+        [
+          45,
+          0.25,
+          6,
+          0,
+          4.0
+        ],
+        [
+          43,
+          2.0,
+          6,
+          0,
+          5.5
+        ],
+        [
+          45,
+          0.25,
+          6,
+          0,
+          6.5
+        ]
+      ],
+      "result": {
+        "pass": true,
+        "checked": 1,
+        "python_violations": 0,
+        "json_violations": 0,
+        "python_examples": [],
+        "json_examples": []
+      }
+    },
+    {
+      "note_a": 45,
+      "note_b": 43,
+      "interval_s": 1.5,
+      "middle_duration_s": 2.0,
+      "slide_on_middle": 1,
+      "rows": [
+        [
+          45,
+          0.25,
+          6,
+          0,
+          4.0
+        ],
+        [
+          43,
+          2.0,
+          6,
+          1,
+          5.5
+        ],
+        [
+          45,
+          0.25,
+          6,
+          0,
+          6.5
+        ]
+      ],
+      "result": {
+        "pass": true,
+        "checked": 1,
+        "python_violations": 0,
+        "json_violations": 0,
+        "python_examples": [],
+        "json_examples": []
+      }
+    },
+    {
+      "note_a": 43,
+      "note_b": 47,
+      "interval_s": 0.5,
+      "middle_duration_s": 0.6,
+      "slide_on_middle": 0,
+      "rows": [
+        [
+          43,
+          0.25,
+          6,
+          0,
+          4.0
+        ],
+        [
+          47,
+          0.6,
+          6,
+          0,
+          4.5
+        ],
+        [
+          43,
+          0.25,
+          6,
+          0,
+          5.5
+        ]
+      ],
+      "result": {
+        "pass": true,
+        "checked": 0,
+        "python_violations": 0,
+        "json_violations": 0,
+        "python_examples": [],
+        "json_examples": []
+      }
+    },
+    {
+      "note_a": 43,
+      "note_b": 47,
+      "interval_s": 0.5,
+      "middle_duration_s": 0.6,
+      "slide_on_middle": 1,
+      "rows": [
+        [
+          43,
+          0.25,
+          6,
+          0,
+          4.0
+        ],
+        [
+          47,
+          0.6,
+          6,
+          1,
+          4.5
+        ],
+        [
+          43,
+          0.25,
+          6,
+          0,
+          5.5
+        ]
+      ],
+      "result": {
+        "pass": true,
+        "checked": 0,
+        "python_violations": 0,
+        "json_violations": 0,
+        "python_examples": [],
+        "json_examples": []
+      }
+    },
+    {
+      "note_a": 43,
+      "note_b": 47,
+      "interval_s": 0.5,
+      "middle_duration_s": 1.0,
+      "slide_on_middle": 0,
+      "rows": [
+        [
+          43,
+          0.25,
+          6,
+          0,
+          4.0
+        ],
+        [
+          47,
+          1.0,
+          6,
+          0,
+          4.5
+        ],
+        [
+          43,
+          0.25,
+          6,
+          0,
+          5.5
+        ]
+      ],
+      "result": {
+        "pass": true,
+        "checked": 0,
+        "python_violations": 0,
+        "json_violations": 0,
+        "python_examples": [],
+        "json_examples": []
+      }
+    },
+    {
+      "note_a": 43,
+      "note_b": 47,
+      "interval_s": 0.5,
+      "middle_duration_s": 1.0,
+      "slide_on_middle": 1,
+      "rows": [
+        [
+          43,
+          0.25,
+          6,
+          0,
+          4.0
+        ],
+        [
+          47,
+          1.0,
+          6,
+          1,
+          4.5
+        ],
+        [
+          43,
+          0.25,
+          6,
+          0,
+          5.5
+        ]
+      ],
+      "result": {
+        "pass": true,
+        "checked": 0,
+        "python_violations": 0,
+        "json_violations": 0,
+        "python_examples": [],
+        "json_examples": []
+      }
+    },
+    {
+      "note_a": 43,
+      "note_b": 47,
+      "interval_s": 0.5,
+      "middle_duration_s": 2.0,
+      "slide_on_middle": 0,
+      "rows": [
+        [
+          43,
+          0.25,
+          6,
+          0,
+          4.0
+        ],
+        [
+          47,
+          2.0,
+          6,
+          0,
+          4.5
+        ],
+        [
+          43,
+          0.25,
+          6,
+          0,
+          5.5
+        ]
+      ],
+      "result": {
+        "pass": true,
+        "checked": 0,
+        "python_violations": 0,
+        "json_violations": 0,
+        "python_examples": [],
+        "json_examples": []
+      }
+    },
+    {
+      "note_a": 43,
+      "note_b": 47,
+      "interval_s": 0.5,
+      "middle_duration_s": 2.0,
+      "slide_on_middle": 1,
+      "rows": [
+        [
+          43,
+          0.25,
+          6,
+          0,
+          4.0
+        ],
+        [
+          47,
+          2.0,
+          6,
+          1,
+          4.5
+        ],
+        [
+          43,
+          0.25,
+          6,
+          0,
+          5.5
+        ]
+      ],
+      "result": {
+        "pass": true,
+        "checked": 0,
+        "python_violations": 0,
+        "json_violations": 0,
+        "python_examples": [],
+        "json_examples": []
+      }
+    },
+    {
+      "note_a": 43,
+      "note_b": 47,
+      "interval_s": 1.0,
+      "middle_duration_s": 0.6,
+      "slide_on_middle": 0,
+      "rows": [
+        [
+          43,
+          0.25,
+          6,
+          0,
+          4.0
+        ],
+        [
+          47,
+          0.6,
+          6,
+          0,
+          5.0
+        ],
+        [
+          43,
+          0.25,
+          6,
+          0,
+          6.0
+        ]
+      ],
+      "result": {
+        "pass": true,
+        "checked": 1,
+        "python_violations": 0,
+        "json_violations": 0,
+        "python_examples": [],
+        "json_examples": []
+      }
+    },
+    {
+      "note_a": 43,
+      "note_b": 47,
+      "interval_s": 1.0,
+      "middle_duration_s": 0.6,
+      "slide_on_middle": 1,
+      "rows": [
+        [
+          43,
+          0.25,
+          6,
+          0,
+          4.0
+        ],
+        [
+          47,
+          0.6,
+          6,
+          1,
+          5.0
+        ],
+        [
+          43,
+          0.25,
+          6,
+          0,
+          6.0
+        ]
+      ],
+      "result": {
+        "pass": true,
+        "checked": 1,
+        "python_violations": 0,
+        "json_violations": 0,
+        "python_examples": [],
+        "json_examples": []
+      }
+    },
+    {
+      "note_a": 43,
+      "note_b": 47,
+      "interval_s": 1.0,
+      "middle_duration_s": 1.0,
+      "slide_on_middle": 0,
+      "rows": [
+        [
+          43,
+          0.25,
+          6,
+          0,
+          4.0
+        ],
+        [
+          47,
+          1.0,
+          6,
+          0,
+          5.0
+        ],
+        [
+          43,
+          0.25,
+          6,
+          0,
+          6.0
+        ]
+      ],
+      "result": {
+        "pass": true,
+        "checked": 1,
+        "python_violations": 0,
+        "json_violations": 0,
+        "python_examples": [],
+        "json_examples": []
+      }
+    },
+    {
+      "note_a": 43,
+      "note_b": 47,
+      "interval_s": 1.0,
+      "middle_duration_s": 1.0,
+      "slide_on_middle": 1,
+      "rows": [
+        [
+          43,
+          0.25,
+          6,
+          0,
+          4.0
+        ],
+        [
+          47,
+          1.0,
+          6,
+          1,
+          5.0
+        ],
+        [
+          43,
+          0.25,
+          6,
+          0,
+          6.0
+        ]
+      ],
+      "result": {
+        "pass": true,
+        "checked": 1,
+        "python_violations": 0,
+        "json_violations": 0,
+        "python_examples": [],
+        "json_examples": []
+      }
+    },
+    {
+      "note_a": 43,
+      "note_b": 47,
+      "interval_s": 1.0,
+      "middle_duration_s": 2.0,
+      "slide_on_middle": 0,
+      "rows": [
+        [
+          43,
+          0.25,
+          6,
+          0,
+          4.0
+        ],
+        [
+          47,
+          2.0,
+          6,
+          0,
+          5.0
+        ],
+        [
+          43,
+          0.25,
+          6,
+          0,
+          6.0
+        ]
+      ],
+      "result": {
+        "pass": true,
+        "checked": 1,
+        "python_violations": 0,
+        "json_violations": 0,
+        "python_examples": [],
+        "json_examples": []
+      }
+    },
+    {
+      "note_a": 43,
+      "note_b": 47,
+      "interval_s": 1.0,
+      "middle_duration_s": 2.0,
+      "slide_on_middle": 1,
+      "rows": [
+        [
+          43,
+          0.25,
+          6,
+          0,
+          4.0
+        ],
+        [
+          47,
+          2.0,
+          6,
+          1,
+          5.0
+        ],
+        [
+          43,
+          0.25,
+          6,
+          0,
+          6.0
+        ]
+      ],
+      "result": {
+        "pass": true,
+        "checked": 1,
+        "python_violations": 0,
+        "json_violations": 0,
+        "python_examples": [],
+        "json_examples": []
+      }
+    },
+    {
+      "note_a": 43,
+      "note_b": 47,
+      "interval_s": 1.5,
+      "middle_duration_s": 0.6,
+      "slide_on_middle": 0,
+      "rows": [
+        [
+          43,
+          0.25,
+          6,
+          0,
+          4.0
+        ],
+        [
+          47,
+          0.6,
+          6,
+          0,
+          5.5
+        ],
+        [
+          43,
+          0.25,
+          6,
+          0,
+          6.5
+        ]
+      ],
+      "result": {
+        "pass": true,
+        "checked": 1,
+        "python_violations": 0,
+        "json_violations": 0,
+        "python_examples": [],
+        "json_examples": []
+      }
+    },
+    {
+      "note_a": 43,
+      "note_b": 47,
+      "interval_s": 1.5,
+      "middle_duration_s": 0.6,
+      "slide_on_middle": 1,
+      "rows": [
+        [
+          43,
+          0.25,
+          6,
+          0,
+          4.0
+        ],
+        [
+          47,
+          0.6,
+          6,
+          1,
+          5.5
+        ],
+        [
+          43,
+          0.25,
+          6,
+          0,
+          6.5
+        ]
+      ],
+      "result": {
+        "pass": true,
+        "checked": 1,
+        "python_violations": 0,
+        "json_violations": 0,
+        "python_examples": [],
+        "json_examples": []
+      }
+    },
+    {
+      "note_a": 43,
+      "note_b": 47,
+      "interval_s": 1.5,
+      "middle_duration_s": 1.0,
+      "slide_on_middle": 0,
+      "rows": [
+        [
+          43,
+          0.25,
+          6,
+          0,
+          4.0
+        ],
+        [
+          47,
+          1.0,
+          6,
+          0,
+          5.5
+        ],
+        [
+          43,
+          0.25,
+          6,
+          0,
+          6.5
+        ]
+      ],
+      "result": {
+        "pass": true,
+        "checked": 1,
+        "python_violations": 0,
+        "json_violations": 0,
+        "python_examples": [],
+        "json_examples": []
+      }
+    },
+    {
+      "note_a": 43,
+      "note_b": 47,
+      "interval_s": 1.5,
+      "middle_duration_s": 1.0,
+      "slide_on_middle": 1,
+      "rows": [
+        [
+          43,
+          0.25,
+          6,
+          0,
+          4.0
+        ],
+        [
+          47,
+          1.0,
+          6,
+          1,
+          5.5
+        ],
+        [
+          43,
+          0.25,
+          6,
+          0,
+          6.5
+        ]
+      ],
+      "result": {
+        "pass": true,
+        "checked": 1,
+        "python_violations": 0,
+        "json_violations": 0,
+        "python_examples": [],
+        "json_examples": []
+      }
+    },
+    {
+      "note_a": 43,
+      "note_b": 47,
+      "interval_s": 1.5,
+      "middle_duration_s": 2.0,
+      "slide_on_middle": 0,
+      "rows": [
+        [
+          43,
+          0.25,
+          6,
+          0,
+          4.0
+        ],
+        [
+          47,
+          2.0,
+          6,
+          0,
+          5.5
+        ],
+        [
+          43,
+          0.25,
+          6,
+          0,
+          6.5
+        ]
+      ],
+      "result": {
+        "pass": true,
+        "checked": 1,
+        "python_violations": 0,
+        "json_violations": 0,
+        "python_examples": [],
+        "json_examples": []
+      }
+    },
+    {
+      "note_a": 43,
+      "note_b": 47,
+      "interval_s": 1.5,
+      "middle_duration_s": 2.0,
+      "slide_on_middle": 1,
+      "rows": [
+        [
+          43,
+          0.25,
+          6,
+          0,
+          4.0
+        ],
+        [
+          47,
+          2.0,
+          6,
+          1,
+          5.5
+        ],
+        [
+          43,
+          0.25,
+          6,
+          0,
+          6.5
+        ]
+      ],
+      "result": {
+        "pass": true,
+        "checked": 1,
+        "python_violations": 0,
+        "json_violations": 0,
+        "python_examples": [],
+        "json_examples": []
+      }
+    },
+    {
+      "note_a": 47,
+      "note_b": 43,
+      "interval_s": 0.5,
+      "middle_duration_s": 0.6,
+      "slide_on_middle": 0,
+      "rows": [
+        [
+          47,
+          0.25,
+          6,
+          0,
+          4.0
+        ],
+        [
+          43,
+          0.6,
+          6,
+          0,
+          4.5
+        ],
+        [
+          47,
+          0.25,
+          6,
+          0,
+          5.5
+        ]
+      ],
+      "result": {
+        "pass": true,
+        "checked": 0,
+        "python_violations": 0,
+        "json_violations": 0,
+        "python_examples": [],
+        "json_examples": []
+      }
+    },
+    {
+      "note_a": 47,
+      "note_b": 43,
+      "interval_s": 0.5,
+      "middle_duration_s": 0.6,
+      "slide_on_middle": 1,
+      "rows": [
+        [
+          47,
+          0.25,
+          6,
+          0,
+          4.0
+        ],
+        [
+          43,
+          0.6,
+          6,
+          1,
+          4.5
+        ],
+        [
+          47,
+          0.25,
+          6,
+          0,
+          5.5
+        ]
+      ],
+      "result": {
+        "pass": true,
+        "checked": 0,
+        "python_violations": 0,
+        "json_violations": 0,
+        "python_examples": [],
+        "json_examples": []
+      }
+    },
+    {
+      "note_a": 47,
+      "note_b": 43,
+      "interval_s": 0.5,
+      "middle_duration_s": 1.0,
+      "slide_on_middle": 0,
+      "rows": [
+        [
+          47,
+          0.25,
+          6,
+          0,
+          4.0
+        ],
+        [
+          43,
+          1.0,
+          6,
+          0,
+          4.5
+        ],
+        [
+          47,
+          0.25,
+          6,
+          0,
+          5.5
+        ]
+      ],
+      "result": {
+        "pass": true,
+        "checked": 0,
+        "python_violations": 0,
+        "json_violations": 0,
+        "python_examples": [],
+        "json_examples": []
+      }
+    },
+    {
+      "note_a": 47,
+      "note_b": 43,
+      "interval_s": 0.5,
+      "middle_duration_s": 1.0,
+      "slide_on_middle": 1,
+      "rows": [
+        [
+          47,
+          0.25,
+          6,
+          0,
+          4.0
+        ],
+        [
+          43,
+          1.0,
+          6,
+          1,
+          4.5
+        ],
+        [
+          47,
+          0.25,
+          6,
+          0,
+          5.5
+        ]
+      ],
+      "result": {
+        "pass": true,
+        "checked": 0,
+        "python_violations": 0,
+        "json_violations": 0,
+        "python_examples": [],
+        "json_examples": []
+      }
+    },
+    {
+      "note_a": 47,
+      "note_b": 43,
+      "interval_s": 0.5,
+      "middle_duration_s": 2.0,
+      "slide_on_middle": 0,
+      "rows": [
+        [
+          47,
+          0.25,
+          6,
+          0,
+          4.0
+        ],
+        [
+          43,
+          2.0,
+          6,
+          0,
+          4.5
+        ],
+        [
+          47,
+          0.25,
+          6,
+          0,
+          5.5
+        ]
+      ],
+      "result": {
+        "pass": true,
+        "checked": 0,
+        "python_violations": 0,
+        "json_violations": 0,
+        "python_examples": [],
+        "json_examples": []
+      }
+    },
+    {
+      "note_a": 47,
+      "note_b": 43,
+      "interval_s": 0.5,
+      "middle_duration_s": 2.0,
+      "slide_on_middle": 1,
+      "rows": [
+        [
+          47,
+          0.25,
+          6,
+          0,
+          4.0
+        ],
+        [
+          43,
+          2.0,
+          6,
+          1,
+          4.5
+        ],
+        [
+          47,
+          0.25,
+          6,
+          0,
+          5.5
+        ]
+      ],
+      "result": {
+        "pass": true,
+        "checked": 0,
+        "python_violations": 0,
+        "json_violations": 0,
+        "python_examples": [],
+        "json_examples": []
+      }
+    },
+    {
+      "note_a": 47,
+      "note_b": 43,
+      "interval_s": 1.0,
+      "middle_duration_s": 0.6,
+      "slide_on_middle": 0,
+      "rows": [
+        [
+          47,
+          0.25,
+          6,
+          0,
+          4.0
+        ],
+        [
+          43,
+          0.6,
+          6,
+          0,
+          5.0
+        ],
+        [
+          47,
+          0.25,
+          6,
+          0,
+          6.0
+        ]
+      ],
+      "result": {
+        "pass": true,
+        "checked": 1,
+        "python_violations": 0,
+        "json_violations": 0,
+        "python_examples": [],
+        "json_examples": []
+      }
+    },
+    {
+      "note_a": 47,
+      "note_b": 43,
+      "interval_s": 1.0,
+      "middle_duration_s": 0.6,
+      "slide_on_middle": 1,
+      "rows": [
+        [
+          47,
+          0.25,
+          6,
+          0,
+          4.0
+        ],
+        [
+          43,
+          0.6,
+          6,
+          1,
+          5.0
+        ],
+        [
+          47,
+          0.25,
+          6,
+          0,
+          6.0
+        ]
+      ],
+      "result": {
+        "pass": true,
+        "checked": 1,
+        "python_violations": 0,
+        "json_violations": 0,
+        "python_examples": [],
+        "json_examples": []
+      }
+    },
+    {
+      "note_a": 47,
+      "note_b": 43,
+      "interval_s": 1.0,
+      "middle_duration_s": 1.0,
+      "slide_on_middle": 0,
+      "rows": [
+        [
+          47,
+          0.25,
+          6,
+          0,
+          4.0
+        ],
+        [
+          43,
+          1.0,
+          6,
+          0,
+          5.0
+        ],
+        [
+          47,
+          0.25,
+          6,
+          0,
+          6.0
+        ]
+      ],
+      "result": {
+        "pass": true,
+        "checked": 1,
+        "python_violations": 0,
+        "json_violations": 0,
+        "python_examples": [],
+        "json_examples": []
+      }
+    },
+    {
+      "note_a": 47,
+      "note_b": 43,
+      "interval_s": 1.0,
+      "middle_duration_s": 1.0,
+      "slide_on_middle": 1,
+      "rows": [
+        [
+          47,
+          0.25,
+          6,
+          0,
+          4.0
+        ],
+        [
+          43,
+          1.0,
+          6,
+          1,
+          5.0
+        ],
+        [
+          47,
+          0.25,
+          6,
+          0,
+          6.0
+        ]
+      ],
+      "result": {
+        "pass": true,
+        "checked": 1,
+        "python_violations": 0,
+        "json_violations": 0,
+        "python_examples": [],
+        "json_examples": []
+      }
+    },
+    {
+      "note_a": 47,
+      "note_b": 43,
+      "interval_s": 1.0,
+      "middle_duration_s": 2.0,
+      "slide_on_middle": 0,
+      "rows": [
+        [
+          47,
+          0.25,
+          6,
+          0,
+          4.0
+        ],
+        [
+          43,
+          2.0,
+          6,
+          0,
+          5.0
+        ],
+        [
+          47,
+          0.25,
+          6,
+          0,
+          6.0
+        ]
+      ],
+      "result": {
+        "pass": true,
+        "checked": 1,
+        "python_violations": 0,
+        "json_violations": 0,
+        "python_examples": [],
+        "json_examples": []
+      }
+    },
+    {
+      "note_a": 47,
+      "note_b": 43,
+      "interval_s": 1.0,
+      "middle_duration_s": 2.0,
+      "slide_on_middle": 1,
+      "rows": [
+        [
+          47,
+          0.25,
+          6,
+          0,
+          4.0
+        ],
+        [
+          43,
+          2.0,
+          6,
+          1,
+          5.0
+        ],
+        [
+          47,
+          0.25,
+          6,
+          0,
+          6.0
+        ]
+      ],
+      "result": {
+        "pass": true,
+        "checked": 1,
+        "python_violations": 0,
+        "json_violations": 0,
+        "python_examples": [],
+        "json_examples": []
+      }
+    },
+    {
+      "note_a": 47,
+      "note_b": 43,
+      "interval_s": 1.5,
+      "middle_duration_s": 0.6,
+      "slide_on_middle": 0,
+      "rows": [
+        [
+          47,
+          0.25,
+          6,
+          0,
+          4.0
+        ],
+        [
+          43,
+          0.6,
+          6,
+          0,
+          5.5
+        ],
+        [
+          47,
+          0.25,
+          6,
+          0,
+          6.5
+        ]
+      ],
+      "result": {
+        "pass": true,
+        "checked": 1,
+        "python_violations": 0,
+        "json_violations": 0,
+        "python_examples": [],
+        "json_examples": []
+      }
+    },
+    {
+      "note_a": 47,
+      "note_b": 43,
+      "interval_s": 1.5,
+      "middle_duration_s": 0.6,
+      "slide_on_middle": 1,
+      "rows": [
+        [
+          47,
+          0.25,
+          6,
+          0,
+          4.0
+        ],
+        [
+          43,
+          0.6,
+          6,
+          1,
+          5.5
+        ],
+        [
+          47,
+          0.25,
+          6,
+          0,
+          6.5
+        ]
+      ],
+      "result": {
+        "pass": true,
+        "checked": 1,
+        "python_violations": 0,
+        "json_violations": 0,
+        "python_examples": [],
+        "json_examples": []
+      }
+    },
+    {
+      "note_a": 47,
+      "note_b": 43,
+      "interval_s": 1.5,
+      "middle_duration_s": 1.0,
+      "slide_on_middle": 0,
+      "rows": [
+        [
+          47,
+          0.25,
+          6,
+          0,
+          4.0
+        ],
+        [
+          43,
+          1.0,
+          6,
+          0,
+          5.5
+        ],
+        [
+          47,
+          0.25,
+          6,
+          0,
+          6.5
+        ]
+      ],
+      "result": {
+        "pass": true,
+        "checked": 1,
+        "python_violations": 0,
+        "json_violations": 0,
+        "python_examples": [],
+        "json_examples": []
+      }
+    },
+    {
+      "note_a": 47,
+      "note_b": 43,
+      "interval_s": 1.5,
+      "middle_duration_s": 1.0,
+      "slide_on_middle": 1,
+      "rows": [
+        [
+          47,
+          0.25,
+          6,
+          0,
+          4.0
+        ],
+        [
+          43,
+          1.0,
+          6,
+          1,
+          5.5
+        ],
+        [
+          47,
+          0.25,
+          6,
+          0,
+          6.5
+        ]
+      ],
+      "result": {
+        "pass": true,
+        "checked": 1,
+        "python_violations": 0,
+        "json_violations": 0,
+        "python_examples": [],
+        "json_examples": []
+      }
+    },
+    {
+      "note_a": 47,
+      "note_b": 43,
+      "interval_s": 1.5,
+      "middle_duration_s": 2.0,
+      "slide_on_middle": 0,
+      "rows": [
+        [
+          47,
+          0.25,
+          6,
+          0,
+          4.0
+        ],
+        [
+          43,
+          2.0,
+          6,
+          0,
+          5.5
+        ],
+        [
+          47,
+          0.25,
+          6,
+          0,
+          6.5
+        ]
+      ],
+      "result": {
+        "pass": true,
+        "checked": 1,
+        "python_violations": 0,
+        "json_violations": 0,
+        "python_examples": [],
+        "json_examples": []
+      }
+    },
+    {
+      "note_a": 47,
+      "note_b": 43,
+      "interval_s": 1.5,
+      "middle_duration_s": 2.0,
+      "slide_on_middle": 1,
+      "rows": [
+        [
+          47,
+          0.25,
+          6,
+          0,
+          4.0
+        ],
+        [
+          43,
+          2.0,
+          6,
+          1,
+          5.5
+        ],
+        [
+          47,
+          0.25,
+          6,
+          0,
+          6.5
+        ]
+      ],
+      "result": {
+        "pass": true,
+        "checked": 1,
+        "python_violations": 0,
+        "json_violations": 0,
+        "python_examples": [],
+        "json_examples": []
+      }
+    }
+  ]
+}

@@ -1,0 +1,71 @@
+{
+  "song": {
+    "name": "Untitled Song",
+    "meta": {
+      "key": "E minor",
+      "time_signature": "4/4",
+      "bpm": 120,
+      "tempo_curve": [
+        {
+          "time": 0,
+          "bpm": 120
+        }
+      ],
+      "automation_lane_ranges": {
+        "1": {
+          "min": 0,
+          "max": 127
+        },
+        "2": {
+          "min": 0,
+          "max": 127
+        },
+        "3": {
+          "min": 0,
+          "max": 127
+        },
+        "4": {
+          "min": 0,
+          "max": 127
+        },
+        "7": {
+          "min": 0,
+          "max": 127
+        },
+        "tempo": {
+          "min": 20,
+          "max": 300
+        }
+      }
+    },
+    "tracks": [
+      {
+        "name": "pluck_main",
+        "type": "pluck",
+        "events": [
+          {
+            "note": 43,
+            "duration_b": 2,
+            "speed": 6,
+            "slide": 0,
+            "beat": "3.1.1"
+          },
+          {
+            "note": 45,
+            "duration_b": 2,
+            "speed": 6,
+            "slide": 1,
+            "beat": "3.3.1"
+          },
+          {
+            "note": 43,
+            "duration_b": 2,
+            "speed": 6,
+            "slide": 0,
+            "beat": "4.1.1"
+          }
+        ]
+      }
+    ]
+  }
+}

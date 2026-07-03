@@ -1,0 +1,329 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>GuitarBot Sequencer</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;600;700&family=IBM+Plex+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/sequencer.css">
+</head>
+<body>
+<div id="app">
+
+<!-- TOOLBAR -->
+<div id="toolbar">
+  <div class="logo">GUITAR<em>BOT</em></div>
+
+  <!-- Tab buttons -->
+  <div class="tab-btns">
+    <button class="tab-btn active" data-tab="create">Create</button>
+    <button class="tab-btn" data-tab="automation">Automation</button>
+    <button class="tab-btn" data-tab="record">Record</button>
+  </div>
+
+  <!-- Transport (always visible) -->
+  <div class="tg">
+    <button class="tbtn stop" id="btn-stop" title="Stop">■</button>
+    <button class="tbtn play" id="btn-play" title="Play">▶</button>
+    <div class="pos-disp" id="pos">1.1</div>
+  </div>
+
+  <!-- CREATE TAB -->
+  <div class="tab-content" id="tab-create">
+    <div class="tg"><input type="text" id="song-name" value="Untitled Song" placeholder="Song name…"></div>
+    <div class="tg"><span class="tl">BPM</span><input type="number" id="bpm" value="120" min="20" max="300" step="0.5"></div>
+    <div class="tg">
+      <span class="tl">Key</span>
+      <select id="key-root">
+        <option>C</option><option>C#</option><option>D</option><option>D#</option>
+        <option value="E" selected>E</option><option>F</option><option>F#</option>
+        <option>G</option><option>G#</option><option>A</option><option>A#</option><option>B</option>
+      </select>
+      <select id="key-mode"><option value="minor" selected>min</option><option value="major">maj</option></select>
+    </div>
+    <div class="tg">
+      <span class="tl">Sig</span>
+      <select id="time-sig">
+        <option value="4/4" selected>4/4</option><option value="3/4">3/4</option>
+        <option value="6/8">6/8</option><option value="2/4">2/4</option><option value="5/4">5/4</option>
+      </select>
+    </div>
+    <div class="tg"><span class="tl">Bars</span><input type="number" id="measures" value="8" min="1" max="256"></div>
+    <div class="tg">
+      <button class="tbtn cycle" id="btn-cycle" title="Cycle bar (off)">CYCLE</button>
+      <span class="tl">Bars</span>
+      <input type="number" id="cycle-start" value="1" min="1" max="64" step="0.25" style="width:48px;text-align:center">
+      <span class="tl">→</span>
+      <input type="number" id="cycle-end" value="2" min="1" max="64" step="0.25" style="width:48px;text-align:center">
+    </div>
+    <div class="tg">
+      <button class="tbtn pen on" id="btn-mode-draw" title="Draw mode (pen on)">✎</button>
+      <button class="tbtn on" id="btn-note-preview" title="Note preview (on)">♪</button>
+      <button class="tbtn snap on" id="btn-snap" title="Snap to grid (on)">SNAP</button>
+    </div>
+    <div class="tg">
+      <span class="note-warn ok" id="note-warn" title="No note timing warnings">✓ NOTES OK</span>
+      <button class="tbtn" id="btn-plan-strings" title="Greedy string assignment for all unassigned notes">PLAN</button>
+    </div>
+  </div>
+
+  <!-- RECORD TAB -->
+  <div class="tab-content" id="tab-record" style="display:none">
+    <div class="tg">
+      <button class="tbtn rec" id="btn-record" title="Upload to bot + record audio">⏺</button>
+      <button class="tbtn gear" id="btn-settings" title="Latency settings">⚙</button>
+      <button class="tbtn spec" id="btn-spectrogram" title="Toggle spectrogram">SPEC</button>
+      <button class="tbtn" id="btn-analyze" title="Analyze recording">ANALYZE</button>
+      <span class="analyze-status" id="analyze-status"></span>
+      <button class="tbtn" id="btn-clear-recording" title="Clear recording">✕REC</button>
+    </div>
+  </div>
+
+  <!-- Always visible: bot actions + file I/O -->
+  <div class="tr">
+    <button class="tbtn act" id="btn-upload">⇪ Upload to Bot</button>
+    <button class="tbtn stop" id="btn-reset-bot">↺ Reset Bot</button>
+    <button class="tbtn" id="btn-import">↑ Import</button>
+    <button class="tbtn act" id="btn-export">↓ Export</button>
+  </div>
+</div>
+
+<!-- MAIN -->
+<div id="main">
+  <div id="seq">
+    <div id="roll-wrap">
+      <canvas id="roll"></canvas>
+      <div id="grid-ctrl">
+        <button class="gcbtn" id="zoom-out" title="Zoom out" style="width:26px">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line><line x1="8" y1="11" x2="14" y2="11"></line></svg>
+        </button>
+        <button class="gcbtn" id="zoom-in" title="Zoom in" style="width:26px">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line><line x1="11" y1="8" x2="11" y2="14"></line><line x1="8" y1="11" x2="14" y2="11"></line></svg>
+        </button>
+        <div style="width:1px;height:16px;background:var(--border);margin:0 4px"></div>
+        <span id="grid-ctrl-lbl">GRID</span>
+        <button class="gcbtn" id="grid-prev" title="Finer grid">‹</button>
+        <span id="grid-label">1/16</span>
+        <button class="gcbtn" id="grid-next" title="Coarser grid">›</button>
+      </div>
+    </div>
+    <div id="jp-bar" onclick="toggleJP()">
+      <span id="jp-chev">▲</span>
+      <span id="jp-lbl">JSON Preview</span>
+      <div id="jp-actions">
+        <button class="jp-btn" type="button" onclick="copyPreviewJSON(event)">Copy</button>
+      </div>
+    </div>
+    <div id="jp"><div id="jp-content"></div></div>
+  </div>
+
+  <!-- INSPECTOR -->
+  <div id="insp">
+    <div class="ih">
+      <span class="it" id="i-title">Note Inspector</span>
+      <button class="ix" onclick="closeInsp()">×</button>
+    </div>
+    <div class="ib">
+      <div class="if">
+        <div class="note-big" id="i-note">E3</div>
+        <div class="note-sub">MIDI <span id="i-midi">52</span> · <span id="i-str">String 2</span></div>
+      </div>
+      <div class="trem" id="i-trem">
+        <svg width="14" height="10" viewBox="0 0 14 10"><path d="M1 5 Q3 2 5 5 Q7 8 9 5 Q11 2 13 5" stroke="currentColor" stroke-width="1.5" fill="none" stroke-linecap="round"/></svg>
+        TREMOLO
+      </div>
+      <div class="if" id="i-speed-row">
+        <div class="il">Speed <span class="iv-state" id="i-speed-state"></span><span class="sv" id="i-sv">6</span></div>
+        <div class="sc">
+          <input type="range" id="i-speed" min="0" max="10" step="1" value="6" oninput="updSpeed(this.value)">
+        </div>
+        <div style="display:flex;justify-content:space-between;font-size:9px;color:var(--text-dim);margin-top:3px"><span>slow</span><span>fast</span></div>
+      </div>
+      <div class="if" id="i-slide-row">
+        <div class="il">Slide In <span class="iv-state" id="i-slide-state"></span></div>
+        <div class="tog-row">
+          <label class="tog"><input type="checkbox" id="i-slide" onchange="updSlide(this.checked)"><div class="tog-t"></div><div class="tog-k"></div></label>
+          <span class="tog-lbl" id="i-slide-lbl">Off</span>
+        </div>
+      </div>
+      <div class="if" id="i-dur-row">
+        <div class="il">Duration (beats) <span class="iv-state" id="i-dur-state"></span></div>
+        <input type="number" class="dur-in" id="i-dur" min="0.0625" max="16" step="0.0625" value="0.5" oninput="updDur(this.value)">
+      </div>
+      <div class="insp-sep"></div>
+      <div class="if" id="i-str-ov-row">
+        <div class="il">String Override <span class="iv-state" id="i-str-ov-state"></span></div>
+        <select id="i-str-ov" onchange="updStrOv(this.value)" style="width:100%">
+          <option value="__mixed__" disabled hidden>Mixed values</option>
+          <option value="">Auto (by note)</option>
+          <option value="0">0 — Low E (E2)</option>
+          <option value="1">1 — A (A2)</option>
+          <option value="2">2 — D (D3)</option>
+          <option value="3">3 — G (G3)</option>
+          <option value="4">4 — B (B3)</option>
+          <option value="5">5 — High E (E4)</option>
+        </select>
+      </div>
+      <div class="if" id="i-analysis-row" style="display:none">
+        <div class="il">Recording Analysis</div>
+        <div id="i-hit-status" style="font-size:12px;font-weight:600;margin-bottom:3px"></div>
+        <div id="i-tremolo-rate" style="font-size:11px;color:var(--purple)"></div>
+      </div>
+      <button class="del-btn" id="i-del-btn" onclick="delSelNote()">Delete Note</button>
+    </div>
+  </div>
+</div>
+
+</div>
+
+<!-- CHORD POPUP -->
+<div class="popup" id="cpop">
+  <div class="ph">Chord Event <span class="pc" onclick="closeCPop()">×</span></div>
+  <div class="pr"><div class="pl">Root</div>
+    <select id="cp-chord-root" onchange="updChordSplit()" style="width:100%">
+      <option value="C">C</option><option value="C#">C#</option>
+      <option value="D">D</option><option value="D#">D#</option>
+      <option value="E">E</option><option value="F">F</option>
+      <option value="F#">F#</option><option value="G">G</option>
+      <option value="G#">G#</option><option value="A">A</option>
+      <option value="A#">A#</option><option value="B">B</option>
+    </select>
+  </div>
+  <div class="pr"><div class="pl">Quality</div>
+    <select id="cp-chord-quality" onchange="updChordSplit()" style="width:100%">
+      <option value="">Major</option>
+      <option value="m">Minor</option>
+      <option value="^7">Major 7 (^7)</option>
+      <option value="m7">Minor 7 (m7)</option>
+      <option value="7">Dominant 7 (7)</option>
+      <option value="^9">Major 9 (^9)</option>
+      <option value="m9">Minor 9 (m9)</option>
+      <option value="9">Dominant 9 (9)</option>
+      <option value="11">11</option>
+      <option value="m11">Minor 11 (m11)</option>
+      <option value="13">13</option>
+      <option value="^13">Major 13 (^13)</option>
+      <option value="6">Major 6 (6)</option>
+      <option value="m6">Minor 6 (m6)</option>
+      <option value="m^7">Min-Maj 7 (m^7)</option>
+      <option value="dim">Diminished (dim)</option>
+      <option value="dim7">Fully Dim (dim7)</option>
+      <option value="m7b5">Half Dim (m7b5)</option>
+      <option value="aug">Augmented (aug)</option>
+      <option value="sus2">sus2</option>
+      <option value="sus4">sus4</option>
+      <option value="5">Power chord (5)</option>
+    </select>
+  </div>
+  <div class="pr"><div class="pl">Beat Position</div>
+    <input type="text" id="cp-beat" onchange="updChord('beat',this.value)" style="width:100%">
+  </div>
+  <button class="pdel" onclick="delChord()">Delete</button>
+</div>
+
+<!-- MIDI POPUP -->
+<div class="popup" id="mpop">
+  <div class="ph">MIDI FX Event <span class="pc" onclick="closeMPop()">×</span></div>
+  <div class="pr"><div class="pl">OSC Address</div>
+    <select id="mp-addr" onchange="updMidi('address',this.value)" style="width:100%">
+      <option value="/cc">/cc — Control Change</option>
+      <option value="/note">/note — Note On</option>
+      <option value="/noteoff">/noteoff — Note Off</option>
+      <option value="/program">/program — Program Change</option>
+      <option value="/pitch">/pitch — Pitch Bend</option>
+    </select>
+  </div>
+  <div class="pr"><div class="pl">Args (comma-separated)</div>
+    <input type="text" id="mp-args" onchange="updMidi('args',this.value)" placeholder="7, 64" style="width:100%">
+  </div>
+  <div class="pr"><div class="pl">Interpolate</div>
+    <div class="tog-row" style="margin-top:4px">
+      <label class="tog"><input type="checkbox" id="mp-interp" onchange="updMidi('interp',this.checked?1:0)"><div class="tog-t"></div><div class="tog-k"></div></label>
+      <span style="font-size:11px;color:var(--text-dim)">Smooth ramp</span>
+    </div>
+  </div>
+  <button class="pdel" onclick="delMidi()">Delete</button>
+</div>
+
+<!-- MIDI LANE POPUP -->
+<div class="popup" id="mlpop">
+  <div class="ph">MIDI Lane <span class="pc" onclick="closeMLPop()">×</span></div>
+  <div class="pr"><div class="pl" id="ml-label">CC</div></div>
+  <div class="pr">
+    <div class="pl">Visible Range</div>
+    <div style="display:flex;gap:6px;align-items:center">
+      <input type="number" id="ml-min" onchange="setSelectedMidiAutomationRange('min',this.value)" style="width:74px">
+      <span style="font-size:11px;color:var(--text-dim)">to</span>
+      <input type="number" id="ml-max" onchange="setSelectedMidiAutomationRange('max',this.value)" style="width:74px">
+    </div>
+  </div>
+  <button class="mlbtn" id="ml-clear" onclick="clearSelectedMidiAutomationLane()">Delete Automation</button>
+  <button class="mlbtn" id="ml-mute" onclick="toggleSelectedMidiAutomationMute()">Mute Automation</button>
+</div>
+
+<!-- SETTINGS POPUP -->
+<div class="popup" id="settings-pop">
+  <div class="ph">Latency Settings <span class="pc" onclick="closeSettingsPop()">×</span></div>
+  <div class="pr">
+    <div class="pl">Base Latency (ms)</div>
+    <input type="number" id="set-latency-ms" min="0" max="3000" step="1" style="width:100%">
+  </div>
+  <div class="pr">
+    <div class="pl">Drift (ms/min)</div>
+    <input type="number" id="set-latency-drift" min="-500" max="500" step="0.1" style="width:100%">
+  </div>
+  <div class="pr" style="display:flex;gap:6px;flex-wrap:wrap">
+    <button class="mlbtn" id="btn-calibrate-latency-quick" style="flex:1">Quick Calibrate</button>
+    <button class="mlbtn" id="btn-calibrate-latency-long" style="flex:1">Long Calibrate</button>
+  </div>
+  <div class="pl" style="margin-top:4px">Quick = single test pluck, Long = multi-point drift fit.</div>
+</div>
+
+<!-- EXPORT FORMAT POPUP (fallback when native save picker is unavailable) -->
+<div class="popup" id="export-pop">
+  <div class="ph">Export Format <span class="pc" onclick="closeExportPop()">×</span></div>
+  <button class="mlbtn" id="btn-export-json" type="button">Save as JSON</button>
+  <button class="mlbtn" id="btn-export-midi" type="button">Save as MIDI</button>
+</div>
+
+<!-- SEQUENCER CONTEXT MENU -->
+<div class="popup seq-ctx-menu" id="seq-ctx-menu">
+  <div class="ph">Insert Silence</div>
+  <button class="mlbtn" id="seq-ctx-insert-playhead" type="button">Insert Silence At Playhead</button>
+  <button class="mlbtn" id="seq-ctx-insert-here" type="button">Insert Silence Here</button>
+</div>
+
+<!-- INSERT SILENCE POPUP -->
+<div class="popup" id="insert-silence-pop">
+  <div class="ph">Insert Silence <span class="pc" id="insert-silence-close">×</span></div>
+  <div class="pr"><div class="pl" id="insert-silence-at">At: 1.1</div></div>
+  <div class="pr">
+    <div class="pl">Bars To Insert</div>
+    <input type="number" id="insert-silence-bars" min="1" max="64" step="1" value="1" style="width:100%">
+  </div>
+  <div class="pr" style="display:flex;gap:6px;align-items:center;margin-bottom:0">
+    <button class="mlbtn" id="insert-silence-apply" type="button" style="margin-top:0;flex:1">Apply</button>
+    <button class="mlbtn" id="insert-silence-cancel" type="button" style="margin-top:0;flex:1">Cancel</button>
+  </div>
+</div>
+
+<input type="file" id="hidden-file" accept=".json,.mid,.midi,application/json,audio/midi,audio/x-midi">
+<div id="import-toast" aria-live="polite"></div>
+
+<script src="https://cdn.jsdelivr.net/npm/@tonejs/midi@2.0.28/build/Midi.min.js"></script>
+<script src="js/constants.js"></script>
+<script src="js/state.js"></script>
+<script src="js/note_rules.js"></script>
+<script src="js/render.js"></script>
+<script src="js/interaction.js"></script>
+<script src="js/editor.js"></script>
+<script src="js/transport.js"></script>
+<script src="js/toolbar.js"></script>
+<script src="js/json.js"></script>
+<script src="js/main.js"></script>
+<script src="js/audio_recorder.js"></script>
+<script src="js/spectrogram.js"></script>
+<script src="js/analysis.js"></script>
+</body>
+</html>
