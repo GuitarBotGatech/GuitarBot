@@ -37,12 +37,12 @@ RESET = "\033[0m"
 WEB_URL = "http://127.0.0.1:8000/index.html"
 
 
-def _build_components(*, experimental_traj: bool) -> list[dict[str, object]]:
+def _build_components(*, risky_legacy_trajectories: bool) -> list[dict[str, object]]:
     components = []
     for comp in COMPONENTS:
         cmd = list(comp["cmd"])
-        if comp["name"] == "receiver" and experimental_traj:
-            cmd.append("--experimental-traj")
+        if comp["name"] == "receiver" and risky_legacy_trajectories:
+            cmd.append("--risky-legacy-trajectories")
         components.append({**comp, "cmd": cmd})
     return components
 
@@ -60,9 +60,9 @@ def main():
         help="Do not open the web UI in a new browser tab",
     )
     parser.add_argument(
-        "--experimental-traj",
+        "--risky-legacy-trajectories",
         action="store_true",
-        help="Enable experimental variable LH prep timing",
+        help="Revert to legacy uniform LH prep timing (not recommended)",
     )
     args = parser.parse_args()
 
@@ -73,7 +73,7 @@ def main():
 
     env = {**os.environ, "PYTHONIOENCODING": "utf-8"}
 
-    components = _build_components(experimental_traj=args.experimental_traj)
+    components = _build_components(risky_legacy_trajectories=args.risky_legacy_trajectories)
 
     for comp in components:
         proc = subprocess.Popen(

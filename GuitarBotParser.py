@@ -687,7 +687,7 @@ class GuitarBotParser:
 
     def _lh_prep_time_for_event(self, prev_note, note, duration, slide_toggle, picker_id=None):
         max_prep = float(tu.LH_PREP_TIME_BEFORE_PICK)
-        if not getattr(tu, "USE_EXPERIMENTAL_TRAJ", False):
+        if not getattr(tu, "USE_EXPERIMENTAL_TRAJ", True):
             return max_prep
         min_prep = float(getattr(tu, "LH_PREP_TIME_MIN", max_prep * 0.2))
         min_prep = max(0.0, min(min_prep, max_prep))

@@ -59,9 +59,9 @@ LH_PRESSER_SLIDE_PRESS_POS = 200
 # This is the maximum prep window; semitone-scaled moves can use less.
 LH_PREP_TIME_BEFORE_PICK = 0.450
 
-# Toggle for experimental LH prep timing (variable time step for close vs far notes).
-# When False, a uniform prep time is used for all slider moves.
-USE_EXPERIMENTAL_TRAJ = False
+# LH prep timing uses variable time step for close vs far notes (the default).
+# Set to False only via --risky-legacy-trajectories to revert to uniform prep time.
+USE_EXPERIMENTAL_TRAJ = True
 
 # Minimum prep time for very small/zero-distance fret transitions.
 LH_PREP_TIME_MIN = 0.1
