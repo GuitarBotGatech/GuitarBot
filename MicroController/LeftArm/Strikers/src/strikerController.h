@@ -270,56 +270,15 @@ public:
         Output: Pushes point to the queue
     */
     void processTrajPoints(float *trajPoint) {
-        int packetSize = 18;
-        int curr_pos;
-        // Serial.print("RECEIVED: ");
-        // for (int i = 0; i < packetSize; i++) {
-        //     Serial.print(trajPoint[i]);
-        //     Serial.print(" ");
-        // }
-        // Serial.println();
-
-        for (int x = 0; x < NUM_MOTORS; x++) {
-            if (x < 18) {
-                if (x > 5 && x < 12) {
-                    int curr_pos;
-                    curr_pos = pInstance->m_striker[x + 1].getPosition_ticks();
-                    //Serial.print("Current pos at ");
-//                    Serial.print(x + 1);
-//                    Serial.print(" ");
-//                    Serial.print(curr_pos);
-                    if (curr_pos <= 15 && trajPoint[x] <= 0) {
-                        if (m_striker[x + 1].getPressState()) {
-                            m_striker[x + 1].setModePOSITION();
-                            //Serial.print(", Setting Position since ");
-                        }
-                        //Serial.println(", PRESS STATE FALSE");
-                        all_Trajs[x][0] = 0;
-                    } else {
-                        if (!m_striker[x + 1].getPressState()) {
-                            m_striker[x + 1].setModeTORQUE();
-                            //Serial.print(", Setting Torque since ");
-                        }
-                        //Serial.print(", is already in Torque mode; ");
-                    }
-                    all_Trajs[x][0] = trajPoint[x];
-                    //Serial.println(", PRESS STATE TRUE");
-                } else {
-                    all_Trajs[x][0] = trajPoint[x];
-                }
-            }
-        }
-
-        //Serial.println("PROCESSED TRAJ: ");
-
-        //Serial.println();
-        //Serial.println("PUSHING TO QUEUE: ");
+        // Pure enqueue: no mode decisions here. Presser position/torque mode
+        // is decided at execution time in the RPDO handler (commandPresser),
+        // from the point actually being commanded — deciding it here raced
+        // the ~100-200ms of buffering between enqueue and execution and used
+        // encoder feedback from the wrong moment in time.
         Trajectory<int32_t>::point_t temp_point;
         for (int x = 0; x < NUM_MOTORS; x++) {
-            temp_point[x] = all_Trajs[x][0];
-            //Serial.println(temp_point[x]);
+            temp_point[x] = (int32_t) trajPoint[x];
         }
-        //Serial.println("-------");
         m_traj.push(temp_point);
     }
 
@@ -351,6 +310,35 @@ public:
         }
 
         LOG_LOG("Pushed %d new points to the trajectory queue. Queue size is now: %d", num_points_in_chunk, m_traj.count());
+    }
+
+    /*
+        Function: verifyPresserModes
+        Main-loop watchdog for CAN mode-switch robustness. Round-robin SDO
+        read-back of each presser's actual op mode; on mismatch the striker
+        re-arms its mode-resend counter and the RPDO handler re-commands the
+        mode. Rate-limited, and only runs while the trajectory queue is idle
+        so the blocking SDO never stalls active playback.
+    */
+    void verifyPresserModes() {
+        static unsigned long lastCheck = 0;
+        static uint8_t node = NUM_STRIKERS + 1;
+
+        if (!m_bPlaying) return;
+        if (millis() - lastCheck < PRESSER_MODE_VERIFY_INTERVAL_MS) return;
+        if (m_traj.count() > 0) return;   // never verify mid-trajectory
+
+        lastCheck = millis();
+
+        // Pause the RPDO timer's CAN writes around the blocking SDO
+        // transaction so the two never interleave in the CAN driver.
+        m_bPauseRPDO = true;
+        delayMicroseconds(200);   // let an in-flight RPDO cycle drain
+        m_striker[node].verifyPresserMode();
+        m_bPauseRPDO = false;
+
+        ++node;
+        if (node > NUM_STRIKERS + NUM_PRESSERS) node = NUM_STRIKERS + 1;
     }
 
     void start() {
@@ -525,6 +513,9 @@ private:
     int pickerStates[NUM_PLUCKERS]; // Array to hold state of each picker (0=up state, 1=down state)
     static StrikerController* pInstance;
     volatile bool m_bPlaying = false;
+    // Set by verifyPresserModes while a blocking SDO is in flight; the RPDO
+    // timer ISR skips its cycle instead of writing CAN concurrently.
+    volatile bool m_bPauseRPDO = false;
     MotorSpec m_motorSpec = MotorSpec::EC45_Slider;
     Trajectory<int32_t>::point_t m_currentPoint {};
     Trajectory<int32_t> m_traj;
@@ -641,6 +632,12 @@ private:
         if (pInstance == nullptr)
             return;
 
+        // Skip this cycle while the main loop runs a blocking SDO transaction
+        // (op-mode verification) so PDO and SDO traffic don't interleave in
+        // the CAN driver.
+        if (pInstance->m_bPauseRPDO)
+            return;
+
         Trajectory<int32_t>::point_t point { pInstance->m_currentPoint };
 
         // If new point is available, grab it. Else keep using last point
@@ -661,25 +658,12 @@ private:
                 if (err)
                     LOG_ERROR("Error peeking trajectory. Code %i", (int) err);
 
-                // If the point is not close to the previous point, generate transition trajectory
+                // If the point is not close to the previous point, warn. Never
+                // block here — this runs in the timer ISR; the old debugging
+                // delay(30000) froze the entire robot for 30s when a UDP drop
+                // caused a jump.
                 if (!pt.isClose(pInstance->m_currentPoint, DISCONTINUITY_THRESHOLD)) {
-                    LOG_WARN("Trajectory discontinuous. Generating Transitions...");
-                    Serial.print("Current Point: ");
-                    for (int x = 0; x<NUM_MOTORS; x++)
-                    {
-                        Serial.print(pInstance->m_currentPoint[x]);
-                        Serial.print(" ");
-                    }
-                    Serial.println();
-                    Serial.print("Next Point: ");
-                    for (int x = 0; x<NUM_MOTORS; x++)
-                    {
-                        Serial.print(pt[x]);
-                        Serial.print(" ");
-                    }
-                    Serial.println();
-                    delay(30000); 
-
+                    LOG_WARN("Trajectory discontinuous.");
                     // pInstance->m_traj.generateTransitions(pInstance->m_currentPoint, pt, TRANSITION_LENGTH);
                 }
                 // Pop from traj queue. If transition was added, this point is from the generated transition
@@ -712,12 +696,9 @@ private:
                 // drive actuators here...
                 for (int i = 1; i < NUM_MOTORS + 1; ++i){
                     if(i > 6 && i < 13){
-                        if(!pInstance->m_striker[i].getPressState()){
-                            pInstance->m_striker[i].rotate(0);
-                        }
-                        else{
-                            pInstance->m_striker[i].applyTorque(point[i - 1]);
-                        }
+                        // Presser: execution-time mode state machine decides
+                        // torque vs position-hold from this cycle's point.
+                        pInstance->m_striker[i].commandPresser(point[i - 1]);
                     }
                     else{
                         pInstance->m_striker[i].rotate(point[i - 1]);

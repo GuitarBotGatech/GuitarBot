@@ -1877,7 +1877,12 @@ int Epos4::PDO_setPosition(int32_t position) {
         return -1;
     }
 
-    m_iEncoderPosition = position;
+    // Dead-reckon position only for nodes without TPDO feedback. Pressers get
+    // real encoder values from PDO_processMsg; overwriting them here made the
+    // release-detection threshold read the commanded 0 instead of the true
+    // position.
+    if (!m_bHasPositionFeedback)
+        m_iEncoderPosition = position;
     return 0;
 }
 int Epos4::readTargetTorque(int16_t* targetTorque) {

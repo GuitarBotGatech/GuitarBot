@@ -39,6 +39,10 @@ public:
             return kSetValueError;
         }
 
+        // Pressers (EC20) are the only nodes whose TPDO feedback is consumed
+        // in canRxHandle; their encoder reads must never be dead-reckoned.
+        epos.setHasPositionFeedback(spec == EC20);
+
 
 
         m_iCurrentIdx = kTotalPoints;
@@ -75,20 +79,81 @@ public:
     void rotate(int pos){
         epos.PDO_setPosition(pos);
     }
-    void setModePOSITION(){
-        epos.PDO_setOpMode(CyclicSyncPosition);
-        press_state = false;
-        epos.PDO_setPosition(0);
+
+    // ------------------------------------------------------------------
+    // Presser mode state machine
+    //
+    // Pressers alternate between CST (torque mode, pressing / pulling off)
+    // and CSP (position mode, parked at 0). Mode decisions are made at
+    // EXECUTION time — from the trajectory value being commanded this PDO
+    // cycle — never at enqueue time, so the decision can't race the queue.
+    //
+    // Mode-switch robustness: PDO_setOpMode is fire-and-forget CAN. Every
+    // switch is re-sent for PRESSER_MODE_RESEND_CYCLES consecutive cycles,
+    // a failed CAN write does not consume a resend, and the main loop can
+    // additionally verify the drive's real op mode via verifyPresserMode().
+    // ------------------------------------------------------------------
+    enum class PresserMode : uint8_t { Unknown, Torque, Position };
+
+    // Called once per PDO cycle from the RPDO timer with the trajectory
+    // value for this presser (positive = press torque, <= 0 = release).
+    void commandPresser(int32_t value) {
+        PresserMode desired;
+        if (value > 0) {
+            desired = PresserMode::Torque;
+        } else if (m_presserMode == PresserMode::Torque &&
+                   epos.getEncoderPosition() > PRESSER_RELEASED_POS_THRESHOLD) {
+            // Still physically on the string: keep torque mode so the
+            // negative value pulls the arm off before parking.
+            desired = PresserMode::Torque;
+        } else {
+            desired = PresserMode::Position;
+        }
+
+        if (desired != m_presserMode) {
+            m_presserMode = desired;
+            m_uiModeResendCount = PRESSER_MODE_RESEND_CYCLES;
+            press_state = (desired == PresserMode::Torque);
+        }
+
+        if (m_uiModeResendCount > 0) {
+            if (sendPresserModeSwitch(desired))
+                --m_uiModeResendCount;
+            // On CAN TX failure the count is kept, so the switch is retried
+            // next cycle instead of being silently dropped.
+        }
+
+        if (desired == PresserMode::Torque)
+            epos.PDO_setTorque((int16_t) constrain(value, -1000, 1000));
+        else
+            epos.PDO_setPosition(0);
     }
-    void setModeTORQUE(){
-        epos.PDO_setOpMode(OpMode::CyclicSyncTorque);
-        press_state = true;
+
+    // SDO read-back of the drive's actual op mode; re-arms the resend
+    // counter on mismatch. Main-loop context only (blocks on SDO) — never
+    // call from an ISR. Returns false if verification failed or mismatched.
+    bool verifyPresserMode() {
+        if (m_presserMode == PresserMode::Unknown) return true;
+
+        OpMode actual;
+        if (epos.getOpMode(&actual) != 0) {
+            LOG_WARN("Node %i: op mode read-back failed", epos.getNodeId());
+            return false;
+        }
+
+        OpMode expected = (m_presserMode == PresserMode::Torque)
+                              ? OpMode::CyclicSyncTorque
+                              : OpMode::CyclicSyncPosition;
+        if (actual != expected) {
+            LOG_WARN("Node %i: op mode mismatch (drive %i, expected %i). Re-commanding.",
+                     epos.getNodeId(), (int) actual, (int) expected);
+            m_uiModeResendCount = PRESSER_MODE_RESEND_CYCLES;
+            return false;
+        }
+        return true;
     }
 
     void applyTorque(int torque){
-        if(press_state == false){
-            torque = -20;
-        }
         epos.PDO_setTorque(torque);
     }
 
@@ -453,8 +518,22 @@ private:
 
 
     bool m_bInitialized = false;
-    bool press_state = false;
+    volatile bool press_state = false;
+    // Desired presser mode; written by commandPresser (ISR) and read by
+    // verifyPresserMode (main loop).
+    volatile PresserMode m_presserMode = PresserMode::Unknown;
+    // Remaining redundant re-sends of the op-mode switch frame. May be
+    // re-armed from the main loop by verifyPresserMode on mismatch.
+    volatile uint8_t m_uiModeResendCount = 0;
     Command m_mode = Command::Restart;
+
+    // Fire one op-mode switch frame; true if the CAN write succeeded.
+    bool sendPresserModeSwitch(PresserMode mode) {
+        OpMode target = (mode == PresserMode::Torque)
+                            ? OpMode::CyclicSyncTorque
+                            : OpMode::CyclicSyncPosition;
+        return epos.PDO_setOpMode(target) == 0;
+    }
     static const int kNumPointsForHit = NUM_POINTS_IN_TRAJ_FOR_HIT * PDO_RATE;
     static const int kNumPointsForUp = NUM_POINTS_IN_TRAJ_FOR_UP * PDO_RATE;
     static const int kTotalPoints = kNumPointsForHit + kNumPointsForUp;   // 65ms total with 1ms cycle time -> 65/1
