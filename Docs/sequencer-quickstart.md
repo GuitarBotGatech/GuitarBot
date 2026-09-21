@@ -1,6 +1,6 @@
 # GuitarBot Sequencer UI — Quickstart Guide
 
-The **GuitarBot Sequencer** (`sequencer.html`) is a web-based timeline editor for composing robot guitar performances. Arrange pluck notes, chord symbols, and MIDI effects in a single interface, then export as JSON or send directly to the robot.
+The **GuitarBot Sequencer** (`sequencer.html`) is a web-based timeline editor for composing robot guitar performances. Arrange pluck notes and chord symbols in a single interface, then export as JSON or send directly to the robot.
 
 ## Quick Launch
 
@@ -29,39 +29,28 @@ conda activate guitarbot_env
 python launch.py
 ```
 
-This launches ```OSC_Message_Receiver.py```, ```send_song_arrangement.py```, and serves the UI via localhost by using python subprocesses.
+This starts a single Flask process that serves the sequencer UI and accepts:
+
+- `POST /play` — arrangement JSON, planned and sent to OpenCR
+- `POST /reset` — home motors
+
+Plan without moving the robot:
+```
+python launch.py --dry-run
+```
+
+The UI is at [http://127.0.0.1:8000/](http://127.0.0.1:8000/).
 
 ## Manual Launch
 
-It can be useful to run each component individually for testing.
-
-### Start GUI
-
-1. From the GuitarBot root directory, start a simple HTTP server:
-   ```bash
-   python -m http.server 8000
-   ```
-2. Open your browser and navigate to: [http://localhost:8000/](http://localhost:8000/)
-
-3. You will be prompted to start a new project, open an example, or import a JSON/MIDI file.
-### Start GUI → GuitarBot Bridge
-
-In a separate terminal, start the bridge that forwards arrangements from the sequencer to the robot via UDP/OSC:
-
-```bash
-python send_song_arrangement.py --serve
+Equivalent to `python launch.py --no-browser`:
+```
+python server.py --no-browser
 ```
 
-This starts an HTTP server on `localhost:8765`. The sequencer's **Send to Robot** button POSTs the current arrangement to this bridge, which converts it and sends OSC messages to the robot at `127.0.0.1:12000`.
+Then open [http://127.0.0.1:8000/](http://127.0.0.1:8000/). You will be prompted to start a new project, open an example, or import a JSON/MIDI file.
 
-Optional flags:
-```bash
-# Use a different robot IP/port
-python send_song_arrangement.py --serve --ip [ip] --port 12000
-
-# Use a different bridge port
-python send_song_arrangement.py --serve --serve-port 9000
-```
+The sequencer's **Send to Robot** button POSTs the current arrangement to `POST /play` on the same origin. **Reset Bot** calls `POST /reset`.
 
 ## GUI Reference
 
@@ -81,9 +70,8 @@ The GUI overview includes:
 
 - See [Song Format & Schema](song-format/schema.md) for detailed JSON structure.
 - Review [Arrangement Plan](song-format/arrangement-plan.md) for timeline transforms and composition strategies.
-- Integrate with [OSC_Message_Send.py](../OSC_Message_Send.py) to transmit to the robot in real time.
 
 ---
 
-**Last Updated:** March 2026  
-**Version:** 1.0
+**Last Updated:** September 2026  
+**Version:** 1.1

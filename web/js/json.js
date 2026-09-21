@@ -974,7 +974,7 @@ async function uploadToBot(){
   btn.disabled=true;
   btn.textContent='… Uploading';
   try{
-    const res=await fetch('http://127.0.0.1:8765/upload',{
+    const res=await fetch('/play',{
       method:'POST',
       headers:{'Content-Type':'application/json'},
       body:JSON.stringify(buildUploadJSON())
@@ -986,8 +986,8 @@ async function uploadToBot(){
     return true;
   }catch(err){
     alert(
-      'Upload failed. Start the local uploader first:\n\n'
-      +'python send_song_arrangement.py --serve\n\n'
+      'Upload failed. Start the GuitarBot server first:\n\n'
+      +'python launch.py\n\n'
       +'Then try Upload to Bot again.\n\n'
       +`Details: ${err.message}`
     );
@@ -1005,15 +1005,15 @@ document.getElementById('btn-reset-bot').addEventListener('click',async()=>{
   btn.disabled=true;
   btn.textContent='… Resetting';
   try{
-    const res=await fetch('http://127.0.0.1:8765/reset',{method:'POST'});
+    const res=await fetch('/reset',{method:'POST'});
     const data=await res.json().catch(()=>({ok:false,error:'Invalid server response'}));
     if(!res.ok||!data.ok)throw new Error(data.error||`HTTP ${res.status}`);
     btn.textContent='✓ Reset';
     setTimeout(()=>{btn.textContent=original;btn.disabled=false},900);
   }catch(err){
     alert(
-      'Reset failed. Start the local uploader first:\n\n'
-      +'python send_song_arrangement.py --serve\n\n'
+      'Reset failed. Start the GuitarBot server first:\n\n'
+      +'python launch.py\n\n'
       +'Then try Reset Bot again.\n\n'
       +`Details: ${err.message}`
     );

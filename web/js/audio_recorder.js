@@ -187,7 +187,7 @@ const AR = (() => {
 
       recorder.start(100);
       setTimeout(async () => {
-        try { await fetch('http://127.0.0.1:8765/reset', { method: 'POST' }); } catch (_e) {}
+        try { await fetch('/reset', { method: 'POST' }); } catch (_e) {}
         try {
           const calEvents = eventTimesSec.map(ts => ({
             note: CAL_NOTE,
@@ -197,7 +197,7 @@ const AR = (() => {
             string_index: 0,
             timestamp: ts,
           }));
-          await fetch('http://127.0.0.1:8765/upload', {
+          await fetch('/play', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({

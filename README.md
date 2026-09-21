@@ -26,7 +26,7 @@ A six plucker iteration of Guitarbot, featuring a web-based UI with a karplus-st
 
 Run strikers.io in Arduino IDE by uploading to the OpenCR board, turning on the robot, and opening the serial monitor.
 
-You're all set! Start sending messages using the **OSC_Message_Send.py** and **OSC_Message_Receiver.py** scripts or start the GuitarBot UI by running `python launch.py`.
+You're all set! Start the GuitarBot UI and play/reset server with `python launch.py` (add `--dry-run` to plan without sending UDP to the robot). Legacy OSC scripts **OSC_Message_Send.py** and **OSC_Message_Receiver.py** remain available for RL and other non-UI control.
 
 ### Parsers
 **GuitarBotParser.py** handles pluck and chord messages for longer form song trajectories.
@@ -59,4 +59,4 @@ The OSC message types are reported in the terminal by running **OSC_Message_Rece
 
 #### **System Compatibility**
 - **Format**: 18×N trajectory matrix (12 LH + 6 RH motors)
-- **Configuration and Reset**: Send /Config and /Reset messages to configure the robot without power cycling
+- **Play API**: `POST /play` with arrangement JSON and `POST /reset` on the Flask server (`python launch.py`)
