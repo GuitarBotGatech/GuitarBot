@@ -905,10 +905,12 @@ class GuitarBotParser:
 
         # Infer picker start state from the parser's current RH start point so
         # segment-to-segment plucks stay synchronized with the actual trajectory.
+        # Read physical columns (B↔e remapped); compare against logical calibration.
         rh_start_positions = list(self.initial_point[12:]) if len(self.initial_point) > 12 else []
         pickerStates = []  # True = up, False = down
         for motor_idx in range(len(tu.PICKER_MOTOR_INFO)):
-            if motor_idx >= len(rh_start_positions):
+            phys_idx = tu.picker_physical_index(motor_idx)
+            if phys_idx >= len(rh_start_positions):
                 pickerStates.append(True)
                 continue
 
@@ -916,7 +918,7 @@ class GuitarBotParser:
             res = info['resolution']
             down_enc = (info['down_pluck_mm'] * res) / tu.MM_TO_ENCODER_CONVERSION_FACTOR
             up_enc = (info['up_pluck_mm'] * res) / tu.MM_TO_ENCODER_CONVERSION_FACTOR
-            curr_enc = float(rh_start_positions[motor_idx])
+            curr_enc = float(rh_start_positions[phys_idx])
 
             dist_to_up = abs(curr_enc - up_enc)
             dist_to_down = abs(curr_enc - down_enc)
@@ -975,10 +977,12 @@ class GuitarBotParser:
 
         for i, (event_data, timestamp) in enumerate(pick_events):
             motor_id, note, commanded_dest_pos, duration, speed = event_data
+            # Logical string keeps calibration / LH routing; RH column may differ (B↔e).
+            phys_id = tu.picker_physical_index(motor_id)
             start_index = int(timestamp / tu.TIME_STEP)
             is_pluck = duration < tu.TREMOLO_DURATION_THRESHOLD
 
-            start_pos = current_positions[motor_id]
+            start_pos = current_positions[phys_id]
             info = tu.PICKER_MOTOR_INFO[motor_id]
             res = info['resolution']
             down_enc = (info['down_pluck_mm'] * res) / tu.MM_TO_ENCODER_CONVERSION_FACTOR
@@ -1009,8 +1013,8 @@ class GuitarBotParser:
             if all_points.size > 0:
                 num_gen = len(all_points)
                 if start_index + num_gen <= num_rows:
-                    trajectory_array[start_index : start_index + num_gen, motor_id] = all_points
-                current_positions[motor_id] = all_points[-1]
+                    trajectory_array[start_index : start_index + num_gen, phys_id] = all_points
+                current_positions[phys_id] = all_points[-1]
 
             # Chord plucks (note 0-5) activate the plucker without repositioning the slider.
             if note > 5:

@@ -167,6 +167,18 @@ PICKER_MOTOR_INFO = {
     5: {'down_pluck_mm': -2, 'up_pluck_mm': -5.0, 'resolution': 2048} # E
 }
 
+# Logical string index → RH trajectory / CAN column index.
+# After reassembly, B (4) and high-e (5) keep correct mounts but swapped node IDs
+# (logical B drives node 18 / column 5; logical e drives node 17 / column 4).
+# Calibration stays keyed by logical string; only the output column is remapped.
+# Map is an involution: physical→logical uses the same table.
+PICKER_LOGICAL_TO_PHYSICAL = (0, 1, 2, 3, 5, 4)
+
+
+def picker_physical_index(logical_idx):
+    """RH trajectory column for a logical string/picker index."""
+    return PICKER_LOGICAL_TO_PHYSICAL[int(logical_idx)]
+
 # ----------------------------------------------------------------------------
 # 5. Note and Chord Definitions
 # ----------------------------------------------------------------------------
@@ -184,21 +196,26 @@ STRING_MIDI_RANGES = [
     (64, 73, SLIDER_MOTOR_DIRECTION[5])   # String 6,E
 ]
 
+def _picker_start_encoder(logical_idx):
+    info = PICKER_MOTOR_INFO[logical_idx]
+    return int(info["up_pluck_mm"] * info["resolution"] / MM_TO_ENCODER_CONVERSION_FACTOR)
+
+
 # Initial Point
 # Controls the starting point for the very first message sent to GuitarBot when the receiver file starts.
+# Plucker columns follow physical CAN order, so use the logical string that maps to each column.
 initial_point = [ #Bookmark
                  # Sliders
                  0, 0, 0, 0, 0, 0,
                  # Pressers
                  -650, -650, -650, -650, -650, -650, # Position, not Torque value
-                 # Pluckers
-                 int(PICKER_MOTOR_INFO[0]["up_pluck_mm"]*1024/9.4),
-                 int(PICKER_MOTOR_INFO[1]["up_pluck_mm"]*2048/9.4),
-                 int(PICKER_MOTOR_INFO[2]["up_pluck_mm"]*2048/9.4),
-                 int(PICKER_MOTOR_INFO[3]["up_pluck_mm"]*1024/9.4),
-                 int(PICKER_MOTOR_INFO[4]["up_pluck_mm"]*2048/9.4),
-                 int(PICKER_MOTOR_INFO[5]["up_pluck_mm"]*2048/9.4)
-
+                 # Pluckers (physical columns; B↔e remapped)
+                 _picker_start_encoder(PICKER_LOGICAL_TO_PHYSICAL[0]),
+                 _picker_start_encoder(PICKER_LOGICAL_TO_PHYSICAL[1]),
+                 _picker_start_encoder(PICKER_LOGICAL_TO_PHYSICAL[2]),
+                 _picker_start_encoder(PICKER_LOGICAL_TO_PHYSICAL[3]),
+                 _picker_start_encoder(PICKER_LOGICAL_TO_PHYSICAL[4]),
+                 _picker_start_encoder(PICKER_LOGICAL_TO_PHYSICAL[5]),
                  ]
 
 
@@ -214,10 +231,11 @@ CHORD_LIBRARY_FILE = str(_REPO_ROOT / "control" / "Alternate_Chords.csv")
 # Note that these values are not used in the python code, but are here so that 
 # tune.h can be generated programmatically.
 
-# Picker start state (positions). Should match picker motor dictionary 'up_pluck_mm'
-START_STATE_PICK = [PICKER_MOTOR_INFO[0]['up_pluck_mm'], PICKER_MOTOR_INFO[1]['up_pluck_mm'], 
-                    PICKER_MOTOR_INFO[2]['up_pluck_mm'], PICKER_MOTOR_INFO[3]['up_pluck_mm'], 
-                    PICKER_MOTOR_INFO[4]['up_pluck_mm'], PICKER_MOTOR_INFO[5]['up_pluck_mm']]
+# Picker start state (positions). Physical CAN order; B↔e remapped like initial_point.
+START_STATE_PICK = [
+    PICKER_MOTOR_INFO[PICKER_LOGICAL_TO_PHYSICAL[i]]['up_pluck_mm']
+    for i in range(6)
+]
 
 # Motor IDs for pickers (E, D, B). Adjust if wiring changes.
 MOTOR_ID_PICK = [13, 14, 15, 16, 17, 18]
