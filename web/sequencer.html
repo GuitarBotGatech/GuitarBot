@@ -19,7 +19,6 @@
   <div class="tab-btns">
     <button class="tab-btn active" data-tab="create">Create</button>
     <button class="tab-btn" data-tab="automation">Automation</button>
-    <button class="tab-btn" data-tab="record">Record</button>
   </div>
 
   <!-- Transport (always visible) -->
@@ -65,18 +64,6 @@
     <div class="tg">
       <span class="note-warn ok" id="note-warn" title="No note timing warnings">✓ NOTES OK</span>
       <button class="tbtn" id="btn-plan-strings" title="Greedy string assignment for all unassigned notes">PLAN</button>
-    </div>
-  </div>
-
-  <!-- RECORD TAB -->
-  <div class="tab-content" id="tab-record" style="display:none">
-    <div class="tg">
-      <button class="tbtn rec" id="btn-record" title="Upload to bot + record audio">⏺</button>
-      <button class="tbtn gear" id="btn-settings" title="Latency settings">⚙</button>
-      <button class="tbtn spec" id="btn-spectrogram" title="Toggle spectrogram">SPEC</button>
-      <button class="tbtn" id="btn-analyze" title="Analyze recording">ANALYZE</button>
-      <span class="analyze-status" id="analyze-status"></span>
-      <button class="tbtn" id="btn-clear-recording" title="Clear recording">✕REC</button>
     </div>
   </div>
 
@@ -164,11 +151,6 @@
           <option value="4">4 — B (B3)</option>
           <option value="5">5 — High E (E4)</option>
         </select>
-      </div>
-      <div class="if" id="i-analysis-row" style="display:none">
-        <div class="il">Recording Analysis</div>
-        <div id="i-hit-status" style="font-size:12px;font-weight:600;margin-bottom:3px"></div>
-        <div id="i-tremolo-rate" style="font-size:11px;color:var(--purple)"></div>
       </div>
       <button class="del-btn" id="i-del-btn" onclick="delSelNote()">Delete Note</button>
     </div>
@@ -262,24 +244,6 @@
   <button class="mlbtn" id="ml-mute" onclick="toggleSelectedMidiAutomationMute()">Mute Automation</button>
 </div>
 
-<!-- SETTINGS POPUP -->
-<div class="popup" id="settings-pop">
-  <div class="ph">Latency Settings <span class="pc" onclick="closeSettingsPop()">×</span></div>
-  <div class="pr">
-    <div class="pl">Base Latency (ms)</div>
-    <input type="number" id="set-latency-ms" min="0" max="3000" step="1" style="width:100%">
-  </div>
-  <div class="pr">
-    <div class="pl">Drift (ms/min)</div>
-    <input type="number" id="set-latency-drift" min="-500" max="500" step="0.1" style="width:100%">
-  </div>
-  <div class="pr" style="display:flex;gap:6px;flex-wrap:wrap">
-    <button class="mlbtn" id="btn-calibrate-latency-quick" style="flex:1">Quick Calibrate</button>
-    <button class="mlbtn" id="btn-calibrate-latency-long" style="flex:1">Long Calibrate</button>
-  </div>
-  <div class="pl" style="margin-top:4px">Quick = single test pluck, Long = multi-point drift fit.</div>
-</div>
-
 <!-- EXPORT FORMAT POPUP (fallback when native save picker is unavailable) -->
 <div class="popup" id="export-pop">
   <div class="ph">Export Format <span class="pc" onclick="closeExportPop()">×</span></div>
@@ -322,8 +286,5 @@
 <script src="js/toolbar.js"></script>
 <script src="js/json.js"></script>
 <script src="js/main.js"></script>
-<script src="js/audio_recorder.js"></script>
-<script src="js/spectrogram.js"></script>
-<script src="js/analysis.js"></script>
 </body>
 </html>

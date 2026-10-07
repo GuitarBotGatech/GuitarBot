@@ -3,7 +3,7 @@
 // ═══════════════════════════════════════════════
 function setActiveTab(tabRaw){
   const requested=String(tabRaw||'create');
-  const validTabs=new Set(['create','automation','record']);
+  const validTabs=new Set(['create','automation']);
   const tab=validTabs.has(requested)?requested:'create';
   S.activeTab=tab;
   document.querySelectorAll('.tab-btn').forEach(btn=>{
@@ -86,31 +86,6 @@ function setEditMode(mode){
 document.getElementById('btn-mode-draw').addEventListener('click',()=>{
   setEditMode(S.editMode==='draw'?'select':'draw');
   render();
-});
-
-function openSettingsPop(){
-  const p=document.getElementById('settings-pop');
-  p.style.left='18px';
-  p.style.top='62px';
-  p.classList.add('on');
-  document.getElementById('btn-settings').classList.add('on');
-}
-
-function closeSettingsPop(){
-  document.getElementById('settings-pop').classList.remove('on');
-  document.getElementById('btn-settings').classList.remove('on');
-}
-
-document.getElementById('btn-settings').addEventListener('click',()=>{
-  const p=document.getElementById('settings-pop');
-  if(p.classList.contains('on'))closeSettingsPop();
-  else openSettingsPop();
-});
-
-document.addEventListener('pointerdown',e=>{
-  const p=document.getElementById('settings-pop');
-  const btn=document.getElementById('btn-settings');
-  if(!p.contains(e.target)&&!btn.contains(e.target))closeSettingsPop();
 });
 
 // ═══════════════════════════════════════════════

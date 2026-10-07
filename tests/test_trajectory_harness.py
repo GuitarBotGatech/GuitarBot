@@ -9,7 +9,7 @@ from pluck_message_to_json import pluck_message_to_song_dict
 from trajectory_harness import (
     PayloadFidelityAnalyzer,
     TremoloReadinessAnalyzer,
-    OscPayload,
+    PlannerPayload,
     _derive_lh_pick_events,
     compute_trajectory,
 )
@@ -30,14 +30,13 @@ def test_payload_fidelity_analyzer_passes_for_equivalent_python_and_json_payload
     )
 
     # Simulate source payloads used by the harness.
-    python_payload = OscPayload(chords=[], pluck=pluck_rows, midi=[])
-    json_payload = OscPayload(
+    python_payload = PlannerPayload(chords=[], pluck=pluck_rows)
+    json_payload = PlannerPayload(
         chords=[],
         pluck=[
             [event["note"], event["duration_s"], event["speed"], event["slide"], event["timestamp"]]
             for event in song_dict["song"]["tracks"][0]["events"]
         ],
-        midi=[],
     )
 
     analyzer = PayloadFidelityAnalyzer()
@@ -83,13 +82,13 @@ class TestChordPluckParsing:
 
     def test_chord_pluck_does_not_generate_lh_pick_event(self):
         """Chord pluck should activate the picker but leave the slider untouched."""
-        payload = OscPayload(chords=[], pluck=[[0, 0.4, 3, 0, 1.0]], midi=[])
+        payload = PlannerPayload(chords=[], pluck=[[0, 0.4, 3, 0, 1.0]])
         lh_events = _derive_lh_pick_events(payload, quiet=True)
         assert lh_events == [], f"Expected no LH pick events, got: {lh_events}"
 
     def test_chord_pluck_picker_trajectory_has_movement(self):
         """The plucker column in the trajectory should change position on a chord pluck."""
-        payload = OscPayload(chords=[], pluck=[[0, 0.4, 3, 0, 1.0]], midi=[])
+        payload = PlannerPayload(chords=[], pluck=[[0, 0.4, 3, 0, 1.0]])
         traj = compute_trajectory(payload)
 
         picker_col = 12  # first plucker column (string 0)
@@ -105,8 +104,8 @@ class TestChordPluckParsing:
         """Adding a chord pluck on top of a chord should not alter the slider trajectory."""
         chord = [["Em", 0.0]]
 
-        chord_only = OscPayload(chords=chord, pluck=[], midi=[])
-        chord_plus_pluck = OscPayload(chords=chord, pluck=[[0, 0.4, 3, 0, 0.8]], midi=[])
+        chord_only = PlannerPayload(chords=chord, pluck=[])
+        chord_plus_pluck = PlannerPayload(chords=chord, pluck=[[0, 0.4, 3, 0, 0.8]])
 
         traj_base = compute_trajectory(chord_only)
         traj_pluck = compute_trajectory(chord_plus_pluck)
@@ -122,7 +121,7 @@ class TestChordPluckParsing:
         )
 
 
-def _build_context_from_payload(payload: OscPayload):
+def _build_context_from_payload(payload: PlannerPayload):
     trajectory = compute_trajectory(payload)
     return type(
         "Context",
@@ -137,14 +136,13 @@ def _build_context_from_payload(payload: OscPayload):
 
 
 def test_tremolo_readiness_flags_early_pick_start():
-    payload = OscPayload(
+    payload = PlannerPayload(
         chords=[],
         pluck=[
             [43, 1.0, 6, 0, 4.0],
             [45, 1.0, 6, 1, 5.0],
             [43, 1.0, 6, 0, 6.0],
         ],
-        midi=[],
     )
 
     analyzer = TremoloReadinessAnalyzer(presser_ready_pos=tu.LH_PRESSER_PRESSED_POS + 200)
@@ -156,14 +154,13 @@ def test_tremolo_readiness_flags_early_pick_start():
 
 
 def test_tremolo_readiness_passes_with_sufficient_lead_time():
-    payload = OscPayload(
+    payload = PlannerPayload(
         chords=[],
         pluck=[
             [43, 0.25, 6, 0, 4.0],
             [43, 1.0, 6, 0, 4.5],
             [43, 0.25, 6, 0, 5.5],
         ],
-        midi=[],
     )
 
     analyzer = TremoloReadinessAnalyzer(presser_ready_pos=tu.LH_PRESSER_PRESSED_POS)

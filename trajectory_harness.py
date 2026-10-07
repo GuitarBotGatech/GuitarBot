@@ -18,16 +18,15 @@ from pluck_message_to_json import load_pluck_message_from_python_file
 
 
 @dataclass
-class OscPayload:
+class PlannerPayload:
     chords: list[list[Any]]
     pluck: list[list[Any]]
-    midi: list[list[Any]]
 
 
 @dataclass
 class HarnessContext:
-    python_payload: OscPayload
-    json_payload: OscPayload
+    python_payload: PlannerPayload
+    json_payload: PlannerPayload
     python_trajectory: np.ndarray
     json_trajectory: np.ndarray
 
@@ -68,23 +67,19 @@ def normalize_pluck_rows(rows: list[list[Any]]) -> list[tuple[int, float, float,
     return sorted(normalized, key=lambda row: (row[5], row[0], row[1], row[3], -1 if row[4] is None else row[4]))
 
 
-def load_json_payload(path: str | Path) -> OscPayload:
+def load_json_payload(path: str | Path) -> PlannerPayload:
     data = Path(path).read_text(encoding="utf-8")
     arrangement = SongArrangement.from_json_str(data)
-    payload = arrangement.render_osc_payloads()
-    return OscPayload(
-        chords=payload.get("/Chords", []),
-        pluck=payload.get("/Pluck", []),
-        midi=payload.get("/Midi", []),
-    )
+    chords, pluck = arrangement.to_planner_rows()
+    return PlannerPayload(chords=chords, pluck=pluck)
 
 
-def load_python_payload(path: str | Path, variable_name: str = "pluck_message") -> OscPayload:
+def load_python_payload(path: str | Path, variable_name: str = "pluck_message") -> PlannerPayload:
     pluck_rows = load_pluck_message_from_python_file(path, variable_name=variable_name)
-    return OscPayload(chords=[], pluck=pluck_rows, midi=[])
+    return PlannerPayload(chords=[], pluck=pluck_rows)
 
 
-def compute_trajectory(payload: OscPayload, *, quiet: bool = True) -> np.ndarray:
+def compute_trajectory(payload: PlannerPayload, *, quiet: bool = True) -> np.ndarray:
     parser = GuitarBotParser(initial_point=copy.deepcopy(tu.initial_point), graph=False)
     if quiet:
         with contextlib.redirect_stdout(io.StringIO()):
@@ -92,7 +87,7 @@ def compute_trajectory(payload: OscPayload, *, quiet: bool = True) -> np.ndarray
     return parser.parseAllMIDI(payload.chords, payload.pluck, midi_events=None)
 
 
-def _derive_lh_pick_events(payload: OscPayload, *, quiet: bool = True) -> list[list[Any]]:
+def _derive_lh_pick_events(payload: PlannerPayload, *, quiet: bool = True) -> list[list[Any]]:
     parser = GuitarBotParser(initial_point=copy.deepcopy(tu.initial_point), graph=False)
     if quiet:
         with contextlib.redirect_stdout(io.StringIO()):
@@ -109,7 +104,7 @@ def _derive_lh_pick_events(payload: OscPayload, *, quiet: bool = True) -> list[l
 
 
 def _derive_pick_and_lh_pick_events(
-    payload: OscPayload, *, quiet: bool = True
+    payload: PlannerPayload, *, quiet: bool = True
 ) -> tuple[list[list[Any]], list[list[Any]]]:
     parser = GuitarBotParser(initial_point=copy.deepcopy(tu.initial_point), graph=False)
     if quiet:
@@ -199,7 +194,7 @@ class SlideContinuityAnalyzer:
         self.unpress_tolerance = unpress_tolerance
         self.quiet_parser_output = quiet_parser_output
 
-    def _analyze_payload(self, label: str, payload: OscPayload, trajectory: np.ndarray) -> dict[str, Any]:
+    def _analyze_payload(self, label: str, payload: PlannerPayload, trajectory: np.ndarray) -> dict[str, Any]:
         lh_pick_events = _derive_lh_pick_events(payload, quiet=self.quiet_parser_output)
         violations: list[dict[str, Any]] = []
 
@@ -269,7 +264,7 @@ class TremoloReadinessAnalyzer:
         self.presser_ready_pos = int(presser_ready_pos)
         self.quiet_parser_output = quiet_parser_output
 
-    def _analyze_payload(self, label: str, payload: OscPayload, trajectory: np.ndarray) -> dict[str, Any]:
+    def _analyze_payload(self, label: str, payload: PlannerPayload, trajectory: np.ndarray) -> dict[str, Any]:
         pick_events, lh_pick_events = _derive_pick_and_lh_pick_events(payload, quiet=self.quiet_parser_output)
         fretted_pick_events = [
             (event, ts)
@@ -368,7 +363,7 @@ class TrajectoryHarness:
             TremoloReadinessAnalyzer(quiet_parser_output=quiet_parser_output),
         ]
 
-    def run(self, *, python_payload: OscPayload, json_payload: OscPayload) -> dict[str, Any]:
+    def run(self, *, python_payload: PlannerPayload, json_payload: PlannerPayload) -> dict[str, Any]:
         context = HarnessContext(
             python_payload=python_payload,
             json_payload=json_payload,
@@ -387,12 +382,10 @@ class TrajectoryHarness:
             "python_payload": {
                 "chords": len(python_payload.chords),
                 "pluck": len(python_payload.pluck),
-                "midi": len(python_payload.midi),
             },
             "json_payload": {
                 "chords": len(json_payload.chords),
                 "pluck": len(json_payload.pluck),
-                "midi": len(json_payload.midi),
             },
         }
 

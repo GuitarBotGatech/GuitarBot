@@ -38,17 +38,19 @@ def test_play_smoke_on_the_water_pluck_only():
     assert traj.shape[0] > 0
 
 
-def test_midi_track_does_not_change_trajectory():
+def test_legacy_midi_track_is_ignored():
     payload = _load(EXAMPLE)
-    with_midi = play_arrangement(payload, send=False, session=PlaybackSession())
-
-    stripped = copy.deepcopy(payload)
-    stripped["song"]["tracks"] = [
-        track for track in stripped["song"]["tracks"] if track.get("type") != "midi"
-    ]
-    without_midi = play_arrangement(stripped, send=False, session=PlaybackSession())
-
-    np.testing.assert_allclose(with_midi, without_midi)
+    with_legacy = copy.deepcopy(payload)
+    with_legacy["song"]["tracks"].append(
+        {
+            "name": "midi_fx",
+            "type": "midi",
+            "events": [{"address": "/cc", "args": [7, 30], "timestamp": 0.0}],
+        }
+    )
+    a = play_arrangement(payload, send=False, session=PlaybackSession())
+    b = play_arrangement(with_legacy, send=False, session=PlaybackSession())
+    np.testing.assert_allclose(a, b)
 
 
 def test_play_arrangement_send_false_does_not_call_robot(monkeypatch):

@@ -239,8 +239,4 @@ fabric.properties
 .idea/caches/build_file_checksums.ser
 
 .vscode/*
-# recording output
-Recording/output/*
-Recording/analysis/*
-Recording/cross_analysis/*
 /.idea

@@ -1,0 +1,6 @@
+# Interpretation defaults for Events (sidecar).
+# Event fields always win when present in the score / UI JSON.
+
+pluck:
+  speed: 5
+  slide: 0

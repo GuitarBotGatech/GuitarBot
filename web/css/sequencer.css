@@ -804,68 +804,6 @@ input[type=range]::-webkit-slider-thumb:hover {
   margin: 10px 0
 }
 
-/* ── RECORDING / SPECTROGRAM BUTTONS ── */
-@keyframes pulse-rec {
-  0%,
-  100% {
-    opacity: 1
-  }
-
-  50% {
-    opacity: 0.45
-  }
-}
-
-.tbtn.rec {
-  border-color: var(--red);
-  color: var(--red)
-}
-
-.tbtn.rec.active {
-  background: var(--red);
-  color: #fff;
-  animation: pulse-rec 1s ease-in-out infinite
-}
-
-.tbtn.gear {
-  min-width: auto;
-  width: auto;
-  height: 26px;
-  padding: 0 2px;
-  border: none;
-  background: transparent;
-  color: #94a3b8;
-  font-size: 20px;
-  line-height: 1;
-}
-
-.tbtn.gear:hover {
-  background: transparent;
-  color: #cbd5e1
-}
-
-.tbtn.gear.on {
-  background: transparent;
-  color: #f8fafc
-}
-
-.tbtn.spec {
-  border-color: var(--teal);
-  color: var(--teal)
-}
-
-.tbtn.spec.on {
-  background: var(--teal);
-  color: #000
-}
-
-.analyze-status {
-  font-family: 'JetBrains Mono', monospace;
-  font-size: 10px;
-  font-weight: 600;
-  white-space: nowrap
-}
-
 .note-warn {
   font-family: 'JetBrains Mono', monospace;
   font-size: 10px;
@@ -1170,11 +1108,6 @@ input[type=range]::-webkit-slider-thumb:hover {
 .seq-ctx-menu .mlbtn {
   text-align: left;
   padding: 7px 10px
-}
-
-#settings-pop {
-  min-width: 280px;
-  max-width: 320px
 }
 
 #import-toast {

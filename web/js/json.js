@@ -187,22 +187,8 @@ function buildJSON(){
           return o;
         })});
   }
-  const combinedMidi=[
-    ...S.midi.map(e=>({address:e.address,args:e.args,interp:e.interp,beat:canonicalBeatLabel(e.beat)})),
-    ...midiAutomationEvents(),
-  ].sort((a,b)=>parseBeat(a.beat)-parseBeat(b.beat));
-  if(combinedMidi.length){
-    tracks.push({name:"midi_fx",type:"midi",
-      events:combinedMidi});
-  }
-  const automationLaneRanges=Object.fromEntries(
-    MIDI_AUTOMATION_KEYS.map(key=>{
-      const k=String(key);
-      const range=getAutomationLaneRange(k);
-      return [k,{min:range.min,max:range.max}];
-    })
-  );
-  return{song:{name:S.songName,meta:{key:`${S.keyRoot} ${S.keyMode}`,time_signature:S.timeSig,bpm:S.bpm,tempo_curve:tempoCurve,automation_lane_ranges:automationLaneRanges},arrangement:buildArrangementJSON(),tracks}};
+  // Robot Events JSON is chord + pluck only (no Tone Master midi_fx track).
+  return{song:{name:S.songName,meta:{key:`${S.keyRoot} ${S.keyMode}`,time_signature:S.timeSig,bpm:S.bpm,tempo_curve:tempoCurve},arrangement:buildArrangementJSON(),tracks}};
 }
 
 function hlJSON(s){
@@ -407,13 +393,10 @@ function buildUploadJSON(){
         if(track.type==='chord'){
           return {chord:ev.chord,timestamp:toTimestamp(beat)};
         }
-        if(track.type==='midi'){
-          return {address:ev.address,args:ev.args,interp:ev.interp,timestamp:toTimestamp(beat)};
-        }
         return ev;
       });
     return {...track,events};
-  });
+  }).filter(track=>track.type==='chord'||track.type==='pluck'||track.type==='harmonic');
 
   const tempoCurve=(full.song.meta?.tempo_curve||[])
     .filter(point=>Number.isFinite(parseFloat(point?.time))&&Number.isFinite(parseFloat(point?.bpm)))
@@ -654,8 +637,6 @@ function importMidiFromArrayBuffer(buffer,fileName='Imported.mid'){
   });
 
   const rawImportedNotes=[];
-  const midiEvents=[];
-
   for(const track of midi.tracks||[]){
     for(const note of track.notes||[]){
       const startTick=Math.max(0,parseFloat(note.ticks)||0);
@@ -667,30 +648,6 @@ function importMidiFromArrayBuffer(buffer,fileName='Imported.mid'){
         durationTicks,
         velocity:Math.max(0,Math.min(1,parseFloat(note.velocity)||0.8)),
       });
-    }
-
-    const ccMap=track.controlChanges||{};
-    for(const key of Object.keys(ccMap)){
-      const events=ccMap[key]||[];
-      for(const ccEvent of events){
-        const cc=parseInt(ccEvent.number,10);
-        if(!Number.isFinite(cc))continue;
-        const beat=ticksToUiBeat(ccEvent.ticks,importedDenominator,midi.header?.ppq||480);
-        const value=clamp(Math.round((parseFloat(ccEvent.value)||0)*127),0,127);
-        maybePushMidiFxEvent(midiEvents,beat,'/cc',[cc,value],1);
-      }
-    }
-
-    for(const pitchEvent of track.pitchBends||[]){
-      const beat=ticksToUiBeat(pitchEvent.ticks,importedDenominator,midi.header?.ppq||480);
-      maybePushMidiFxEvent(midiEvents,beat,'/pitch',[parseFloat(pitchEvent.value)||0],0);
-    }
-
-    for(const programEvent of track.programChanges||[]){
-      const beat=ticksToUiBeat(programEvent.ticks,importedDenominator,midi.header?.ppq||480);
-      const program=parseInt(programEvent.number,10);
-      if(!Number.isFinite(program))continue;
-      maybePushMidiFxEvent(midiEvents,beat,'/program',[program],0);
     }
   }
 
@@ -718,9 +675,6 @@ function importMidiFromArrayBuffer(buffer,fileName='Imported.mid'){
   const tracks=[];
   if(pluckEvents.length){
     tracks.push({name:'pluck_main',type:'pluck',events:pluckEvents});
-  }
-  if(midiEvents.length){
-    tracks.push({name:'midi_fx',type:'midi',events:midiEvents});
   }
 
   loadJSON({song:{
@@ -1112,28 +1066,9 @@ function loadJSON(data){
         });
       } else if(tr.type==='chord'){
         S.chord.push({id:S.nextId++,chord:ev.chord||'Em',beat:hasBeat?ev.beat:beatLabel(b)});
-      } else if(tr.type==='midi'){
-        const address=ev.address||'/cc';
-        const args=Array.isArray(ev.args)?ev.args:[];
-        const cc=args.length?parseInt(args[0],10):NaN;
-        const value=args.length>1?parseFloat(args[1]):0;
-        if(address==='/cc'&&MIDI_AUTOMATION_CCS.includes(cc)){
-          upsertMidiCurvePoint(cc,b,clamp(Math.round(Number.isFinite(value)?value:0),0,127));
-        } else {
-          S.midi.push({id:S.nextId++,address,args,interp:ev.interp??0,beat:hasBeat?ev.beat:beatLabel(b)});
-        }
       }
+      // Legacy type:"midi" (Tone Master FX) tracks are ignored.
     });
-  });
-  // Keep one /cc event per controller per beat in general MIDI lane.
-  const seenCCBeats=new Set();
-  S.midi=S.midi.filter(ev=>{
-    const cc=midiCCFromEvent(ev);
-    if(cc===null)return true;
-    const key=`${cc}@${trimBeatNumber(parseBeat(ev.beat)).toFixed(4)}`;
-    if(seenCCBeats.has(key))return false;
-    seenCCBeats.add(key);
-    return true;
   });
   const m=bpm();
   if(Array.isArray(song.meta?.tempo_curve)){

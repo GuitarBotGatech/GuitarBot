@@ -1,7 +1,6 @@
 """Plan guitar arrangements and send trajectories to OpenCR.
 
-This module is the JSON → trajectory path used by the HTTP server.
-It does not speak OSC or drive Tone Master MIDI.
+Play path: UI JSON → notation Events → planner rows → GuitarBotParser.
 """
 
 from __future__ import annotations
@@ -14,46 +13,16 @@ import numpy as np
 import RobotController
 import tune as tu
 from GuitarBotParser import GuitarBotParser
-from parsing.song_arrangement import SongArrangement
+from notation.events import SongArrangement
 
 UNPRESS_POINTS = 400
 HOME_POINTS = 200
 NUM_MOTORS = 18
 
 
-def _as_song_dict(song_dict: dict[str, Any]) -> dict[str, Any]:
-    if not isinstance(song_dict, dict):
-        raise ValueError("arrangement must be a JSON object")
-    if "song" not in song_dict:
-        raise ValueError("arrangement must contain a 'song' object")
-    return song_dict
-
-
-def _last_pluck_end(pluck_rows: list[list[Any]]) -> float:
-    last_end = 0.0
-    for row in pluck_rows:
-        if not isinstance(row, (list, tuple)) or len(row) < 2:
-            continue
-        try:
-            timestamp = float(row[-1])
-            duration = max(0.0, float(row[1]))
-        except (TypeError, ValueError):
-            continue
-        last_end = max(last_end, max(0.0, timestamp) + duration)
-    return last_end
-
-
 def _robot_payloads(song_dict: dict[str, Any]) -> tuple[list[list[Any]], list[list[Any]]]:
-    """Return (chords, pluck) rows, ignoring any /Midi track."""
-    arrangement = SongArrangement.from_dict(_as_song_dict(song_dict))
-    payloads = arrangement.render_osc_payloads()
-    chords = list(payloads.get("/Chords") or [])
-    pluck = list(payloads.get("/Pluck") or [])
-    if not pluck:
-        raise ValueError("arrangement has no pluck events")
-    if not chords:
-        chords = [["On", _last_pluck_end(pluck) + 1.0]]
-    return chords, pluck
+    """UI JSON → Events → (chords, pluck) rows for GuitarBotParser."""
+    return SongArrangement.from_dict(song_dict).to_planner_rows()
 
 
 def build_reset_trajectory(

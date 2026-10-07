@@ -32,10 +32,8 @@ function render(){
     drawMidiLane(); drawTempoPointOverlay();
   } else {
     drawSlideLinks();
-    if(S.spectrogramVisible) drawSpectrogram();
     drawNotes();
   }
-  if(S.noteAnalysis && Object.keys(S.noteAnalysis).length) drawNoteAnalysisOverlay();
   drawPlayhead(); drawSelectionBox();
 }
 

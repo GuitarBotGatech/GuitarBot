@@ -155,7 +155,6 @@ function openInspMulti(events){
 
   document.getElementById('i-trem').classList.toggle('on',anyTrem);
   document.getElementById('i-trem').classList.toggle('mixed',anyTrem&&!allTrem);
-  document.getElementById('i-analysis-row').style.display='none';
   document.getElementById('i-del-btn').textContent='Delete Selected';
 }
 
