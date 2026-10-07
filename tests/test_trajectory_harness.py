@@ -3,10 +3,10 @@ import copy
 import numpy as np
 import pytest
 
-import tune as tu
-from GuitarBotParser import GuitarBotParser
-from pluck_message_to_json import pluck_message_to_song_dict
-from trajectory_harness import (
+from tuning import tune as tu
+from control.plan import GuitarBotParser
+from notation.Songs.legacy.pluck_message_to_json import pluck_message_to_song_dict
+from control.debug.trajectory_harness import (
     PayloadFidelityAnalyzer,
     TremoloReadinessAnalyzer,
     PlannerPayload,

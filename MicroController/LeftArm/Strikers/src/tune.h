@@ -1,10 +1,10 @@
 #ifndef TUNE_H
 #define TUNE_H
 
-// Auto-generated from tune.py — DO NOT EDIT BY HAND
-// Run gen_tune_h.py or tune.py to regenerate.
+// Auto-generated from tuning/tune.py — DO NOT EDIT BY HAND
+// Run: python -m tuning.gen_tune_h  (or python -m tuning.tune)
 
-const float start_state_PICK[6] = {-11.0f, 10.5f, -10.5f, 9.5f, 8.6f, -6.0f};
+const float start_state_PICK[6] = {-6.0f, 4.0f, -3.5f, 6.0f, 4.0f, -5.0f};
 const int motor_id_PICK[6] = {13, 14, 15, 16, 17, 18};
 const int home_offset_SLIDE = 50000;
 const int home_offset_PRESS = -25;

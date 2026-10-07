@@ -11,10 +11,10 @@ from typing import Any, Protocol
 
 import numpy as np
 
-import tune as tu
-from GuitarBotParser import GuitarBotParser
-from parsing.song_arrangement import SongArrangement
-from pluck_message_to_json import load_pluck_message_from_python_file
+from tuning import tune as tu
+from control.plan import GuitarBotParser
+from notation.events import SongArrangement
+from notation.Songs.legacy.pluck_message_to_json import load_pluck_message_from_python_file
 
 
 @dataclass

@@ -1,5 +1,4 @@
 import numpy as np
-import parsing.guitar_cost.traj as traj
 import pandas as pd
 
 def find_lowest_cost_chord(current_fret_positions, filepath, chord_letter, chord_type):
@@ -31,6 +30,24 @@ def find_lowest_cost_chord(current_fret_positions, filepath, chord_letter, chord
     # print("Distance: ", dist)
     print("Easiest Frets: ", easiest_frets)
     return easiest_frets
+
+def interpWithBend(q0, qf, N, tb_cent=0.2):
+    nb = int(tb_cent * N)
+    a_2 = 0.5 * (qf - q0) / (nb * (N - nb))
+
+    curve = np.zeros(N, dtype=float)
+
+    for i in range(nb):
+        tmp = a_2 * pow(i, 2)
+        curve[i] = q0 + tmp
+        curve[N - i - 1] = qf - tmp
+
+    tmp = a_2 * pow(nb, 2)
+    qa = q0 + tmp
+    qb = qf - tmp
+    curve[nb: N - nb] = np.linspace(qa, qb, N - (2 * nb))
+
+    return curve
 
 def _get_chord_voicings_list(filepath, chord_letter, chord_type):
     df_chords = pd.read_csv(filepath)
@@ -75,7 +92,7 @@ def _calculate_cost(arr1, arr2, N = 25):
         x_values = np.linspace(0, 1, N)
         avg = (0 + N) / 2
 
-        out = traj.interpWithBend(y1, y2, 25, 0.2)
+        out = interpWithBend(y1, y2, 25, 0.2)
         costs = abs(np.gradient(out))
         y_value = np.interp(avg, x_values, costs)
 

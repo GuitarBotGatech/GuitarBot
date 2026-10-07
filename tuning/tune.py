@@ -2,6 +2,8 @@
 # Description: This file contains tunable parameters for the GuitarBotParser.
 # Adjust these variables to fine-tune the robot's performance, physical calibration, and musical expression.
 
+from pathlib import Path
+
 # ----------------------------------------------------------------------------
 # 1. Trajectory and Interpolation Parameters
 # ----------------------------------------------------------------------------
@@ -200,8 +202,9 @@ initial_point = [ #Bookmark
                  ]
 
 
-# Filepath for the chord voicing library.
-CHORD_LIBRARY_FILE = "Alternate_Chords.csv"
+# Filepath for the chord voicing library (under control/).
+_REPO_ROOT = Path(__file__).resolve().parent.parent
+CHORD_LIBRARY_FILE = str(_REPO_ROOT / "control" / "Alternate_Chords.csv")
 
 # ----------------------------------------------------------------------------
 # 6. Arduino/OpenCR firmware interop aliases (for header generation)
@@ -239,12 +242,11 @@ MM_TO_ENC_CONVERSION_FACTOR = MM_TO_ENCODER_CONVERSION_FACTOR
 
 if __name__ == "__main__":
     # When run directly, regenerate the firmware header from this module.
-    from pathlib import Path
-    from gen_tune_h import generate_tune_h
+    from tuning.gen_tune_h import generate_tune_h
 
     out = generate_tune_h(
         tune_py_path=Path(__file__),
-        header_out_path=Path(__file__).parent / "MicroController/LeftArm/Strikers/src/tune.h",
+        header_out_path=_REPO_ROOT / "MicroController/LeftArm/Strikers/src/tune.h",
     )
     print(f"Regenerated header at: {out}")
 

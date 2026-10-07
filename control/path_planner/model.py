@@ -6,7 +6,7 @@ on string ranges and fret counts.
 from __future__ import annotations
 from dataclasses import dataclass
 from typing import Optional
-import tune as tu
+from tuning import tune as tu
 
 # Build string model from tune.py
 _RANGES = tu.STRING_MIDI_RANGES          # list of (low, high, direction)

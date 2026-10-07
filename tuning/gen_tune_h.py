@@ -1,8 +1,9 @@
 """
-Generate MicroController/LeftArm/Strikers/src/tune.h from tune.py values.
+Generate MicroController/LeftArm/Strikers/src/tune.h from tuning/tune.py values.
 
 Usage:
-  - python gen_tune_h.py   # runs generate_tune_h() with defaults
+  - python -m tuning.gen_tune_h
+  - python -m tuning.tune
 
 This keeps Arduino firmware constants in sync with the Python config without
 needing runtime JSON or filesystems on the board.
@@ -13,9 +14,12 @@ import importlib.util
 from pathlib import Path
 from typing import Any, Iterable
 
-ROOT = Path(__file__).resolve().parent
-DEFAULT_TUNE_PY = ROOT / "tune.py"
-DEFAULT_HEADER_OUT = ROOT / "MicroController" / "LeftArm" / "Strikers" / "src" / "tune.h"
+_TUNING_DIR = Path(__file__).resolve().parent
+_REPO_ROOT = _TUNING_DIR.parent
+DEFAULT_TUNE_PY = _TUNING_DIR / "tune.py"
+DEFAULT_HEADER_OUT = (
+    _REPO_ROOT / "MicroController" / "LeftArm" / "Strikers" / "src" / "tune.h"
+)
 
 
 def _load_module_from_path(path: Path):
@@ -37,12 +41,14 @@ def _fmt_scalar(val: Any, ctype: str) -> str:
 
 
 def _fmt_array(vals: Iterable[Any], ctype: str) -> str:
-    parts = ( _fmt_scalar(v, ctype) for v in vals )
+    parts = (_fmt_scalar(v, ctype) for v in vals)
     return "{" + ", ".join(parts) + "}"
 
 
-def generate_tune_h(tune_py_path: Path | str = DEFAULT_TUNE_PY,
-                    header_out_path: Path | str = DEFAULT_HEADER_OUT) -> Path:
+def generate_tune_h(
+    tune_py_path: Path | str = DEFAULT_TUNE_PY,
+    header_out_path: Path | str = DEFAULT_HEADER_OUT,
+) -> Path:
     """Generate the C header from tune.py variables and write it to disk.
 
     Returns the output path.
@@ -72,13 +78,12 @@ def generate_tune_h(tune_py_path: Path | str = DEFAULT_TUNE_PY,
     lines.append("#ifndef TUNE_H")
     lines.append("#define TUNE_H")
     lines.append("")
-    lines.append("// Auto-generated from tune.py — DO NOT EDIT BY HAND")
-    lines.append("// Run gen_tune_h.py or tune.py to regenerate.")
+    lines.append("// Auto-generated from tuning/tune.py — DO NOT EDIT BY HAND")
+    lines.append("// Run: python -m tuning.gen_tune_h  (or python -m tuning.tune)")
     lines.append("")
 
     for header_name, (py_name, ctype, is_array) in mapping.items():
         if not hasattr(mod, py_name):
-            # Skip missing values but leave a breadcrumb comment.
             lines.append(f"// Missing in tune.py: {py_name} -> {header_name}")
             continue
         val = getattr(mod, py_name)
@@ -91,7 +96,7 @@ def generate_tune_h(tune_py_path: Path | str = DEFAULT_TUNE_PY,
     lines.append("#endif // TUNE_H")
 
     header_out_path.parent.mkdir(parents=True, exist_ok=True)
-    header_out_path.write_text("\n".join(lines))
+    header_out_path.write_text("\n".join(lines) + "\n")
     return header_out_path
 
 

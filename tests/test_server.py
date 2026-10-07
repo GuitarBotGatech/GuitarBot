@@ -10,8 +10,8 @@ from pathlib import Path
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
-from playback import NUM_MOTORS, PlaybackSession
-from server import create_app
+from control.playback import NUM_MOTORS, PlaybackSession
+from web.server import create_app
 
 ROOT = Path(__file__).resolve().parent.parent
 SMOKE = ROOT / "Docs" / "song-format" / "smoke_on_the_water.json"
@@ -23,9 +23,9 @@ def _smoke() -> dict:
 
 def _client(monkeypatch, *, dry_run: bool, send_impl=None):
     if send_impl is None:
-        monkeypatch.setattr("playback.send_trajectory", lambda traj: None)
+        monkeypatch.setattr("control.playback.send_trajectory", lambda traj: None)
     else:
-        monkeypatch.setattr("playback.send_trajectory", send_impl)
+        monkeypatch.setattr("control.playback.send_trajectory", send_impl)
     session = PlaybackSession()
     app = create_app(dry_run=dry_run, session=session)
     app.config["TESTING"] = True
@@ -45,7 +45,7 @@ def test_health():
 
 def test_play_dry_run_returns_shape_and_does_not_send(monkeypatch):
     called = []
-    monkeypatch.setattr("playback.send_trajectory", lambda traj: called.append(traj))
+    monkeypatch.setattr("control.playback.send_trajectory", lambda traj: called.append(traj))
     session = PlaybackSession()
     client = create_app(dry_run=True, session=session).test_client()
     resp = client.post("/play", json=_smoke())

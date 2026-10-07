@@ -1,6 +1,6 @@
 import pytest
 
-from pluck_message_to_json import pluck_message_to_song_dict
+from notation.Songs.legacy.pluck_message_to_json import pluck_message_to_song_dict
 
 
 def test_converts_five_field_rows_and_sorts_by_timestamp():

@@ -3,11 +3,16 @@
 
 import argparse
 
-from server import main as server_main
+from web.server import main as server_main
 
 
 def main() -> None:
     parser = argparse.ArgumentParser(description="Launch the GuitarBot stack")
+    parser.add_argument(
+        "--config",
+        default=None,
+        help="Interpretation config YAML (default: configs/default.yaml)",
+    )
     parser.add_argument(
         "--no-browser",
         action="store_true",
@@ -27,6 +32,8 @@ def main() -> None:
     args = parser.parse_args()
 
     argv = ["--port", str(args.port)]
+    if args.config:
+        argv += ["--config", args.config]
     if args.no_browser:
         argv.append("--no-browser")
     if args.experimental_traj:

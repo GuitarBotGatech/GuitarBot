@@ -14,11 +14,11 @@
 
 
 Separation:
-notation/     — events.py Events document (UI JSON); MIDI/MusicXML later
-configs/      — interpretation defaults (pluck speed/slide, later planner/tune)
-web/          — UI + server.py
-control/      — (later) plan.py + send.py + playback orchestration
-tuning/       — (later) calibration helpers, gen_tune_h
+notation/     — events.py; Songs/ (+ legacy pluck_message_to_json); MIDI/MusicXML later
+configs/      — interpretation defaults; launch.py --config (done)
+web/          — UI + server.py (done)
+control/      — plan.py + send.py + playback.py; debug/trajectory_harness (done)
+tuning/       — tune.py + gen_tune_h (done)
 MicroController/ — firmware (unchanged)
 launch.py     — select config, run server
 test.py       — (later) software suite + optional robot tuning

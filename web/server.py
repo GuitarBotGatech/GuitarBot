@@ -11,11 +11,11 @@ from pathlib import Path
 
 from flask import Flask, jsonify, request, send_from_directory
 
-import tune as tu
-from playback import PlaybackSession, get_session
+from tuning import tune as tu
+from control.playback import PlaybackSession, get_session
+from notation.events import load_config
 
-ROOT = Path(__file__).resolve().parent
-WEB_DIR = ROOT / "web"
+WEB_DIR = Path(__file__).resolve().parent
 DEFAULT_PORT = 8000
 
 
@@ -39,7 +39,7 @@ def create_app(
 
     def _send_in_background(traj) -> None:
         try:
-            from playback import send_trajectory
+            from control.playback import send_trajectory
 
             send_trajectory(traj)
         except Exception:
@@ -160,6 +160,11 @@ def _parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         action="store_true",
         help="Do not open the web UI in a browser tab",
     )
+    parser.add_argument(
+        "--config",
+        default=None,
+        help="Interpretation config YAML (default: configs/default.yaml)",
+    )
     return parser.parse_args(argv)
 
 
@@ -169,12 +174,14 @@ def main(argv: list[str] | None = None) -> None:
     tu.USE_EXPERIMENTAL_TRAJ = bool(args.experimental_traj)
     tu.graph = False
 
-    app = create_app(dry_run=dry_run)
+    config = load_config(args.config)
+    app = create_app(dry_run=dry_run, session=PlaybackSession(config=config))
     url = f"http://{args.host}:{args.port}/index.html"
     print(f"GuitarBot server on {url}")
     print(f"  POST /play   arrangement JSON")
     print(f"  POST /reset  home motors")
     print(f"  dry_run={dry_run} experimental_traj={tu.USE_EXPERIMENTAL_TRAJ}")
+    print(f"  config={args.config or 'configs/default.yaml'}")
 
     if not args.no_browser:
         threading.Timer(1.0, webbrowser.open, args=(url,)).start()

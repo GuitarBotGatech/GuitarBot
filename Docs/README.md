@@ -28,7 +28,7 @@ Run strikers.io in Arduino IDE by uploading to the OpenCR board, turning on the 
 You're all set! Start the GuitarBot UI and play/reset server with `python launch.py` (add `--dry-run` to plan without sending UDP to the robot). Legacy OSC scripts **OSC_Message_Send.py** and **OSC_Message_Receiver.py** remain available for RL and other non-UI control.
 
 ### Parsers
-**GuitarBotParser.py** handles pluck and chord messages for longer form song trajectories.
+**control/plan.py** (`GuitarBotParser`) handles pluck and chord messages for longer form song trajectories.
 
 **BothHandsParser.py** is designed for fine control of single-note events, i.e. for dataset generation and machine learning. 
 
@@ -48,7 +48,7 @@ The OSC message types are reported in the terminal by running **OSC_Message_Rece
 #### **Trajectory Generation**
 - **Robust**: Handle None returns from interpolation functions gracefully
 - **Tested**: Run tests on trajectories to validate parsing numerically before running on the robot
-- **Calibration**: Use `tune.py` values for motor directions, positions, and conversions
+- **Calibration**: Use `tuning/tune.py` values for motor directions, positions, and conversions
 #### **MIDI Integration** 
 - **Flexible**: Support for full MIDI note range (40-74) across 6 strings
 - **Audio Effects** Automate MIDI CC directly from web interface

@@ -13,7 +13,7 @@ import pytest
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
-from playback import NUM_MOTORS, PlaybackSession, play_arrangement, reset
+from control.playback import NUM_MOTORS, PlaybackSession, play_arrangement, reset
 
 ROOT = Path(__file__).resolve().parent.parent
 EXAMPLE = ROOT / "Docs" / "song-format" / "example.json"
@@ -55,20 +55,20 @@ def test_legacy_midi_track_is_ignored():
 
 def test_play_arrangement_send_false_does_not_call_robot(monkeypatch):
     called = []
-    monkeypatch.setattr("playback.send_trajectory", lambda traj: called.append(traj))
+    monkeypatch.setattr("control.playback.send_trajectory", lambda traj: called.append(traj))
     play_arrangement(_load(SMOKE), send=False, session=PlaybackSession())
     assert called == []
 
 
 def test_play_arrangement_send_true_calls_robot(monkeypatch):
     called = []
-    monkeypatch.setattr("playback.send_trajectory", lambda traj: called.append(traj.shape))
+    monkeypatch.setattr("control.playback.send_trajectory", lambda traj: called.append(traj.shape))
     traj = play_arrangement(_load(SMOKE), send=True, session=PlaybackSession())
     assert called == [traj.shape]
 
 
 def test_reset_returns_home_trajectory_and_restores_parser_state(monkeypatch):
-    monkeypatch.setattr("playback.send_trajectory", lambda traj: None)
+    monkeypatch.setattr("control.playback.send_trajectory", lambda traj: None)
     session = PlaybackSession()
     play_arrangement(_load(SMOKE), send=False, session=session)
 

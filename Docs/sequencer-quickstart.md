@@ -45,7 +45,7 @@ The UI is at [http://127.0.0.1:8000/](http://127.0.0.1:8000/).
 
 Equivalent to `python launch.py --no-browser`:
 ```
-python server.py --no-browser
+python launch.py --no-browser
 ```
 
 Then open [http://127.0.0.1:8000/](http://127.0.0.1:8000/). You will be prompted to start a new project, open an example, or import a JSON/MIDI file.

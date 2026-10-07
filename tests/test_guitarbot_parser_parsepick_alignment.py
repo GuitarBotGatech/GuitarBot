@@ -4,8 +4,8 @@ import numpy as np
 
 import pytest
 
-import tune as tu
-from GuitarBotParser import GuitarBotParser
+from tuning import tune as tu
+from control.plan import GuitarBotParser
 
 
 def test_parse_pick_midi_keeps_slide_toggles_aligned_when_event_skipped():

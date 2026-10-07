@@ -2,7 +2,7 @@
 
 Usage inside GuitarBotParser:
 
-    from path_planner import plan_strings
+    from control.path_planner import plan_strings
 
     picks = plan_strings(picks, initial_frets)
     # picks is now all 6-tuples with string_index filled in

@@ -1,13 +1,13 @@
 import numpy as np
 import matplotlib.pyplot as plt
 import math
-from parsing.chord_selector import find_lowest_cost_chord
+from control.chord_selector import find_lowest_cost_chord
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 import copy
 import pandas as pd
-import tune as tu
-from path_planner import plan_strings
+from tuning import tune as tu
+from control.path_planner import plan_strings
 
 
 class GuitarBotParser:

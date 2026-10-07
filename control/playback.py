@@ -1,6 +1,6 @@
 """Plan guitar arrangements and send trajectories to OpenCR.
 
-Play path: UI JSON → notation Events → planner rows → GuitarBotParser.
+Play path: UI JSON → notation Events → planner rows → plan → send.
 """
 
 from __future__ import annotations
@@ -10,9 +10,9 @@ from typing import Any
 
 import numpy as np
 
-import RobotController
-import tune as tu
-from GuitarBotParser import GuitarBotParser
+from tuning import tune as tu
+from control import send
+from control.plan import GuitarBotParser
 from notation.events import SongArrangement
 
 UNPRESS_POINTS = 400
@@ -20,9 +20,12 @@ HOME_POINTS = 200
 NUM_MOTORS = 18
 
 
-def _robot_payloads(song_dict: dict[str, Any]) -> tuple[list[list[Any]], list[list[Any]]]:
+def _robot_payloads(
+    song_dict: dict[str, Any],
+    config: dict[str, Any] | None = None,
+) -> tuple[list[list[Any]], list[list[Any]]]:
     """UI JSON → Events → (chords, pluck) rows for GuitarBotParser."""
-    return SongArrangement.from_dict(song_dict).to_planner_rows()
+    return SongArrangement.from_dict(song_dict, config=config).to_planner_rows()
 
 
 def build_reset_trajectory(
@@ -65,17 +68,22 @@ def build_reset_trajectory(
 
 
 def send_trajectory(traj: np.ndarray) -> None:
-    RobotController.main(traj)
+    send.main(traj)
 
 
 class PlaybackSession:
     """Parser + last motor pose shared across successive play/reset calls."""
 
-    def __init__(self, initial_point: list[float] | None = None) -> None:
+    def __init__(
+        self,
+        initial_point: list[float] | None = None,
+        config: dict[str, Any] | None = None,
+    ) -> None:
         tu.graph = False
         start = list(tu.initial_point if initial_point is None else initial_point)
         self.parser = GuitarBotParser(initial_point=start, graph=False)
         self.last_position = np.asarray(start, dtype=float)
+        self.config = config
         self.busy_lock = threading.Lock()
 
     def try_acquire(self) -> bool:
@@ -92,7 +100,7 @@ class PlaybackSession:
         tu.graph = False
         active_parser = parser if parser is not None else self.parser
         active_parser.graph = False
-        chords, pluck = _robot_payloads(song_dict)
+        chords, pluck = _robot_payloads(song_dict, self.config)
         traj = active_parser.parseAllMIDI(chords, pluck, midi_events=None)
         if traj.size == 0:
             raise ValueError("planner returned an empty trajectory")
