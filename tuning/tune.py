@@ -61,16 +61,24 @@ LH_PRESSER_SLIDE_PRESS_POS = 200
 # This is the maximum prep window; semitone-scaled moves can use less.
 LH_PREP_TIME_BEFORE_PICK = 0.450
 
-# Toggle for experimental LH prep timing (variable time step for close vs far notes).
+# Toggle for experimental LH prep timing.
 # When False, a uniform prep time is used for all slider moves.
+# When True, LH slides gap-fill from previous note end → next pluck using
+# physics limits (LH_SLIDER_V_MAX_MM_S / LH_SLIDER_A_MAX_MM_S2); impossible
+# moves are rejected by the path planner instead of being slammed.
 USE_EXPERIMENTAL_TRAJ = False
 
 # Minimum prep time for very small/zero-distance fret transitions.
 LH_PREP_TIME_MIN = 0.1
 
 # Minimum time (seconds) allocated to the slide phase when experimental timing is enabled.
-# The total LH prep time will be bumped as needed to guarantee this slide duration.
+# Used by the legacy semitone-scaled experimental path; gap-fill mode uses physics mins.
 LH_SLIDE_MIN_TIME = 0.1
+
+# Experimental gap-fill slider physics (mm). Calibrate on hardware — Contemplations
+# 8-fret jumps are the acceptance case. Decel uses the same magnitude as accel.
+LH_SLIDER_V_MAX_MM_S = 250.0
+LH_SLIDER_A_MAX_MM_S2 = 600.0
 
 # Slow-slide tuning when a string is idle (no nearby pluck events).
 LH_SLOW_SLIDE_IDLE_WINDOW = 20.0

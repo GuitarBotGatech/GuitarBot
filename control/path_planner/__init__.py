@@ -62,10 +62,7 @@ def plan_strings(
             forced_string=forced,
         ))
 
-    # Seed planner with known fret positions
-    # (A* starts from init_frets internally via (0,)*NUM_STRINGS by default;
-    #  we prepend a synthetic "current state" note to warm it up)
-    assignments = plan(notes)
+    assignments = plan(notes, initial_frets=initial_frets)
 
     # Map assignments back: keyed by note_idx
     assign_map = {a.note_idx: a for a in assignments}

@@ -8,6 +8,12 @@ import copy
 import pandas as pd
 from tuning import tune as tu
 from control.path_planner import plan_strings
+from control.slider_motion import (
+    distance_mm,
+    min_finger_move_time_s,
+    phase_point_counts,
+    trapezoid_positions,
+)
 
 
 class GuitarBotParser:
@@ -272,7 +278,9 @@ class GuitarBotParser:
 
         # Use the filtered list for the rest of the function
         lh_pick_pos = filtered_lh_pick_pos
-        if lh_pick_pos:
+        # Idle slow-slide stretch is for default mode only; experimental gap-fill
+        # already uses the full free window between note end and next pluck.
+        if lh_pick_pos and not getattr(tu, "USE_EXPERIMENTAL_TRAJ", False):
             idle_window = float(getattr(tu, "LH_SLOW_SLIDE_IDLE_WINDOW", 0.0))
             slow_min = float(getattr(tu, "LH_SLOW_SLIDE_TIME_MIN", 0.0))
             slow_max = float(getattr(tu, "LH_SLOW_SLIDE_TIME_MAX", 0.0))
@@ -426,7 +434,11 @@ class GuitarBotParser:
             elif event['type'] == 'note':
                 slider_points, presser_points = [], []
                 prep_time_s = float(event.get('prep_time', self.get_lh_note_movement_duration()))
-                phase1_points, phase2_points, phase3_points = split_note_phase_points(prep_time_s)
+                experimental = bool(getattr(tu, "USE_EXPERIMENTAL_TRAJ", False))
+                if experimental:
+                    phase1_points, phase2_points, phase3_points = phase_point_counts(prep_time_s)
+                else:
+                    phase1_points, phase2_points, phase3_points = split_note_phase_points(prep_time_s)
                 motor_index = event['motor_id']
                 slider_motor_ID, presser_motor_ID = motor_index, motor_index + 6
                 q0_slider_motor, q0_presser_motor = current_encoder_position[slider_motor_ID], current_encoder_position[
@@ -434,19 +446,52 @@ class GuitarBotParser:
                 qf_slider = int(event['position'])
                 qf1_presser = tu.LH_PRESSER_UNPRESSED_POS
                 qf2_presser = tu.LH_PRESSER_PRESSED_POS
-                # print((event['position']))
-                # print(current_encoder_position[slider_motor_ID])
-                # print("----------------")
                 if int(event['position']) == -1:
                     qf_slider, qf2_presser = q0_slider_motor, tu.LH_PRESSER_UNPRESSED_POS
                 if (int(event['position'])) == current_encoder_position[slider_motor_ID] and int(event['position']) != -1:
                     qf_slider, qf1_presser = q0_slider_motor, tu.LH_PRESSER_PRESSED_POS
 
+                same_as_prev = (
+                    event['type'] == prev_type
+                    and prev_position == event['position']
+                    and prev_motor_id == event['motor_id']
+                )
 
-                if prev_type == 'chord' or not (
-                        event['type'] == prev_type and prev_position == event['position'] and prev_motor_id == event[
-                    'motor_id']):
-                    if event['slide_toggle']:
+                if prev_type == 'chord' or not same_as_prev:
+                    if experimental:
+                        # Fixed unpress / physics slide / fixed press (no TRAJECTORY_BLEND).
+                        slide_hold = (
+                            tu.LH_PRESSER_SLIDE_PRESS_POS
+                            if event['slide_toggle']
+                            else qf1_presser
+                        )
+                        s1 = self.interp_with_blend(
+                            q0_slider_motor, q0_slider_motor, phase1_points, 0.0
+                        )
+                        p1 = self.interp_with_blend(
+                            q0_presser_motor, slide_hold, phase1_points, tb_cent
+                        )
+                        slider_points.extend(s1)
+                        presser_points.extend(p1)
+
+                        s2 = trapezoid_positions(
+                            q0_slider_motor, qf_slider, phase2_points
+                        )
+                        p2 = self.interp_with_blend(
+                            slide_hold, slide_hold, phase2_points, 0.0
+                        )
+                        slider_points.extend(s2)
+                        presser_points.extend(p2)
+
+                        s3 = self.interp_with_blend(
+                            qf_slider, qf_slider, phase3_points, 0.0
+                        )
+                        p3 = self.interp_with_blend(
+                            slide_hold, qf2_presser, phase3_points, tb_cent
+                        )
+                        slider_points.extend(s3)
+                        presser_points.extend(p3)
+                    elif event['slide_toggle']:
                         s1 = self.interp_with_blend(q0_slider_motor, q0_slider_motor, phase1_points, tb_cent)
                         p1 = self.interp_with_blend(q0_presser_motor, tu.LH_PRESSER_SLIDE_PRESS_POS, phase1_points,
                                                     tb_cent)
@@ -483,8 +528,11 @@ class GuitarBotParser:
                         presser_points.extend(p3)
                 else:
                     total_points = max(phase1_points + phase2_points + phase3_points, 1)
-                    s3 = self.interp_with_blend(q0_slider_motor, qf_slider, total_points,
-                                                tb_cent)
+                    if experimental:
+                        s3 = trapezoid_positions(q0_slider_motor, qf_slider, total_points)
+                    else:
+                        s3 = self.interp_with_blend(q0_slider_motor, qf_slider, total_points,
+                                                    tb_cent)
                     p3 = self.interp_with_blend(q0_presser_motor, qf2_presser, total_points,
                                                 tb_cent)
                     slider_points.extend(s3)
@@ -686,58 +734,65 @@ class GuitarBotParser:
         return max(0, math.floor(duration_value / single_pick_duration))
 
     def _lh_prep_time_for_event(self, prev_note, note, duration, slide_toggle, picker_id=None):
+        """Minimum LH motion duration required before a pluck.
+
+        Default mode: uniform ``LH_PREP_TIME_BEFORE_PICK``.
+        Experimental gap-fill: physics minimum (unpress + slide + press) for the
+        fret jump; actual scheduled prep may be longer (uses the full gap).
+        """
         max_prep = float(tu.LH_PREP_TIME_BEFORE_PICK)
         if not getattr(tu, "USE_EXPERIMENTAL_TRAJ", False):
             return max_prep
-        min_prep = float(getattr(tu, "LH_PREP_TIME_MIN", max_prep * 0.2))
-        min_prep = max(0.0, min(min_prep, max_prep))
-        max_delta = int(getattr(tu, "LH_PREP_MAX_SEMITONE_DELTA", 9))
-        max_delta = max(1, max_delta)
-        effective_max_prep = max_prep
 
         if note <= 5:
             return max_prep
 
+        if picker_id is None:
+            return float(getattr(tu, "LH_PREP_TIME_MIN", 0.1))
+
+        target_fret = self._picker_note_to_fret(note, picker_id)
+        if target_fret is None:
+            return max_prep
+
+        source_fret = (
+            self._picker_note_to_fret(prev_note, picker_id)
+            if prev_note is not None
+            else 0
+        )
+        if source_fret is None:
+            source_fret = 0
+
         same_note = prev_note is not None and int(prev_note) == int(note)
-        is_tremolo = float(duration) >= float(tu.TREMOLO_DURATION_THRESHOLD)
-        slide_enabled = int(slide_toggle) == 1
+        if same_note and int(slide_toggle) != 1:
+            return float(getattr(tu, "LH_PREP_TIME_MIN", 0.1))
 
-        if prev_note is None:
-            # First fretted note after rest starts from baseline prep.
-            motion_time = max_prep
-        elif same_note and not slide_enabled:
-            motion_time = min_prep
-        else:
-            semitone_delta = abs(int(note) - int(prev_note))
-            ratio = min(1.0, float(semitone_delta) / float(max_delta))
-            motion_time = min_prep + (max_prep - min_prep) * ratio
+        return min_finger_move_time_s(distance_mm(source_fret, target_fret))
 
-            if slide_enabled:
-                # Sliding transitions benefit from a small extra buffer, still capped by max_prep.
-                motion_time += float(tu.TIME_STEP)
+    def _picker_ready_for_note(
+        self,
+        picker_id,
+        note,
+        duration,
+        slide_toggle,
+        timestamp,
+        last_notes,
+        active_pickers,
+        finger_free_at,
+    ):
+        """Whether ``picker_id`` can accept ``note`` at ``timestamp``."""
+        if last_notes[picker_id] == note and int(slide_toggle) != 1:
+            return True
 
-        if is_tremolo:
-            motion_time += float(tu.TIME_STEP)
-
-        if picker_id is not None and note > 5:
-            target_fret = self._picker_note_to_fret(note, picker_id)
-            source_fret = self._picker_note_to_fret(prev_note, picker_id) if prev_note is not None else None
-
-            near_edge = self._is_edge_fret(target_fret) or self._is_edge_fret(source_fret)
-            if near_edge:
-                edge_prep_bonus, edge_prep_cap = self._get_edge_prep_timing(max_prep)
-
-                # Add safety headroom whenever a move starts from or lands near a travel edge.
-                motion_time = max(motion_time, max_prep) + edge_prep_bonus
-                effective_max_prep = edge_prep_cap
-
-        min_slide_time = float(getattr(tu, "LH_SLIDE_MIN_TIME", 0.0))
-        if min_slide_time > 0.0:
-            min_total_time = max(min_prep, min_slide_time * 3.0)
-            motion_time = max(motion_time, min_total_time)
-            effective_max_prep = max(effective_max_prep, min_total_time)
-
-        return min(effective_max_prep, max(min_prep, motion_time))
+        prep_time = self._lh_prep_time_for_event(
+            last_notes[picker_id],
+            note,
+            duration,
+            slide_toggle,
+            picker_id=picker_id,
+        )
+        if getattr(tu, "USE_EXPERIMENTAL_TRAJ", False):
+            return float(timestamp) + 1e-9 >= float(finger_free_at[picker_id]) + float(prep_time)
+        return float(timestamp) - float(prep_time) + 1e-9 >= float(active_pickers[picker_id])
 
     def _preassign_strings(self, picks: list) -> list:
         """Run the A* path planner to fill in string_index for all unassigned picks.
@@ -781,6 +836,7 @@ class GuitarBotParser:
         slide_toggles = []
         string_ranges_tuples = [(r[0], r[1]) for r in tu.STRING_MIDI_RANGES]
         active_pickers = [-.5] * len(string_ranges_tuples)
+        finger_free_at = [-1e9] * len(string_ranges_tuples)
         last_notes = [None] * len(string_ranges_tuples)
 
         def _is_note_playable_on_picker(note_value, picker_id):
@@ -837,19 +893,25 @@ class GuitarBotParser:
             if duration < tu.TREMOLO_DURATION_THRESHOLD:
                 duration = tu.SHORT_NOTE_DEFAULT_DURATION
 
+            def _commit_pick(pickerID):
+                pick_events.append(["pick", [pickerID, note, duration, speed, timestamp]])
+                slide_toggles.append(slide_toggle)
+                active_pickers[pickerID] = timestamp
+                finger_free_at[pickerID] = float(timestamp) + float(duration)
+                last_notes[pickerID] = note
+
             if specified_string is not None:
                 pickerID = _resolve_specified_picker_id(note, specified_string)
                 if pickerID is not None:
-                    prep_time = self._lh_prep_time_for_event(
-                        last_notes[pickerID],
+                    picker_is_ready = self._picker_ready_for_note(
+                        pickerID,
                         note,
                         duration,
                         slide_toggle,
-                        picker_id=pickerID,
-                    )
-                    picker_is_ready = (
-                        last_notes[pickerID] == note
-                        or timestamp - prep_time >= active_pickers[pickerID]
+                        timestamp,
+                        last_notes,
+                        active_pickers,
+                        finger_free_at,
                     )
 
                     if explicit_override:
@@ -858,17 +920,10 @@ class GuitarBotParser:
                                 f"Warning: Specified picker {pickerID} busy for note {note} at {timestamp}. "
                                 "Honoring explicit string override."
                             )
-                        pick_events.append(["pick", [pickerID, note, duration, speed, timestamp]])
-                        slide_toggles.append(slide_toggle)
-                        active_pickers[pickerID] = timestamp
-                        last_notes[pickerID] = note
+                        _commit_pick(pickerID)
                         assigned = True
                     elif picker_is_ready:
-                        # Planner suggestion: keep existing availability checks.
-                        pick_events.append(["pick", [pickerID, note, duration, speed, timestamp]])
-                        slide_toggles.append(slide_toggle)
-                        active_pickers[pickerID] = timestamp
-                        last_notes[pickerID] = note
+                        _commit_pick(pickerID)
                         assigned = True
                     else:
                         print(
@@ -882,18 +937,17 @@ class GuitarBotParser:
             if not assigned:
                 for pickerID, (low, high) in enumerate(string_ranges_tuples):
                     if low <= note <= high:
-                        prep_time = self._lh_prep_time_for_event(
-                            last_notes[pickerID],
+                        if self._picker_ready_for_note(
+                            pickerID,
                             note,
                             duration,
                             slide_toggle,
-                            picker_id=pickerID,
-                        )
-                        if last_notes[pickerID] == note or timestamp - prep_time >= active_pickers[pickerID]:
-                            pick_events.append(["pick", [pickerID, note, duration, speed, timestamp]])
-                            slide_toggles.append(slide_toggle)
-                            active_pickers[pickerID] = timestamp
-                            last_notes[pickerID] = note
+                            timestamp,
+                            last_notes,
+                            active_pickers,
+                            finger_free_at,
+                        ):
+                            _commit_pick(pickerID)
                             assigned = True
                             break
 
@@ -973,7 +1027,10 @@ class GuitarBotParser:
         trajectory_array = np.full((num_rows, num_pickers), np.nan)
         trajectory_array[0, :] = initial_point_rh
         current_positions = list(initial_point_rh)
-        last_lh_note_by_picker = [None] * max(1, len(tu.PICKER_MOTOR_INFO))
+        n_pickers = max(1, len(tu.PICKER_MOTOR_INFO))
+        last_lh_note_by_picker = [None] * n_pickers
+        last_lh_end_by_picker = [None] * n_pickers
+        experimental = bool(getattr(tu, "USE_EXPERIMENTAL_TRAJ", False))
 
         for i, (event_data, timestamp) in enumerate(pick_events):
             motor_id, note, commanded_dest_pos, duration, speed = event_data
@@ -1025,16 +1082,35 @@ class GuitarBotParser:
                     s_dir = tu.STRING_MIDI_RANGES[motor_id][2]
                     lh_enc_val = ((tu.SLIDER_MM_PER_FRET[fret - 1] * 2048) / tu.MM_TO_ENCODER_CONVERSION_FACTOR + tu.SLIDER_ENCODER_OFFSET) * s_dir
                 prev_note = last_lh_note_by_picker[motor_id] if 0 <= motor_id < len(last_lh_note_by_picker) else None
-                prep_time = self._lh_prep_time_for_event(
+                t_min = self._lh_prep_time_for_event(
                     prev_note,
                     note,
                     duration,
                     slide_toggles[i],
                     picker_id=motor_id,
                 )
-                lh_pick_events.append([motor_id, lh_enc_val, slide_toggles[i], timestamp - prep_time, prep_time])
+                pluck_time = float(timestamp)
+                if experimental:
+                    prev_end = last_lh_end_by_picker[motor_id]
+                    # Gap-fill from previous note end (or t=0 for the first move).
+                    t_start = 0.0 if prev_end is None else float(prev_end)
+                    prep_time = pluck_time - t_start
+                    if prep_time + 1e-9 < t_min:
+                        print(
+                            f"Warning: LH gap-fill for picker {motor_id} at {pluck_time} "
+                            f"has prep {prep_time:.3f}s < min {t_min:.3f}s; skipping LH move."
+                        )
+                    else:
+                        lh_pick_events.append(
+                            [motor_id, lh_enc_val, slide_toggles[i], t_start, prep_time]
+                        )
+                else:
+                    lh_pick_events.append(
+                        [motor_id, lh_enc_val, slide_toggles[i], pluck_time - t_min, t_min]
+                    )
                 if 0 <= motor_id < len(last_lh_note_by_picker):
                     last_lh_note_by_picker[motor_id] = note
+                    last_lh_end_by_picker[motor_id] = pluck_time + float(duration)
 
         df = pd.DataFrame(trajectory_array)
         df.ffill(inplace=True)

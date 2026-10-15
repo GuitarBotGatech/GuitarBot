@@ -1,0 +1,10 @@
+X201 
+EPOS4 Micro 24/5 EtherCAT
+EPOS4 Evaluation Board Micro
+
+STM-5
+EPOS4 50/5 CAN -> picker motors
+
+EVENTEK KPS3010D -> set to 24v
+
+NAWEIsz NP3010H -> set to 12v
