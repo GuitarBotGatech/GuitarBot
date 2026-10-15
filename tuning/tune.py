@@ -159,12 +159,12 @@ SLIDER_MOTOR_DIRECTION = [-1, 1, 1, -1, -1, 1]
 # Key is the motor ID.
 
 PICKER_MOTOR_INFO = {
-    0: {'down_pluck_mm': -2.0, 'up_pluck_mm': -6, 'resolution': 1024}, # E
-    1: {'down_pluck_mm': 1, 'up_pluck_mm': 4, 'resolution': 2048}, # A
-    2: {'down_pluck_mm': -0.5, 'up_pluck_mm': -3.5, 'resolution': 2048}, # D
-    3: {'down_pluck_mm': 3, 'up_pluck_mm': 6, 'resolution': 1024}, # G
-    4: {'down_pluck_mm': 1, 'up_pluck_mm':4, 'resolution': 2048}, # B
-    5: {'down_pluck_mm': -2, 'up_pluck_mm': -5.0, 'resolution': 2048} # E
+    0: {'down_pluck_mm': -2.75, 'up_pluck_mm': -6, 'resolution': 1024}, # E
+    1: {'down_pluck_mm': 0.6, 'up_pluck_mm': 4.2, 'resolution': 2048}, # A
+    2: {'down_pluck_mm': -0.8, 'up_pluck_mm': -3.6, 'resolution': 2048}, # D
+    3: {'down_pluck_mm': 0.9, 'up_pluck_mm': 4.35, 'resolution': 1024}, # G
+    4: {'down_pluck_mm': -2, 'up_pluck_mm':-5, 'resolution': 2048}, # B
+    5: {'down_pluck_mm': 1.1, 'up_pluck_mm': 4, 'resolution': 2048} # E
 }
 
 # Logical string index → RH trajectory / CAN column index.
@@ -209,7 +209,7 @@ initial_point = [ #Bookmark
                  0, 0, 0, 0, 0, 0,
                  # Pressers
                  -650, -650, -650, -650, -650, -650, # Position, not Torque value
-                 # Pluckers (physical columns; B↔e remapped)
+                 # Pluckers (physical columns; B↔e remapped)120
                  _picker_start_encoder(PICKER_LOGICAL_TO_PHYSICAL[0]),
                  _picker_start_encoder(PICKER_LOGICAL_TO_PHYSICAL[1]),
                  _picker_start_encoder(PICKER_LOGICAL_TO_PHYSICAL[2]),
