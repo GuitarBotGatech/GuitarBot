@@ -72,7 +72,8 @@ const Synth={
     const freq=this.midiToFreq(note);
     const d=Math.max(0.05,durS);
     const amp=0.3+Math.min(1,Math.max(0,vel/127))*0.7;
-    const isTremolo=d>=TREMOLO_DURATION_THRESHOLD;
+    // Match hasTremolo(): long notes only tremolo when speed > 0.
+    const isTremolo=d>=TREMOLO_DURATION_THRESHOLD&&(Math.round(speed)||0)>0;
 
     // ── Determine slide start pitch ──────────────────────────────────────
     const strIdx=this._stringIndex(note);

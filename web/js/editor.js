@@ -285,7 +285,7 @@ function toggleTremoloForSelectedPluckEvents(){
   if(!longNotes.length)return false;
 
   const anyEnabled=longNotes.some(ev=>clampSpeed(ev.speed)>0);
-  const nextSpeed=anyEnabled?0:SPEED_DEFAULT;
+  const nextSpeed=anyEnabled?0:SPEED_TREMOLO_DEFAULT;
 
   for(const ev of longNotes){
     ev.speed=nextSpeed;
