@@ -158,12 +158,11 @@ def test_experimental_prep_is_physics_min(experimental_on):
     assert big == pytest.approx(min_finger_move_time_s(distance_mm(0, 8)))
 
 
-def test_experimental_late_starts_after_prev_note_ends(experimental_on):
+def test_experimental_gap_fills_from_prev_midi_end(experimental_on):
     parser = GuitarBotParser(initial_point=copy.deepcopy(tu.initial_point), graph=False)
     parser.use_path_planner = False
     # String 0 (low E open=40): open at t=2.0, then fret 3 at t=5.0 after a rest.
-    # Must not leave before first note ends (t=3.0); with spare rest, late-start
-    # so prep ≈ physics min (hold through the rest).
+    # Second move must start at first note-off (t=3.0) and fill the gap (prep=2.0).
     picks = [
         [40, 1.0, 6, 0, 0, 2.0],
         [43, 0.25, 6, 0, 0, 5.0],
@@ -173,12 +172,26 @@ def test_experimental_late_starts_after_prev_note_ends(experimental_on):
     _, lh_events = parser.interpPick(pick_pos, slides, copy.deepcopy(tu.initial_point))
     motor0 = [e for e in lh_events if e[0] == 0]
     assert len(motor0) >= 2
-    t_min = parser._lh_prep_time_for_event(40, 43, 0.25, 0, picker_id=0)
+    # First attack late-starts (no slide from t=0).
+    t_min_first = parser._lh_prep_time_for_event(None, 40, 1.0, 0, picker_id=0)
+    first = motor0[0]
+    assert float(first[3]) == pytest.approx(max(0.0, 2.0 - t_min_first))
+    assert float(first[4]) == pytest.approx(min(2.0, t_min_first))
     second = motor0[1]
-    t_start, prep = float(second[3]), float(second[4])
-    assert t_start >= 3.0 - 1e-9  # finished the previous note
-    assert t_start == pytest.approx(5.0 - t_min)
-    assert prep == pytest.approx(t_min)
+    assert float(second[3]) == pytest.approx(3.0)
+    assert float(second[4]) == pytest.approx(2.0)
+
+
+def test_experimental_first_attack_late_starts(experimental_on):
+    parser = GuitarBotParser(initial_point=copy.deepcopy(tu.initial_point), graph=False)
+    parser.use_path_planner = False
+    picks = [[48, 0.25, 6, 0, 0, 4.0]]
+    pick_pos, slides = parser.parsePickMIDI(picks)
+    _, lh_events = parser.interpPick(pick_pos, slides, copy.deepcopy(tu.initial_point))
+    assert len(lh_events) == 1
+    t_min = parser._lh_prep_time_for_event(None, 48, 0.25, 0, picker_id=0)
+    assert float(lh_events[0][3]) == pytest.approx(4.0 - t_min)
+    assert float(lh_events[0][4]) == pytest.approx(t_min)
 
 
 def test_experimental_skip_omits_pluck(experimental_on):
@@ -218,7 +231,7 @@ def test_experimental_no_lh_discontinuity_when_chord_overlaps_slide(experimental
     parser = GuitarBotParser(initial_point=copy.deepcopy(tu.initial_point), graph=False)
     parser.use_path_planner = False
 
-    # Pluck at 4.0 with large fret travel → late-start slide spans ~t_min before 4.0
+    # First attack at 4.0 late-starts; inject a chord mid-slide in that window.
     picks = [[48, 0.25, 6, 0, 0, 4.0]]
     pick_pos, slides = parser.parsePickMIDI(picks)
     assert pick_pos

@@ -281,7 +281,7 @@ class GuitarBotParser:
         # Use the filtered list for the rest of the function
         lh_pick_pos = filtered_lh_pick_pos
         # Idle slow-slide stretch is for default mode only; experimental mode
-        # late-starts after the previous note ends (hold through rests).
+        # gap-fills from previous MIDI note-off → next pluck.
         if lh_pick_pos and not getattr(tu, "USE_EXPERIMENTAL_TRAJ", False):
             idle_window = float(getattr(tu, "LH_SLOW_SLIDE_IDLE_WINDOW", 0.0))
             slow_min = float(getattr(tu, "LH_SLOW_SLIDE_TIME_MIN", 0.0))
@@ -772,8 +772,8 @@ class GuitarBotParser:
 
         Default mode: uniform ``LH_PREP_TIME_BEFORE_PICK``.
         Experimental mode: physics minimum (unpress + slide + press) for the
-        fret jump; the scheduler late-starts so prep is usually this minimum
-        (longer only when the previous note ends too close to the pluck).
+        fret jump; the scheduler gap-fills from previous note-off so prep is
+        often longer than this minimum (time-stretched slide).
         """
         max_prep = float(tu.LH_PREP_TIME_BEFORE_PICK)
         if not getattr(tu, "USE_EXPERIMENTAL_TRAJ", False):
@@ -1077,9 +1077,9 @@ class GuitarBotParser:
             note_end = pluck_time + float(duration)
 
             # Decide LH + whether this event may sound. Chord plucks (note 0-5) never
-            # move the slider. Experimental fretted notes: finish the previous note
-            # (no leave before its end), late-start the slide, and skip the pluck
-            # entirely when LH cannot arrive in time.
+            # move the slider. Experimental fretted notes: hold through previous MIDI
+            # duration, gap-fill from note-off → this pluck (first attack on a string
+            # late-starts). Skip the pluck when LH cannot arrive in time.
             do_pluck = True
             lh_event = None  # [motor_id, enc, slide, t_start, prep] or None
             lh_state_update = None  # (note, note_end) if fretting state advances
@@ -1114,8 +1114,6 @@ class GuitarBotParser:
                         max(float(prev_end) if prev_end is not None else note_end, note_end),
                     )
                 elif experimental:
-                    earliest_leave = 0.0 if prev_end is None else float(prev_end)
-                    gap = pluck_time - earliest_leave
                     t_phase = press_unpress_duration_s()
                     prev_fret = (
                         self._picker_note_to_fret(prev_note, motor_id)
@@ -1128,10 +1126,14 @@ class GuitarBotParser:
                         target_fret if target_fret is not None else 0,
                     )
                     t_slide_need = min_slide_time_s(slide_dist)
-                    # Late-start: hold through previous note (and any rest), move only
-                    # as early as needed to arrive by pluck — never before note-end.
-                    t_start = max(earliest_leave, pluck_time - float(t_min))
+                    if prev_end is None:
+                        # First attack on this string: late-start (do not slide from t=0).
+                        t_start = max(0.0, pluck_time - float(t_min))
+                    else:
+                        # Leave when the previous MIDI note ends; fill through this pluck.
+                        t_start = float(prev_end)
                     prep_time = pluck_time - t_start
+                    gap = prep_time
                     t_slide_have = max(0.0, prep_time - 2.0 * t_phase)
                     if (
                         gap + 1e-9 < float(t_min)
