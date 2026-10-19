@@ -280,8 +280,8 @@ class GuitarBotParser:
 
         # Use the filtered list for the rest of the function
         lh_pick_pos = filtered_lh_pick_pos
-        # Idle slow-slide stretch is for default mode only; experimental gap-fill
-        # already uses the full free window between note end and next pluck.
+        # Idle slow-slide stretch is for default mode only; experimental mode
+        # late-starts after the previous note ends (hold through rests).
         if lh_pick_pos and not getattr(tu, "USE_EXPERIMENTAL_TRAJ", False):
             idle_window = float(getattr(tu, "LH_SLOW_SLIDE_IDLE_WINDOW", 0.0))
             slow_min = float(getattr(tu, "LH_SLOW_SLIDE_TIME_MIN", 0.0))
@@ -771,8 +771,9 @@ class GuitarBotParser:
         """Minimum LH motion duration required before a pluck.
 
         Default mode: uniform ``LH_PREP_TIME_BEFORE_PICK``.
-        Experimental gap-fill: physics minimum (unpress + slide + press) for the
-        fret jump; actual scheduled prep may be longer (uses the full gap).
+        Experimental mode: physics minimum (unpress + slide + press) for the
+        fret jump; the scheduler late-starts so prep is usually this minimum
+        (longer only when the previous note ends too close to the pluck).
         """
         max_prep = float(tu.LH_PREP_TIME_BEFORE_PICK)
         if not getattr(tu, "USE_EXPERIMENTAL_TRAJ", False):
@@ -1072,42 +1073,17 @@ class GuitarBotParser:
             phys_id = tu.picker_physical_index(motor_id)
             start_index = int(timestamp / tu.TIME_STEP)
             is_pluck = duration < tu.TREMOLO_DURATION_THRESHOLD
+            pluck_time = float(timestamp)
+            note_end = pluck_time + float(duration)
 
-            start_pos = current_positions[phys_id]
-            info = tu.PICKER_MOTOR_INFO[motor_id]
-            res = info['resolution']
-            down_enc = (info['down_pluck_mm'] * res) / tu.MM_TO_ENCODER_CONVERSION_FACTOR
-            up_enc = (info['up_pluck_mm'] * res) / tu.MM_TO_ENCODER_CONVERSION_FACTOR
-            mid_point = (up_enc + down_enc) / 2
+            # Decide LH + whether this event may sound. Chord plucks (note 0-5) never
+            # move the slider. Experimental fretted notes: finish the previous note
+            # (no leave before its end), late-start the slide, and skip the pluck
+            # entirely when LH cannot arrive in time.
+            do_pluck = True
+            lh_event = None  # [motor_id, enc, slide, t_start, prep] or None
+            lh_state_update = None  # (note, note_end) if fretting state advances
 
-            all_points = np.array([]) # Initialize as empty numpy array
-            if is_pluck:
-                # Keep picker timing and side-selection in sync with parsePickMIDI.
-                dest_pos = float(commanded_dest_pos)
-                all_points = self.interp_with_blend(start_pos, dest_pos, tu.PICKER_PLUCK_MOTION_POINTS, tb_cent)
-            else: # Tremolo
-                tremolo_points = []
-                fill_points = self._tremolo_fill_points(speed)
-                num_picks = self._estimate_tremolo_pick_count(duration, speed)
-
-                current_pick_pos = start_pos
-                for _ in range(num_picks):
-                    dest_pos = down_enc if abs(current_pick_pos - up_enc) < abs(current_pick_pos - down_enc) else up_enc
-                    points1 = self.interp_with_blend(current_pick_pos, dest_pos, tu.PICKER_PLUCK_MOTION_POINTS, 0.2)
-                    points2 = np.full(fill_points, dest_pos)
-                    tremolo_points.extend(points1)
-                    tremolo_points.extend(points2)
-                    current_pick_pos = dest_pos
-                if tremolo_points:
-                    all_points = np.array(tremolo_points)
-
-            if all_points.size > 0:
-                num_gen = len(all_points)
-                if start_index + num_gen <= num_rows:
-                    trajectory_array[start_index : start_index + num_gen, phys_id] = all_points
-                current_positions[phys_id] = all_points[-1]
-
-            # Chord plucks (note 0-5) activate the plucker without repositioning the slider.
             if note > 5:
                 fret = note - tu.STRING_MIDI_RANGES[motor_id][0]
                 if fret == 0:
@@ -1116,6 +1092,12 @@ class GuitarBotParser:
                     s_dir = tu.STRING_MIDI_RANGES[motor_id][2]
                     lh_enc_val = ((tu.SLIDER_MM_PER_FRET[fret - 1] * 2048) / tu.MM_TO_ENCODER_CONVERSION_FACTOR + tu.SLIDER_ENCODER_OFFSET) * s_dir
                 prev_note = last_lh_note_by_picker[motor_id] if 0 <= motor_id < len(last_lh_note_by_picker) else None
+                prev_end = last_lh_end_by_picker[motor_id] if 0 <= motor_id < len(last_lh_end_by_picker) else None
+                same_fret = (
+                    prev_note is not None
+                    and int(prev_note) == int(note)
+                    and int(slide_toggles[i]) != 1
+                )
                 t_min = self._lh_prep_time_for_event(
                     prev_note,
                     note,
@@ -1123,15 +1105,17 @@ class GuitarBotParser:
                     slide_toggles[i],
                     picker_id=motor_id,
                 )
-                pluck_time = float(timestamp)
-                lh_committed = False
-                if experimental:
-                    prev_end = last_lh_end_by_picker[motor_id]
-                    # Gap-fill from previous note end (or t=0 for the first move).
-                    t_start = 0.0 if prev_end is None else float(prev_end)
-                    prep_time = pluck_time - t_start
-                    # Also require the slide sub-window (prep minus unpress/press)
-                    # to fit physics — equal-thirds on a short prep can starve slide.
+
+                if experimental and same_fret:
+                    # Already fretting this pitch — sound it; extend hold through this note.
+                    do_pluck = True
+                    lh_state_update = (
+                        note,
+                        max(float(prev_end) if prev_end is not None else note_end, note_end),
+                    )
+                elif experimental:
+                    earliest_leave = 0.0 if prev_end is None else float(prev_end)
+                    gap = pluck_time - earliest_leave
                     t_phase = press_unpress_duration_s()
                     prev_fret = (
                         self._picker_note_to_fret(prev_note, motor_id)
@@ -1144,29 +1128,87 @@ class GuitarBotParser:
                         target_fret if target_fret is not None else 0,
                     )
                     t_slide_need = min_slide_time_s(slide_dist)
+                    # Late-start: hold through previous note (and any rest), move only
+                    # as early as needed to arrive by pluck — never before note-end.
+                    t_start = max(earliest_leave, pluck_time - float(t_min))
+                    prep_time = pluck_time - t_start
                     t_slide_have = max(0.0, prep_time - 2.0 * t_phase)
-                    if prep_time + 1e-9 < t_min or t_slide_have + 1e-9 < t_slide_need:
+                    if (
+                        gap + 1e-9 < float(t_min)
+                        or prep_time + 1e-9 < float(t_min)
+                        or t_slide_have + 1e-9 < t_slide_need
+                    ):
                         print(
-                            f"Warning: LH gap-fill for picker {motor_id} at {pluck_time} "
-                            f"has prep {prep_time:.3f}s (slide {t_slide_have:.3f}s) < "
-                            f"min {t_min:.3f}s (slide {t_slide_need:.3f}s); skipping LH move."
+                            f"Warning: LH cannot reach picker {motor_id} note at {pluck_time} "
+                            f"(gap {gap:.3f}s, prep {prep_time:.3f}s / need {t_min:.3f}s; "
+                            f"slide {t_slide_have:.3f}s / need {t_slide_need:.3f}s); "
+                            f"skipping pluck."
                         )
+                        do_pluck = False
                     else:
-                        lh_pick_events.append(
-                            [motor_id, lh_enc_val, slide_toggles[i], t_start, prep_time]
-                        )
-                        lh_committed = True
+                        lh_event = [
+                            motor_id,
+                            lh_enc_val,
+                            slide_toggles[i],
+                            t_start,
+                            prep_time,
+                        ]
+                        lh_state_update = (note, note_end)
                 else:
-                    lh_pick_events.append(
-                        [motor_id, lh_enc_val, slide_toggles[i], pluck_time - t_min, t_min]
+                    lh_event = [
+                        motor_id,
+                        lh_enc_val,
+                        slide_toggles[i],
+                        pluck_time - t_min,
+                        t_min,
+                    ]
+                    lh_state_update = (note, note_end)
+
+            if do_pluck:
+                start_pos = current_positions[phys_id]
+                info = tu.PICKER_MOTOR_INFO[motor_id]
+                res = info['resolution']
+                down_enc = (info['down_pluck_mm'] * res) / tu.MM_TO_ENCODER_CONVERSION_FACTOR
+                up_enc = (info['up_pluck_mm'] * res) / tu.MM_TO_ENCODER_CONVERSION_FACTOR
+
+                all_points = np.array([])
+                if is_pluck:
+                    dest_pos = float(commanded_dest_pos)
+                    all_points = self.interp_with_blend(
+                        start_pos, dest_pos, tu.PICKER_PLUCK_MOTION_POINTS, tb_cent
                     )
-                    lh_committed = True
-                # Only advance fret/end state when we actually scheduled LH motion.
-                # Updating after a skip made the next jump look "small" in MIDI
-                # while still commanding a huge encoder delta → discontinuity.
-                if lh_committed and 0 <= motor_id < len(last_lh_note_by_picker):
-                    last_lh_note_by_picker[motor_id] = note
-                    last_lh_end_by_picker[motor_id] = pluck_time + float(duration)
+                else:
+                    tremolo_points = []
+                    fill_points = self._tremolo_fill_points(speed)
+                    num_picks = self._estimate_tremolo_pick_count(duration, speed)
+                    current_pick_pos = start_pos
+                    for _ in range(num_picks):
+                        dest_pos = (
+                            down_enc
+                            if abs(current_pick_pos - up_enc) < abs(current_pick_pos - down_enc)
+                            else up_enc
+                        )
+                        points1 = self.interp_with_blend(
+                            current_pick_pos, dest_pos, tu.PICKER_PLUCK_MOTION_POINTS, 0.2
+                        )
+                        points2 = np.full(fill_points, dest_pos)
+                        tremolo_points.extend(points1)
+                        tremolo_points.extend(points2)
+                        current_pick_pos = dest_pos
+                    if tremolo_points:
+                        all_points = np.array(tremolo_points)
+
+                if all_points.size > 0:
+                    num_gen = len(all_points)
+                    if start_index + num_gen <= num_rows:
+                        trajectory_array[start_index : start_index + num_gen, phys_id] = all_points
+                    current_positions[phys_id] = all_points[-1]
+
+            if lh_event is not None:
+                lh_pick_events.append(lh_event)
+            if lh_state_update is not None and 0 <= motor_id < len(last_lh_note_by_picker):
+                last_lh_note_by_picker[motor_id] = lh_state_update[0]
+                last_lh_end_by_picker[motor_id] = lh_state_update[1]
 
         df = pd.DataFrame(trajectory_array)
         df.ffill(inplace=True)

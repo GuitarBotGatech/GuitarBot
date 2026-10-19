@@ -63,9 +63,10 @@ LH_PREP_TIME_BEFORE_PICK = 0.450
 
 # Toggle for experimental LH prep timing.
 # When False, a uniform prep time is used for all slider moves.
-# When True, LH slides gap-fill from previous note end → next pluck using
-# physics limits (LH_SLIDER_V_MAX_MM_S / LH_SLIDER_A_MAX_MM_S2); impossible
-# moves are rejected by the path planner instead of being slammed.
+# When True: hold each fretted note through its duration, then late-start the
+# next slide (physics limits LH_SLIDER_V_MAX_MM_S / LH_SLIDER_A_MAX_MM_S2).
+# Impossible moves are rejected by the path planner; if LH cannot arrive in
+# time the matching pluck is skipped too (no mid-slide strums).
 USE_EXPERIMENTAL_TRAJ = False
 
 # Minimum prep time for very small/zero-distance fret transitions.

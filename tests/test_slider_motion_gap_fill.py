@@ -158,11 +158,12 @@ def test_experimental_prep_is_physics_min(experimental_on):
     assert big == pytest.approx(min_finger_move_time_s(distance_mm(0, 8)))
 
 
-def test_experimental_gap_fill_lh_event_starts_after_prev_end(experimental_on):
+def test_experimental_late_starts_after_prev_note_ends(experimental_on):
     parser = GuitarBotParser(initial_point=copy.deepcopy(tu.initial_point), graph=False)
     parser.use_path_planner = False
-    # String 0 (low E open=40): open at t=2.0 (enough time from rest), then fret 3
-    # after the first note ends — gap-fill should start at note-end, not pluck-0.45.
+    # String 0 (low E open=40): open at t=2.0, then fret 3 at t=5.0 after a rest.
+    # Must not leave before first note ends (t=3.0); with spare rest, late-start
+    # so prep ≈ physics min (hold through the rest).
     picks = [
         [40, 1.0, 6, 0, 0, 2.0],
         [43, 0.25, 6, 0, 0, 5.0],
@@ -172,11 +173,38 @@ def test_experimental_gap_fill_lh_event_starts_after_prev_end(experimental_on):
     _, lh_events = parser.interpPick(pick_pos, slides, copy.deepcopy(tu.initial_point))
     motor0 = [e for e in lh_events if e[0] == 0]
     assert len(motor0) >= 2
-    # First note ends at 2.0 + 1.0 = 3.0; second pluck at 5.0 → start=3.0, prep=2.0
+    t_min = parser._lh_prep_time_for_event(40, 43, 0.25, 0, picker_id=0)
     second = motor0[1]
     t_start, prep = float(second[3]), float(second[4])
-    assert t_start == pytest.approx(3.0)
-    assert prep == pytest.approx(2.0)
+    assert t_start >= 3.0 - 1e-9  # finished the previous note
+    assert t_start == pytest.approx(5.0 - t_min)
+    assert prep == pytest.approx(t_min)
+
+
+def test_experimental_skip_omits_pluck(experimental_on):
+    """Impossible LH travel must not strum mid-slide / at the wrong fret."""
+    parser = GuitarBotParser(initial_point=copy.deepcopy(tu.initial_point), graph=False)
+    parser.use_path_planner = False
+    # Fret 1 at t=2, then huge jump to fret 8 only 0.05s after note end.
+    picks = [
+        [41, 1.0, 6, 0, 0, 2.0],
+        [48, 0.25, 6, 0, 0, 3.05],
+    ]
+    pick_pos, slides = parser.parsePickMIDI(picks)
+    assert len(pick_pos) == 2
+    rh, lh_events = parser.interpPick(pick_pos, slides, copy.deepcopy(tu.initial_point))
+    motor0_lh = [e for e in lh_events if e[0] == 0]
+    # Only the first fretted move should be scheduled.
+    assert len(motor0_lh) == 1
+    # Second event's pluck time must not move the RH picker off its hold after first.
+    t_second = 3.05
+    idx = int(t_second / float(tu.TIME_STEP))
+    # Compare RH column for string 0 around second pluck vs just before: no new motion burst.
+    phys0 = tu.picker_physical_index(0)
+    pre = rh[max(0, idx - 1), phys0]
+    # Pluck motion would change several samples; require flat neighborhood if skipped.
+    window = rh[idx : idx + int(tu.PICKER_PLUCK_MOTION_POINTS), phys0]
+    assert np.allclose(window, pre), "skipped note must not pluck"
 
 
 def test_experimental_same_fret_repluck_minimal(experimental_on):
@@ -185,46 +213,28 @@ def test_experimental_same_fret_repluck_minimal(experimental_on):
     assert t_min == pytest.approx(float(tu.LH_PREP_TIME_MIN))
 
 
-def test_experimental_no_lh_discontinuity_when_chord_overlaps_long_slide(experimental_on):
-    """Regression: gap-fill writes a long future span then updates the end-pose cache.
-
-    A chord whose start falls mid-slide must continue from the array pose at that
-    time — not the slide's final pose — or firmware hits DISCONTINUITY_THRESHOLD
-    (10000) and stalls.
-    """
+def test_experimental_no_lh_discontinuity_when_chord_overlaps_slide(experimental_on):
+    """Regression: mid-slide chord must continue from array pose, not end-pose cache."""
     parser = GuitarBotParser(initial_point=copy.deepcopy(tu.initial_point), graph=False)
     parser.use_path_planner = False
 
-    # Long fretted note on string 0: LH gap-fills from t=0 to pluck at 4.0
+    # Pluck at 4.0 with large fret travel → late-start slide spans ~t_min before 4.0
     picks = [[48, 0.25, 6, 0, 0, 4.0]]
-    # Chord change mid-slide (presser/slider block for all 6 strings)
-    # 12 values: 6 slider enc + 6 presser enc (unpressed)
-    mid = list(tu.initial_point[:12])
-    # Target a distant slider pose on string 0 so a wrong q0 would jump hard
-    mid[0] = -28284
-    chords = [[[0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1], "C", mid], 2.0]
-
-    # parseleftMIDI expects chord list format used by parser — use lh_interpolate path
-    # via building events manually through parseAllMIDI chord input shape.
-    # GuitarBotParser.parseleftMIDI / parseAllMIDI chord format:
-    # chords: list of ( [chord_symbol_parts...], timestamp ) — use empty chords and
-    # call lh_interpolate directly with a synthetic chord motor event.
     pick_pos, slides = parser.parsePickMIDI(picks)
     assert pick_pos
     _, lh_pick_events = parser.interpPick(pick_pos, slides, copy.deepcopy(tu.initial_point))
     assert lh_pick_events
-
-    # Inject a chord LH event at t=2.0 (during the gap-fill slide)
+    t_start = float(lh_pick_events[0][3])
+    prep = float(lh_pick_events[0][4])
+    assert prep > 0.2
+    chord_t = t_start + 0.5 * prep
     chord_positions = list(tu.initial_point[:12])
     chord_positions[0] = int(-28284)
     for i in range(6, 12):
         chord_positions[i] = int(tu.LH_PRESSER_UNPRESSED_POS)
-    lh_chords = [[chord_positions, 2.0]]
+    lh_chords = [[chord_positions, chord_t]]
 
     traj = parser.lh_interpolate(lh_chords, lh_pick_events, copy.deepcopy(tu.initial_point))
-    # After ffill, consecutive LH slider steps must stay under firmware threshold
-    filled = traj.copy()
-    # lh_interpolate already ffills
-    diffs = np.abs(np.diff(filled[:, :6], axis=0))
+    diffs = np.abs(np.diff(traj[:, :6], axis=0))
     max_jump = float(np.nanmax(diffs)) if diffs.size else 0.0
     assert max_jump < 10000, f"LH discontinuity jump {max_jump} >= DISCONTINUITY_THRESHOLD"
