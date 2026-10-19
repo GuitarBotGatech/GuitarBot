@@ -56,13 +56,39 @@ def test_move_feasible_rejects_short_gap_for_long_travel():
 
 def test_trapezoid_reaches_target_and_respects_point_count():
     q0, qf = 0, 5000
-    n = 40
+    d_mm = abs(qf - q0) * float(tu.MM_TO_ENCODER_CONVERSION_FACTOR) / 2048.0
+    n = max(40, int(np.ceil(min_slide_time_s(d_mm) / float(tu.TIME_STEP))) + 5)
     pos = trapezoid_positions(q0, qf, n)
     assert len(pos) == n
     assert int(pos[0]) == q0
     assert int(pos[-1]) == qf
-    # Monotonic toward target
-    assert np.all(np.diff(pos.astype(float)) >= -1e-6)
+    # Mostly monotonic toward target; no single-step snap larger than half travel
+    diffs = np.diff(pos.astype(float))
+    assert np.all(diffs >= -2.0)  # allow 1-count encoder rounding wobble
+    assert float(np.max(np.abs(diffs))) < abs(qf - q0) * 0.5
+
+
+def test_trapezoid_short_window_does_not_snap():
+    """Insufficient time must not jump to qf on the last sample."""
+    q0, qf = 0, 20000
+    pos = trapezoid_positions(q0, qf, 10)  # 50ms — far too short
+    assert int(pos[0]) == q0
+    assert abs(int(pos[-1]) - q0) < abs(qf - q0)
+    assert float(np.max(np.abs(np.diff(pos.astype(float))))) < 10000
+
+
+def test_trapezoid_long_stretch_stays_continuous():
+    """Spare gap-fill time must stretch the profile, not finish early + snap."""
+    q0, qf = 0, 16519
+    n = 4100  # ~20.5s at 5ms — Contemplations-style first-move window
+    pos = trapezoid_positions(q0, qf, n)
+    diffs = np.abs(np.diff(pos.astype(float)))
+    assert int(pos[0]) == q0
+    assert int(pos[-1]) == qf
+    assert float(np.max(diffs)) < 10000
+    # Should be near the midpoint around halfway through the window
+    mid = pos[n // 2]
+    assert abs(int(mid) - (q0 + qf) // 2) < abs(qf - q0) * 0.25
 
 
 def test_phase_point_counts_reserve_press_budget_when_possible():
@@ -157,3 +183,48 @@ def test_experimental_same_fret_repluck_minimal(experimental_on):
     parser = GuitarBotParser(initial_point=copy.deepcopy(tu.initial_point), graph=False)
     t_min = parser._lh_prep_time_for_event(44, 44, 0.025, 0, picker_id=0)
     assert t_min == pytest.approx(float(tu.LH_PREP_TIME_MIN))
+
+
+def test_experimental_no_lh_discontinuity_when_chord_overlaps_long_slide(experimental_on):
+    """Regression: gap-fill writes a long future span then updates the end-pose cache.
+
+    A chord whose start falls mid-slide must continue from the array pose at that
+    time — not the slide's final pose — or firmware hits DISCONTINUITY_THRESHOLD
+    (10000) and stalls.
+    """
+    parser = GuitarBotParser(initial_point=copy.deepcopy(tu.initial_point), graph=False)
+    parser.use_path_planner = False
+
+    # Long fretted note on string 0: LH gap-fills from t=0 to pluck at 4.0
+    picks = [[48, 0.25, 6, 0, 0, 4.0]]
+    # Chord change mid-slide (presser/slider block for all 6 strings)
+    # 12 values: 6 slider enc + 6 presser enc (unpressed)
+    mid = list(tu.initial_point[:12])
+    # Target a distant slider pose on string 0 so a wrong q0 would jump hard
+    mid[0] = -28284
+    chords = [[[0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1], "C", mid], 2.0]
+
+    # parseleftMIDI expects chord list format used by parser — use lh_interpolate path
+    # via building events manually through parseAllMIDI chord input shape.
+    # GuitarBotParser.parseleftMIDI / parseAllMIDI chord format:
+    # chords: list of ( [chord_symbol_parts...], timestamp ) — use empty chords and
+    # call lh_interpolate directly with a synthetic chord motor event.
+    pick_pos, slides = parser.parsePickMIDI(picks)
+    assert pick_pos
+    _, lh_pick_events = parser.interpPick(pick_pos, slides, copy.deepcopy(tu.initial_point))
+    assert lh_pick_events
+
+    # Inject a chord LH event at t=2.0 (during the gap-fill slide)
+    chord_positions = list(tu.initial_point[:12])
+    chord_positions[0] = int(-28284)
+    for i in range(6, 12):
+        chord_positions[i] = int(tu.LH_PRESSER_UNPRESSED_POS)
+    lh_chords = [[chord_positions, 2.0]]
+
+    traj = parser.lh_interpolate(lh_chords, lh_pick_events, copy.deepcopy(tu.initial_point))
+    # After ffill, consecutive LH slider steps must stay under firmware threshold
+    filled = traj.copy()
+    # lh_interpolate already ffills
+    diffs = np.abs(np.diff(filled[:, :6], axis=0))
+    max_jump = float(np.nanmax(diffs)) if diffs.size else 0.0
+    assert max_jump < 10000, f"LH discontinuity jump {max_jump} >= DISCONTINUITY_THRESHOLD"

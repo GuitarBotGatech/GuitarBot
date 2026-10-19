@@ -112,18 +112,21 @@ def trapezoid_positions(
     a_max_mm_s2: float | None = None,
     dt: float | None = None,
 ) -> np.ndarray:
-    """Encoder-tick positions from q0→qf over ``n_points`` samples.
+    """Encoder-tick positions from q0 toward qf over ``n_points`` samples.
 
     Builds a minimum-time trapezoid in mm, then **time-scales** it to fill the
     allotted duration when extra time is available (slower cruise, never above
-    a_max). If the allotment is shorter than ``t_min``, still emits a profile
-    spanning q0→qf in the allotted samples (caller should have rejected this).
+    a_max).
+
+    If the allotment is shorter than ``t_min``, travels only as far as ``a_max``
+    allows in that time (no final snap to ``qf`` — that caused firmware
+    discontinuity faults).
     """
     n = int(n_points)
     if n <= 0:
         return np.array([], dtype=int)
     if n == 1:
-        return np.array([int(round(qf))], dtype=int)
+        return np.array([int(round(q0))], dtype=int)
 
     dt = float(tu.TIME_STEP if dt is None else dt)
     duration = n * dt
@@ -135,44 +138,57 @@ def trapezoid_positions(
 
     d_mm = encoder_to_mm(enc_dist)
     t_min = min_slide_time_s(d_mm, v_max=v_max_mm_s, a_max=a_max_mm_s2)
-    # Time scale >= 1 stretches the min-time profile into the available window.
-    scale = (duration / t_min) if t_min > 1e-9 else 1.0
-    scale = max(scale, 1.0)
-
     v_max = float(tu.LH_SLIDER_V_MAX_MM_S if v_max_mm_s is None else v_max_mm_s)
     a_max = float(tu.LH_SLIDER_A_MAX_MM_S2 if a_max_mm_s2 is None else a_max_mm_s2)
-    # Scaled limits (lower accel/speed when we have extra time).
-    a_eff = a_max / scale
-    v_eff = v_max / scale
+
+    # Stretch when we have spare time; when short on time, keep a_max and only
+    # cover the distance reachable in ``duration`` (caller should prefer skip).
+    #
+    # Time-stretch of a fixed distance: v ~ 1/S, a ~ 1/S^2 (not 1/S). Using
+    # a_eff = a_max/S made long gap-fills finish early, then the decelerating
+    # formula drove s back to 0 before a final snap to qf — firmware saw a
+    # DISCONTINUITY_THRESHOLD jump.
+    if t_min > 1e-9 and duration + 1e-12 >= t_min:
+        scale = duration / t_min
+        d_travel = d_mm
+        a_eff = a_max / (scale * scale)
+        v_eff = v_max / scale
+    else:
+        scale = 1.0
+        # Max distance with triangular profile in ``duration`` under a_max:
+        # d = 2 * (1/2 a (T/2)^2) = a T^2 / 4.
+        d_travel = min(d_mm, a_max * duration * duration / 4.0)
+        a_eff = a_max
+        v_eff = v_max
 
     d_accel = (v_eff * v_eff) / (2.0 * a_eff) if a_eff > 0 else 0.0
     direction = 1.0 if qf_f >= q0_f else -1.0
 
     times = np.arange(n, dtype=float) * dt
-    # Use duration of last sample center-aligned to end at qf.
     t_end = max(duration - dt, dt)
     pos_mm = np.zeros(n, dtype=float)
 
-    if 2.0 * d_accel >= d_mm - 1e-12:
-        # Triangular: accelerate to midpoint distance, then decelerate.
-        t_peak = math.sqrt(d_mm / a_eff) if a_eff > 0 else t_end / 2.0
+    if 2.0 * d_accel >= d_travel - 1e-12:
+        t_peak = math.sqrt(d_travel / a_eff) if a_eff > 0 else t_end / 2.0
         s_peak = 0.5 * a_eff * t_peak * t_peak
         v_peak = a_eff * t_peak
+        t_done = 2.0 * t_peak
         for i, t in enumerate(times):
-            t_clamped = min(t, t_end)
+            t_clamped = min(t, t_end, t_done)
             if t_clamped <= t_peak:
                 s = 0.5 * a_eff * t_clamped * t_clamped
             else:
                 t_dec = t_clamped - t_peak
                 s = s_peak + v_peak * t_dec - 0.5 * a_eff * t_dec * t_dec
-            pos_mm[i] = min(max(s, 0.0), d_mm)
+            pos_mm[i] = min(max(s, 0.0), d_travel)
     else:
         t_accel = v_eff / a_eff
-        t_cruise = (d_mm - 2.0 * d_accel) / v_eff
+        t_cruise = (d_travel - 2.0 * d_accel) / v_eff
         t1 = t_accel
         t2 = t_accel + t_cruise
+        t_done = t2 + t_accel
         for i, t in enumerate(times):
-            t_clamped = min(t, t_end)
+            t_clamped = min(t, t_end, t_done)
             if t_clamped <= t1:
                 s = 0.5 * a_eff * t_clamped * t_clamped
             elif t_clamped <= t2:
@@ -180,11 +196,16 @@ def trapezoid_positions(
             else:
                 t_dec = t_clamped - t2
                 s = d_accel + v_eff * t_cruise + v_eff * t_dec - 0.5 * a_eff * t_dec * t_dec
-            pos_mm[i] = min(max(s, 0.0), d_mm)
+            pos_mm[i] = min(max(s, 0.0), d_travel)
 
-    pos_mm[-1] = d_mm
+    # Continuity: last sample follows the profile. Only snap exactly to qf when
+    # the window was long enough to complete the move under a_max.
+    reached = duration + 1e-12 >= t_min
+    if reached:
+        pos_mm[-1] = d_mm
     enc = q0_f + direction * (pos_mm * 2048.0 / float(tu.MM_TO_ENCODER_CONVERSION_FACTOR))
-    enc[-1] = qf_f
+    if reached:
+        enc[-1] = qf_f
     return enc.astype(int)
 
 

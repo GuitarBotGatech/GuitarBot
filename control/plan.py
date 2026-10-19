@@ -11,7 +11,9 @@ from control.path_planner import plan_strings
 from control.slider_motion import (
     distance_mm,
     min_finger_move_time_s,
+    min_slide_time_s,
     phase_point_counts,
+    press_unpress_duration_s,
     trapezoid_positions,
 )
 
@@ -377,6 +379,26 @@ class GuitarBotParser:
         trajectory_array[0, :] = initial_point_lh
         current_encoder_position = list(initial_point_lh)
 
+        def _state_at(index: int) -> list[float]:
+            """LH pose at ``index`` from the array (not end-of-later-event cache).
+
+            Gap-fill note events write long future spans and update
+            ``current_encoder_position`` to their *final* pose immediately.
+            Later events whose start falls inside that span must begin from the
+            pose already written at that time, or the stream jumps (firmware
+            DISCONTINUITY_THRESHOLD / 30s stall).
+            """
+            pose = list(current_encoder_position)
+            if index < 0:
+                return pose
+            for col in range(trajectory_array.shape[1]):
+                for row in range(min(index, num_rows - 1), -1, -1):
+                    val = trajectory_array[row, col]
+                    if not np.isnan(val):
+                        pose[col] = float(val)
+                        break
+            return pose
+
         prev_type, prev_position, prev_motor_id = None, None, None
 
         for event in full_LH:
@@ -386,11 +408,11 @@ class GuitarBotParser:
 
             timestamp = round(event['timestamp'], 3)
             start_index = int(timestamp / tu.TIME_STEP)
+            curr_pos = _state_at(start_index - 1 if start_index > 0 else 0)
 
             if event['type'] == 'chord':
                 target_positions_slider = event['positions'][:6]
                 target_positions_presser = event['positions'][6:12]
-                curr_pos = current_encoder_position.copy()
                 all_points = []
 
                 # 1. UNPRESS
@@ -422,7 +444,12 @@ class GuitarBotParser:
 
                 num_generated_points = len(all_points)
                 if start_index + num_generated_points <= num_rows:
-                    trajectory_array[start_index: start_index + num_generated_points, :] = all_points
+                    end_index = start_index + num_generated_points
+                    trajectory_array[start_index: end_index, :] = all_points
+                    # Drop stale samples from earlier longer events that wrote past
+                    # this chord; otherwise ffill resumes mid-curve → discontinuity.
+                    if end_index < num_rows:
+                        trajectory_array[end_index:, :] = np.nan
                     current_encoder_position = list(all_points[-1])
                 else:
                     safe_points = num_rows - start_index
@@ -441,14 +468,14 @@ class GuitarBotParser:
                     phase1_points, phase2_points, phase3_points = split_note_phase_points(prep_time_s)
                 motor_index = event['motor_id']
                 slider_motor_ID, presser_motor_ID = motor_index, motor_index + 6
-                q0_slider_motor, q0_presser_motor = current_encoder_position[slider_motor_ID], current_encoder_position[
-                    presser_motor_ID]
+                q0_slider_motor = curr_pos[slider_motor_ID]
+                q0_presser_motor = curr_pos[presser_motor_ID]
                 qf_slider = int(event['position'])
                 qf1_presser = tu.LH_PRESSER_UNPRESSED_POS
                 qf2_presser = tu.LH_PRESSER_PRESSED_POS
                 if int(event['position']) == -1:
                     qf_slider, qf2_presser = q0_slider_motor, tu.LH_PRESSER_UNPRESSED_POS
-                if (int(event['position'])) == current_encoder_position[slider_motor_ID] and int(event['position']) != -1:
+                if int(event['position']) == int(round(q0_slider_motor)) and int(event['position']) != -1:
                     qf_slider, qf1_presser = q0_slider_motor, tu.LH_PRESSER_PRESSED_POS
 
                 same_as_prev = (
@@ -540,8 +567,15 @@ class GuitarBotParser:
 
                 num_generated_points = len(slider_points)
                 if start_index + num_generated_points <= num_rows:
-                    trajectory_array[start_index: start_index + num_generated_points, slider_motor_ID] = slider_points
-                    trajectory_array[start_index: start_index + num_generated_points, presser_motor_ID] = presser_points
+                    end_index = start_index + num_generated_points
+                    trajectory_array[start_index: end_index, slider_motor_ID] = slider_points
+                    trajectory_array[start_index: end_index, presser_motor_ID] = presser_points
+                    # Invalidate leftover samples from an earlier longer write on
+                    # this finger so ffill holds the new endpoint instead of jumping
+                    # back onto the old curve (gap-fill makes this common).
+                    if end_index < num_rows:
+                        trajectory_array[end_index:, slider_motor_ID] = np.nan
+                        trajectory_array[end_index:, presser_motor_ID] = np.nan
                     current_encoder_position[slider_motor_ID] = slider_points[-1]
                     current_encoder_position[presser_motor_ID] = presser_points[-1]
                 else:
@@ -1090,25 +1124,47 @@ class GuitarBotParser:
                     picker_id=motor_id,
                 )
                 pluck_time = float(timestamp)
+                lh_committed = False
                 if experimental:
                     prev_end = last_lh_end_by_picker[motor_id]
                     # Gap-fill from previous note end (or t=0 for the first move).
                     t_start = 0.0 if prev_end is None else float(prev_end)
                     prep_time = pluck_time - t_start
-                    if prep_time + 1e-9 < t_min:
+                    # Also require the slide sub-window (prep minus unpress/press)
+                    # to fit physics — equal-thirds on a short prep can starve slide.
+                    t_phase = press_unpress_duration_s()
+                    prev_fret = (
+                        self._picker_note_to_fret(prev_note, motor_id)
+                        if prev_note is not None
+                        else 0
+                    )
+                    target_fret = self._picker_note_to_fret(note, motor_id)
+                    slide_dist = distance_mm(
+                        prev_fret if prev_fret is not None else 0,
+                        target_fret if target_fret is not None else 0,
+                    )
+                    t_slide_need = min_slide_time_s(slide_dist)
+                    t_slide_have = max(0.0, prep_time - 2.0 * t_phase)
+                    if prep_time + 1e-9 < t_min or t_slide_have + 1e-9 < t_slide_need:
                         print(
                             f"Warning: LH gap-fill for picker {motor_id} at {pluck_time} "
-                            f"has prep {prep_time:.3f}s < min {t_min:.3f}s; skipping LH move."
+                            f"has prep {prep_time:.3f}s (slide {t_slide_have:.3f}s) < "
+                            f"min {t_min:.3f}s (slide {t_slide_need:.3f}s); skipping LH move."
                         )
                     else:
                         lh_pick_events.append(
                             [motor_id, lh_enc_val, slide_toggles[i], t_start, prep_time]
                         )
+                        lh_committed = True
                 else:
                     lh_pick_events.append(
                         [motor_id, lh_enc_val, slide_toggles[i], pluck_time - t_min, t_min]
                     )
-                if 0 <= motor_id < len(last_lh_note_by_picker):
+                    lh_committed = True
+                # Only advance fret/end state when we actually scheduled LH motion.
+                # Updating after a skip made the next jump look "small" in MIDI
+                # while still commanding a huge encoder delta → discontinuity.
+                if lh_committed and 0 <= motor_id < len(last_lh_note_by_picker):
                     last_lh_note_by_picker[motor_id] = note
                     last_lh_end_by_picker[motor_id] = pluck_time + float(duration)
 
