@@ -19,11 +19,6 @@ def main() -> None:
         help="Do not open the web UI in a new browser tab",
     )
     parser.add_argument(
-        "--experimental-traj",
-        action="store_true",
-        help="Enable experimental variable LH prep timing",
-    )
-    parser.add_argument(
         "--dry-run",
         action="store_true",
         help="Plan trajectories but do not send UDP to OpenCR",
@@ -36,8 +31,6 @@ def main() -> None:
         argv += ["--config", args.config]
     if args.no_browser:
         argv.append("--no-browser")
-    if args.experimental_traj:
-        argv.append("--experimental-traj")
     if args.dry_run:
         argv.append("--dry-run")
     server_main(argv)

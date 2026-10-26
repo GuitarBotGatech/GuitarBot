@@ -38,8 +38,10 @@ def _row_to_event(row: list | tuple, index: int) -> dict:
         raise ValueError(f"pluck_message[{index}] timestamp must be >= 0")
     if slide not in (0, 1):
         raise ValueError(f"pluck_message[{index}] slide must be 0 or 1")
-    if string_index is not None and string_index < 0:
-        raise ValueError(f"pluck_message[{index}] string_index must be >= 0")
+    if string_index is not None and not (0 <= string_index <= 5):
+        raise ValueError(
+            f"pluck_message[{index}] string_index must be 0-based in 0..5; got {string_index}"
+        )
 
     event = {
         "note": note,

@@ -7,7 +7,6 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Optional
 from tuning import tune as tu
-from control.slider_motion import distance_mm, move_feasible
 
 # Build string model from tune.py
 _RANGES = tu.STRING_MIDI_RANGES          # list of (low, high, direction)
@@ -40,7 +39,6 @@ class Assignment:
 class StringState:
     fret: int = 0
     last_pluck_t: float = -1e9
-    last_note_end_t: float = -1e9
 
 
 def candidates(note: Note) -> list[tuple[int, int]]:
@@ -60,25 +58,6 @@ def candidates(note: Note) -> list[tuple[int, int]]:
     return out
 
 
-def is_physically_feasible(prev: StringState, note: Note, fret: int) -> bool:
-    """Hard check used when experimental gap-fill is enabled.
-
-    Gap is measured from when the finger frees after the previous note
-    (``last_note_end_t``) until this note's pluck time.
-    """
-    if not getattr(tu, "USE_EXPERIMENTAL_TRAJ", False):
-        return True
-    # Never-played string: no prior hold to wait out.
-    if prev.last_pluck_t < -1e8:
-        return True
-    gap = float(note.t) - float(prev.last_note_end_t)
-    return move_feasible(gap, distance_mm(prev.fret, fret))
-
-
-def pitch_candidates_feasible(prev: StringState, note: Note, string: int, fret: int) -> bool:
-    return is_physically_feasible(prev, note, fret)
-
-
 def violations(prev: StringState, note: Note, fret: int) -> list[str]:
     v = []
     if note.slide_in and fret == 0:
@@ -86,14 +65,10 @@ def violations(prev: StringState, note: Note, fret: int) -> list[str]:
     dt = note.t - prev.last_pluck_t
     if 0 < dt < DAMPING_S:
         v.append("pluck_conflict")
-    if getattr(tu, "USE_EXPERIMENTAL_TRAJ", False):
-        if not is_physically_feasible(prev, note, fret):
-            v.append("over_accel")
-    else:
-        v_max_frets = 80.0
-        travel = abs(fret - prev.fret)
-        if dt > 0 and travel / dt > v_max_frets:
-            v.append("over_velocity")
+    v_max_frets = 80.0
+    travel = abs(fret - prev.fret)
+    if dt > 0 and travel / dt > v_max_frets:
+        v.append("over_velocity")
     return v
 
 

@@ -101,7 +101,7 @@ class PlaybackSession:
         active_parser = parser if parser is not None else self.parser
         active_parser.graph = False
         chords, pluck = _robot_payloads(song_dict, self.config)
-        traj = active_parser.parseAllMIDI(chords, pluck, midi_events=None)
+        traj = active_parser.parseAll(chords, pluck)
         if traj.size == 0:
             raise ValueError("planner returned an empty trajectory")
         if traj.ndim != 2 or traj.shape[1] != NUM_MOTORS:

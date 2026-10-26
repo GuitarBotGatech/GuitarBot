@@ -19,9 +19,10 @@ def plan_strings(
     """Assign a string to every unassigned pick in the sequence.
 
     Args:
-        picks: List of pick tuples as consumed by parsePickMIDI. Each is either:
+        picks: List of pick tuples as consumed by parsePlucks. Each is either:
                5-tuple: (note, duration, speed, slide, timestamp)
                6-tuple: (note, duration, speed, slide, string_index, timestamp)
+               where ``string_index`` is 0-based (0 = low E … 5 = high e).
         initial_frets: Per-string starting fret positions (length = NUM_STRINGS).
                        Defaults to all zeros.
 

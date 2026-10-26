@@ -7,10 +7,8 @@ const TREMOLO_DURATION_THRESHOLD=0.500; // seconds — matches tune.TREMOLO_DURA
 const PICKER_PLUCK_MOTION_POINTS=11;    // matches tune.PICKER_PLUCK_MOTION_POINTS
 const ROBOT_TIME_STEP=0.005;            // matches tune.TIME_STEP
 
-// Slide timing constants — mirrors tune.py LH prep-time parameters
-const LH_PREP_TIME_MIN=0.090;           // matches tune.LH_PREP_TIME_MIN
-const LH_PREP_TIME_MAX=0.450;           // matches tune.LH_PREP_TIME_BEFORE_PICK
-const LH_PREP_MAX_SEMITONE_DELTA=9;     // matches tune.LH_PREP_MAX_SEMITONE_DELTA
+// Uniform LH prep — matches tune.LH_PREP_TIME_BEFORE_PICK
+const LH_PREP_TIME_BEFORE_PICK=0.450;
 
 // Replicates GuitarBotParser.interpPick tremolo period formula
 function tremoloPickPeriodS(speed){
@@ -20,11 +18,9 @@ function tremoloPickPeriodS(speed){
 }
 
 // Replicates lh_interpolate phase-2 (slider motion) duration.
-// Phase 2 is ~1/3 of total prep time; prep time scales with semitone distance.
-function slidePhaseDurationS(semitones){
-  const ratio=Math.min(1.0,Math.abs(semitones)/LH_PREP_MAX_SEMITONE_DELTA);
-  const motionTime=LH_PREP_TIME_MIN+(LH_PREP_TIME_MAX-LH_PREP_TIME_MIN)*ratio;
-  return motionTime/3;
+// Phase 2 is ~1/3 of the uniform prep window.
+function slidePhaseDurationS(_semitones){
+  return LH_PREP_TIME_BEFORE_PICK/3;
 }
 
 const Synth={

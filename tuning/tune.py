@@ -13,8 +13,7 @@ from pathlib import Path
 
 TIME_STEP = .005
 
-#Graphing
-# Controls graphing the functions used on each motor. False turns off, true turns on.
+# Debug visuals for GuitarBotParser (control.debug.plan_viz). False = off.
 graph = False
 
 # Blend percentage for trajectory interpolation (0.0 to 1.0).
@@ -58,58 +57,12 @@ LH_PRESSER_SLIDE_PRESS_POS = 200
 # These variables control delays between actions and thresholds for interpreting MIDI data.
 
 # Time (in seconds) the left hand needs to prepare before a picker plucks a new note.
-# This is the maximum prep window; semitone-scaled moves can use less.
 LH_PREP_TIME_BEFORE_PICK = 0.450
-
-# Toggle for experimental LH prep timing.
-# When False, a uniform prep time is used for all slider moves.
-# When True: hold through each note's MIDI duration, then gap-fill from note-off
-# → next pluck (physics limits LH_SLIDER_V_MAX_MM_S / LH_SLIDER_A_MAX_MM_S2).
-# The first attack on a string late-starts (no slide from t=0). Impossible moves
-# are rejected by the path planner; if LH cannot arrive the pluck is skipped too.
-USE_EXPERIMENTAL_TRAJ = False
-
-# Minimum prep time for very small/zero-distance fret transitions.
-LH_PREP_TIME_MIN = 0.1
-
-# Minimum time (seconds) allocated to the slide phase when experimental timing is enabled.
-# Used by the legacy semitone-scaled experimental path; gap-fill mode uses physics mins.
-LH_SLIDE_MIN_TIME = 0.1
-
-# Experimental gap-fill slider physics (mm). Calibrate on hardware — Contemplations
-# 8-fret jumps are the acceptance case. Decel uses the same magnitude as accel.
-LH_SLIDER_V_MAX_MM_S = 250.0
-LH_SLIDER_A_MAX_MM_S2 = 600.0
 
 # Slow-slide tuning when a string is idle (no nearby pluck events).
 LH_SLOW_SLIDE_IDLE_WINDOW = 20.0
 LH_SLOW_SLIDE_TIME_MIN = 0.3
 LH_SLOW_SLIDE_TIME_MAX = 5.0
-
-# Semitone delta that maps to full LH_PREP_TIME_BEFORE_PICK.
-# Delta values above this are clamped to the max prep window.
-LH_PREP_MAX_SEMITONE_DELTA = 18
-
-# Upper fret boundary used by prep-time safety near chassis/end-stop travel.
-# Guitar fret numbering: open = 0, then 1..N.
-LH_MIN_FRET = 1
-LH_MAX_FRET = 8
-
-# Extra prep headroom for transitions that start/end near either chassis edge.
-LH_EDGE_PREP_TIME_BONUS = 0.30
-LH_EDGE_PREP_TIME_CAP = 0.90
-
-# Backward-compatible aliases for older scripts/tests.
-LH_HIGH_FRET_CAUTION_START_FRET = LH_MAX_FRET
-LH_HIGH_FRET_EXTRA_PREP_TIME = LH_EDGE_PREP_TIME_BONUS
-LH_HIGH_FRET_MAX_PREP_TIME = LH_EDGE_PREP_TIME_CAP
-LH_MAX_FRET_PREP_TIME_BONUS = LH_EDGE_PREP_TIME_BONUS
-LH_MAX_FRET_PREP_TIME_CAP = LH_EDGE_PREP_TIME_CAP
-
-# The time window (in seconds) to check for overlaps between left-hand and picker movements.
-# If a pick event occurs within this window of a left-hand event, it may be adjusted or ignored.
-# Given in terms of seconds.
-MOVEMENT_OVERLAP_WINDOW = 0.300
 
 # The duration (in seconds) below which a MIDI note is considered a single "pluck"
 # rather than the start of a "tremolo".

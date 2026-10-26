@@ -151,11 +151,6 @@ def _parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         help="Plan trajectories but do not send UDP to OpenCR",
     )
     parser.add_argument(
-        "--experimental-traj",
-        action="store_true",
-        help="Enable experimental variable LH prep timing",
-    )
-    parser.add_argument(
         "--no-browser",
         action="store_true",
         help="Do not open the web UI in a browser tab",
@@ -171,7 +166,6 @@ def _parse_args(argv: list[str] | None = None) -> argparse.Namespace:
 def main(argv: list[str] | None = None) -> None:
     args = _parse_args(argv)
     dry_run = bool(args.dry_run or _env_flag("GUITARBOT_DRY_RUN"))
-    tu.USE_EXPERIMENTAL_TRAJ = bool(args.experimental_traj)
     tu.graph = False
 
     config = load_config(args.config)
@@ -180,7 +174,7 @@ def main(argv: list[str] | None = None) -> None:
     print(f"GuitarBot server on {url}")
     print(f"  POST /play   arrangement JSON")
     print(f"  POST /reset  home motors")
-    print(f"  dry_run={dry_run} experimental_traj={tu.USE_EXPERIMENTAL_TRAJ}")
+    print(f"  dry_run={dry_run}")
     print(f"  config={args.config or 'configs/default.yaml'}")
 
     if not args.no_browser:

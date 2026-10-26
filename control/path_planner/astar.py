@@ -5,15 +5,11 @@ which drives constants from tune.py. Forced strings (user pins) are handled
 transparently via Note.forced_string — candidates() returns only the pinned
 (string, fret) pair for those notes, so A* treats them as single-candidate
 steps at full cost accuracy.
-
-When USE_EXPERIMENTAL_TRAJ is on, physically infeasible (string, fret) moves
-are hard-filtered so A* never assigns a slam; notes with no feasible candidate
-are skipped.
 """
 import heapq
 from .model import (
     Note, Assignment, StringState, NUM_STRINGS,
-    candidates, transition_cost, is_physically_feasible, W_TRAVEL,
+    candidates, transition_cost, W_TRAVEL,
 )
 
 NODE_BUDGET = 20_000
@@ -44,14 +40,13 @@ def plan(
         init_frets = tuple(int(frets_list[i]) for i in range(NUM_STRINGS))
 
     init_last_pluck = (-1e9,) * NUM_STRINGS
-    init_last_end = (-1e9,) * NUM_STRINGS
     counter = [0]
 
-    def push(f_score, g, i, frets, last_pluck, last_end, path):
+    def push(f_score, g, i, frets, last_pluck, path):
         counter[0] += 1
         heapq.heappush(
             open_h,
-            (f_score, counter[0], g, i, frets, last_pluck, last_end, path),
+            (f_score, counter[0], g, i, frets, last_pluck, path),
         )
 
     open_h = []
@@ -61,7 +56,6 @@ def plan(
         0,
         init_frets,
         init_last_pluck,
-        init_last_end,
         (),
     )
 
@@ -69,7 +63,7 @@ def plan(
     expanded = 0
 
     while open_h and expanded < NODE_BUDGET:
-        f_score, _, g, i, frets, last_pluck, last_end, path = heapq.heappop(open_h)
+        f_score, _, g, i, frets, last_pluck, path = heapq.heappop(open_h)
 
         if i == N:
             if best_goal is None or g < best_goal[0]:
@@ -80,33 +74,23 @@ def plan(
         n = notes[i]
         cands = candidates(n)
 
-        # Hard-filter physics when experimental gap-fill is enabled.
-        feasible = []
-        for s, fr in cands:
-            st = StringState(frets[s], last_pluck[s], last_end[s])
-            if is_physically_feasible(st, n, fr):
-                feasible.append((s, fr))
-
-        if not feasible:
-            # Note unplayable / physically impossible on every string — skip it.
+        if not cands:
+            # Note unplayable on every string — skip it.
             push(
                 g + _heuristic(notes, i + 1, frets),
                 g,
                 i + 1,
                 frets,
                 last_pluck,
-                last_end,
                 path,
             )
             continue
 
-        note_end = float(n.t) + max(0.0, float(n.dur))
-        for s, fr in feasible:
-            st = StringState(frets[s], last_pluck[s], last_end[s])
+        for s, fr in cands:
+            st = StringState(frets[s], last_pluck[s])
             c, _ = transition_cost(st, n, fr)
             new_frets = tuple(fr if k == s else frets[k] for k in range(NUM_STRINGS))
             new_last_pluck = tuple(n.t if k == s else last_pluck[k] for k in range(NUM_STRINGS))
-            new_last_end = tuple(note_end if k == s else last_end[k] for k in range(NUM_STRINGS))
             new_g = g + c
             h = _heuristic(notes, i + 1, new_frets)
             push(
@@ -115,7 +99,6 @@ def plan(
                 i + 1,
                 new_frets,
                 new_last_pluck,
-                new_last_end,
                 path + (Assignment(i, s, fr),),
             )
 
@@ -123,8 +106,8 @@ def plan(
         # Budget exhausted — return best partial plan found
         if not open_h:
             return []
-        # Tuple layout: f, counter, g, i, frets, last_pluck, last_end, path
+        # Tuple layout: f, counter, g, i, frets, last_pluck, path
         best = min(open_h, key=lambda e: (-e[3], e[2]))
-        return list(best[7])
+        return list(best[6])
 
     return list(best_goal[1])

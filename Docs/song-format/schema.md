@@ -46,6 +46,7 @@ Canonical document for the robot play path.
 - `duration_b` (beats), `duration_s` (seconds), or legacy `duration` (beats)
 - `timestamp` (seconds) or `beat` (`bar.beat[.sub]` / `~raw_beats`)
 - `speed` / `slide` optional (config defaults)
+- `string_index` optional, **0-based** (`0` = low E … `5` = high e); omit to let the planner choose
 
 ## Chord event
 

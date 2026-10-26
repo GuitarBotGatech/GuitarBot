@@ -83,23 +83,19 @@ def compute_trajectory(payload: PlannerPayload, *, quiet: bool = True) -> np.nda
     parser = GuitarBotParser(initial_point=copy.deepcopy(tu.initial_point), graph=False)
     if quiet:
         with contextlib.redirect_stdout(io.StringIO()):
-            return parser.parseAllMIDI(payload.chords, payload.pluck, midi_events=None)
-    return parser.parseAllMIDI(payload.chords, payload.pluck, midi_events=None)
+            return parser.parseAll(payload.chords, payload.pluck)
+    return parser.parseAll(payload.chords, payload.pluck)
 
 
 def _derive_lh_pick_events(payload: PlannerPayload, *, quiet: bool = True) -> list[list[Any]]:
     parser = GuitarBotParser(initial_point=copy.deepcopy(tu.initial_point), graph=False)
     if quiet:
         with contextlib.redirect_stdout(io.StringIO()):
-            lh_positions = parser.parseleftMIDI(payload.chords)
-            pick_positions, slide_toggles = parser.parsePickMIDI(payload.pluck)
-            pick_positions_adj = parser.prepPicker(lh_positions, pick_positions)
-            _, lh_pick_events = parser.interpPick(pick_positions_adj, slide_toggles, copy.deepcopy(tu.initial_point))
+            pick_positions, slide_toggles = parser.parsePlucks(payload.pluck)
+            _, lh_pick_events = parser.interpPick(pick_positions, slide_toggles, copy.deepcopy(tu.initial_point))
             return lh_pick_events
-    lh_positions = parser.parseleftMIDI(payload.chords)
-    pick_positions, slide_toggles = parser.parsePickMIDI(payload.pluck)
-    pick_positions_adj = parser.prepPicker(lh_positions, pick_positions)
-    _, lh_pick_events = parser.interpPick(pick_positions_adj, slide_toggles, copy.deepcopy(tu.initial_point))
+    pick_positions, slide_toggles = parser.parsePlucks(payload.pluck)
+    _, lh_pick_events = parser.interpPick(pick_positions, slide_toggles, copy.deepcopy(tu.initial_point))
     return lh_pick_events
 
 
@@ -109,17 +105,13 @@ def _derive_pick_and_lh_pick_events(
     parser = GuitarBotParser(initial_point=copy.deepcopy(tu.initial_point), graph=False)
     if quiet:
         with contextlib.redirect_stdout(io.StringIO()):
-            lh_positions = parser.parseleftMIDI(payload.chords)
-            pick_positions, slide_toggles = parser.parsePickMIDI(payload.pluck)
-            pick_positions_adj = parser.prepPicker(lh_positions, pick_positions)
-            _, lh_pick_events = parser.interpPick(pick_positions_adj, slide_toggles, copy.deepcopy(tu.initial_point))
-            return pick_positions_adj, lh_pick_events
+            pick_positions, slide_toggles = parser.parsePlucks(payload.pluck)
+            _, lh_pick_events = parser.interpPick(pick_positions, slide_toggles, copy.deepcopy(tu.initial_point))
+            return pick_positions, lh_pick_events
 
-    lh_positions = parser.parseleftMIDI(payload.chords)
-    pick_positions, slide_toggles = parser.parsePickMIDI(payload.pluck)
-    pick_positions_adj = parser.prepPicker(lh_positions, pick_positions)
-    _, lh_pick_events = parser.interpPick(pick_positions_adj, slide_toggles, copy.deepcopy(tu.initial_point))
-    return pick_positions_adj, lh_pick_events
+    pick_positions, slide_toggles = parser.parsePlucks(payload.pluck)
+    _, lh_pick_events = parser.interpPick(pick_positions, slide_toggles, copy.deepcopy(tu.initial_point))
+    return pick_positions, lh_pick_events
 
 
 class PayloadFidelityAnalyzer:

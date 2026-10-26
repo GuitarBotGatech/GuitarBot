@@ -60,7 +60,7 @@ def test_payload_fidelity_analyzer_passes_for_equivalent_python_and_json_payload
 # ---------------------------------------------------------------------------
 
 class TestChordPluckParsing:
-    """parsePickMIDI: note 0-5 is a direct string index, not a MIDI pitch."""
+    """parsePlucks: note 0-5 is a direct string index, not a MIDI pitch."""
 
     def _parser(self):
         return GuitarBotParser(initial_point=copy.deepcopy(tu.initial_point), graph=False)
@@ -74,7 +74,7 @@ class TestChordPluckParsing:
         (5, 1),  # string 5  → picker 5
     ])
     def test_chord_pluck_routing(self, string_index, expected_events):
-        positions, toggles = self._parser().parsePickMIDI([[string_index, 0.4, 3, 0, 1.0]])
+        positions, toggles = self._parser().parsePlucks([[string_index, 0.4, 3, 0, 1.0]])
         assert len(positions) == expected_events, (
             f"String {string_index}: expected {expected_events} pick event(s), got {len(positions)}"
         )
