@@ -17,7 +17,7 @@ from notation import chords
 from notation.chords import chord_name, plan_parts
 from tuning import tune as tu
 
-OPEN = [low for low, _high, _direction in tu.STRING_MIDI_RANGES]
+OPEN = [low for low, _high in tu.STRING_MIDI_RANGES]
 
 
 def _fixed_voicing(monkeypatch, frets):
@@ -103,5 +103,5 @@ def test_library_voicing_resolves_every_string():
     rows = plan_parts([["Em", 0.0]], [[s, 0.4, 3, 0, 1.0] for s in range(6)])[0]
     assert [row[4] for row in rows] == list(range(6))
     for row in rows:
-        low, high, _direction = tu.STRING_MIDI_RANGES[row[4]]
+        low, high = tu.STRING_MIDI_RANGES[row[4]]
         assert low <= row[0] <= high

@@ -251,7 +251,7 @@ class GuitarBotParser:
                 note, duration, speed, slide_toggle, _specified, timestamp = pick
             else:
                 note, duration, speed, slide_toggle, timestamp = pick
-            timestamp = round(timestamp * tu.TIMESTAMP_ROUNDING_FACTOR) / tu.TIMESTAMP_ROUNDING_FACTOR
+            timestamp = round(timestamp / tu.TIME_STEP) * tu.TIME_STEP
             duration = round(duration, 3)
             is_tremolo = duration >= tu.TREMOLO_DURATION_THRESHOLD
             if not is_tremolo:
@@ -331,7 +331,7 @@ class GuitarBotParser:
             if isinstance(sound, Pluck):
                 all_points = sound.render(start_pos, commanded_dest_pos, self.interp_with_blend, tb_cent)
             elif isinstance(sound, Tremolo):
-                all_points = sound.render(start_pos, down_enc, up_enc, self.interp_with_blend)
+                all_points = sound.render(start_pos, down_enc, up_enc, self.interp_with_blend, tb_cent)
             else:
                 all_points = np.array([])
 

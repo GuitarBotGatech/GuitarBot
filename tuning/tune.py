@@ -20,20 +20,6 @@ graph = False
 # A higher value creates a more gradual acceleration and deceleration.
 TRAJECTORY_BLEND_PERCENT = 0.2
 
-# Number of interpolation points for presser movements (e.g., pressing/unpressing).
-# More points result in a slower movement.
-PRESSER_INTERPOLATION_POINTS = 50
-
-# Number of interpolation points for the "unpress after" REST phase.
-# This is intentionally much larger than PRESSER_INTERPOLATION_POINTS — the presser
-# needs to release slowly so the string has time to ring out and the motor
-# doesn't bounce back from the hard stop.
-# 60 pts × 5ms = 300ms release time (adjust up if the motor still snaps back).
-PRESSER_UNPRESS_AFTER_POINTS = 500
-
-# Number of interpolation points when the left hand is moving to a single note.
-LH_SINGLE_NOTE_MOTION_POINTS = 40
-
 # Number of interpolation points for a single pluck.
 PICKER_PLUCK_MOTION_POINTS = 11
 
@@ -70,15 +56,6 @@ TREMOLO_DURATION_THRESHOLD = 0.500
 
 # The default duration (in seconds) assigned to very short notes to ensure they are played.
 SHORT_NOTE_DEFAULT_DURATION = 0.025
-
-# Timestamp rounding factor. Formats the floats to be in terms of 5 ms.
-TIMESTAMP_ROUNDING_FACTOR = 200.0
-
-# Step size (in seconds) used when generating interpolated MIDI messages.
-# When a timed MIDI event has its interpolation flag set, intermediate messages
-# are inserted at this fixed interval regardless of how far apart the endpoints are.
-# 0.005 s = 5 ms → 200 interpolated steps per second.
-MIDI_INTERPOLATION_INTERVAL_S = 0.005
 
 # ----------------------------------------------------------------------------
 # 3. Left Hand (LH) Physical Parameters
@@ -141,15 +118,14 @@ def picker_physical_index(logical_idx):
 # Defines the mapping of MIDI notes to guitar strings.
 
 # MIDI note ranges for each string/picker.
-# Format: (lowest_note, highest_note, slider_direction_multiplier)
-# The multiplier is used to account for mirrored slider mechanisms relative to the picker.
+# Format: (lowest_note, highest_note). Slider direction is SLIDER_MOTOR_DIRECTION.
 STRING_MIDI_RANGES = [
-    (40, 49, SLIDER_MOTOR_DIRECTION[0]),  # String 1,E
-    (45, 54, SLIDER_MOTOR_DIRECTION[1]),  # String 2,A
-    (50, 59, SLIDER_MOTOR_DIRECTION[2]),  # String 3,D
-    (55, 64, SLIDER_MOTOR_DIRECTION[3]), # String 4.B
-    (59, 68, SLIDER_MOTOR_DIRECTION[4]),  # String 5,G
-    (64, 73, SLIDER_MOTOR_DIRECTION[5])   # String 6,E
+    (40, 49),  # E
+    (45, 54),  # A
+    (50, 59),  # D
+    (55, 64),  # G
+    (59, 68),  # B
+    (64, 73),  # e
 ]
 
 def _picker_start_encoder(logical_idx):
@@ -164,8 +140,8 @@ initial_point = [ #Bookmark
                  # Sliders
                  0, 0, 0, 0, 0, 0,
                  # Pressers
-                 -650, -650, -650, -650, -650, -650, # Position, not Torque value
-                 # Pluckers (physical columns; B↔e remapped)120
+                 *([LH_PRESSER_UNPRESSED_POS] * 6),
+                 # Pluckers (physical columns; B↔e remapped)
                  _picker_start_encoder(PICKER_LOGICAL_TO_PHYSICAL[0]),
                  _picker_start_encoder(PICKER_LOGICAL_TO_PHYSICAL[1]),
                  _picker_start_encoder(PICKER_LOGICAL_TO_PHYSICAL[2]),

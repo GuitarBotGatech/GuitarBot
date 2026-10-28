@@ -16,7 +16,7 @@ def fret_to_encoder(string, fret):
     """Slider target for a fret. Fret 0 and a mute leave the slider put, encoded as -1."""
     if fret <= 0:
         return -1
-    _low, _high, direction = tu.STRING_MIDI_RANGES[string]
+    direction = tu.SLIDER_MOTOR_DIRECTION[string]
     mm = tu.SLIDER_MM_PER_FRET[fret - 1]
     return ((mm * _SLIDER_RESOLUTION) / tu.MM_TO_ENCODER_CONVERSION_FACTOR + tu.SLIDER_ENCODER_OFFSET) * direction
 
@@ -166,7 +166,7 @@ class Tremolo(_Motion):
         self.duration = duration
         self.speed = speed
 
-    def render(self, start_pos, down_enc, up_enc, blend):
+    def render(self, start_pos, down_enc, up_enc, blend, tb_cent=tu.TRAJECTORY_BLEND_PERCENT):
         tremolo_points = []
         fill_points = min(30, int(30 - (self.speed - 1) * (25 / 9))) - 4
         current_pick_pos = start_pos
@@ -176,7 +176,7 @@ class Tremolo(_Motion):
                 if abs(current_pick_pos - up_enc) < abs(current_pick_pos - down_enc)
                 else up_enc
             )
-            points1 = blend(current_pick_pos, dest_pos, tu.PICKER_PLUCK_MOTION_POINTS, 0.2)
+            points1 = blend(current_pick_pos, dest_pos, tu.PICKER_PLUCK_MOTION_POINTS, tb_cent)
             points2 = np.full(fill_points, dest_pos)
             tremolo_points.extend(points1)
             tremolo_points.extend(points2)
@@ -211,7 +211,7 @@ def action_for_lh_event(string, position, start, prep, slide):
     if int(position) == -1:
         return Release(string, start, prep, slide)
 
-    low, high, _direction = tu.STRING_MIDI_RANGES[string]
+    low, high = tu.STRING_MIDI_RANGES[string]
     for fret in range(1, high - low + 1):
         if fret_to_encoder(string, fret) == position:
             return Fret(string, start, fret, prep, slide)

@@ -92,7 +92,7 @@ def plan_parts(chord_rows: list[list[Any]], pluck_rows: list[list[Any]]):
 
         active = bisect.bisect_right(times, timestamp) - 1
         fret = voiced[active][1][note] if active >= 0 else 0
-        low, high, _direction = tu.STRING_MIDI_RANGES[note]
+        low, high = tu.STRING_MIDI_RANGES[note]
         if not 0 <= fret <= high - low:
             print(f"Skipping pluck on string {note} at {timestamp}: the chord mutes it or frets it out of reach.")
             continue

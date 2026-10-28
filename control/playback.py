@@ -58,7 +58,7 @@ def send_trajectory(traj: np.ndarray) -> None:
     udp_ip = "10.2.1.177"
     udp_port = 8888
     batch_size = 20
-    time_per_point_s = 0.005
+    time_per_point_s = tu.TIME_STEP
 
     sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     num_total_points = len(traj)

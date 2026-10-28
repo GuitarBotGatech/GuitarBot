@@ -48,7 +48,7 @@ def candidates(note: Note) -> list[tuple[int, int]]:
                 return [(string, fret)]
         return []
     found = []
-    for string, (open_pitch, high, _direction) in enumerate(_RANGES):
+    for string, (open_pitch, high) in enumerate(_RANGES):
         fret = note.pitch - open_pitch
         if 0 <= fret <= high - open_pitch:
             found.append((string, fret))

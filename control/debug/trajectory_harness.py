@@ -190,7 +190,6 @@ class SlideContinuityAnalyzer:
         lh_pick_events = _derive_lh_pick_events(payload, quiet=self.quiet_parser_output)
         violations: list[dict[str, Any]] = []
 
-        window_points = (2 * tu.PRESSER_INTERPOLATION_POINTS) + tu.LH_SINGLE_NOTE_MOTION_POINTS
         threshold = tu.LH_PRESSER_UNPRESSED_POS + self.unpress_tolerance
 
         for event in lh_pick_events:
@@ -199,6 +198,8 @@ class SlideContinuityAnalyzer:
             timestamp = float(event[3])
             if int(slide_toggle) != 1:
                 continue
+            prep_time = float(event[4]) if len(event) >= 5 else float(tu.LH_PREP_TIME_BEFORE_PICK)
+            window_points = max(1, int(round(prep_time / float(tu.TIME_STEP))))
             presser_column = int(motor_id) * 2 + 6
             start_idx = max(0, int(float(timestamp) / tu.TIME_STEP))
             end_idx = min(trajectory.shape[0], start_idx + window_points)
