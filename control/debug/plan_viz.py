@@ -108,22 +108,12 @@ def show_motor_trajectory(combined_array, cc_events=None, time_step: float | Non
     fig.show()
 
 
-def print_events(motor_positions) -> None:
-    print("PRINTING EVENTS: ")
-    for event in motor_positions:
-        print(event)
-
-
 def log_slide_toggles(slide_toggles) -> None:
     print("Slide Toggles: ", slide_toggles)
 
 
 def log_matrix_shape(shape) -> None:
     print("Full Matrix Shape: ", shape)
-
-
-def log_lh_events_header() -> None:
-    print("LH UPDATED EVENTS LIST (NO SYNC LH EVENTS): ")
 
 
 def log_lh_pick_events(lh_pick_events) -> None:

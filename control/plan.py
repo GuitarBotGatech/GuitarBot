@@ -1,39 +1,43 @@
 import numpy as np
-import math
-from control.chord_selector import find_lowest_cost_chord
 import pandas as pd
 from tuning import tune as tu
-from control.path_planner import plan_strings
+from control.actions import (SLIDER_MUTE, Pluck, Tremolo, action_for_lh_event, actions_for, fret_to_encoder, tremolo_pick_count)
+from control.path_planner import assign
+from notation.events import load_config
 from control.debug import plan_viz
 
 
 class GuitarBotParser:
     def __init__(self, initial_point, graph=tu.graph):
         self.initial_point = initial_point
-        self.current_fret_positions = [0, 0, 0, 0, 0, 0]  # Start by preferring voicings near first position
         self.graph = graph
-        self.use_path_planner = True
 
-    def parseAll(self, chords, pluck):
+    def parseAll(self, pluck, mutes=None):
         """
-        Build a complete motor trajectory from notation planner rows.
+        Build a complete motor trajectory from planner pluck rows.
 
         Args:
-            chords: Chord rows from ``SongArrangement.to_planner_rows()``
-                (``[chord_string, timestamp]``).
-            pluck: Pluck rows from the same compiler
+            pluck: Rows from ``SongArrangement.to_plan()``
                 (``[note, duration, speed, slide, timestamp]`` or with
                 ``string_index`` inserted before timestamp).
+            mutes: ``Mute`` actions for strings a chord damps. A mute is
+                written only when that finger is not already playing a note.
         """
-        # 1. Get events + Timestamps
-        lh_motor_positions = self.parseChords(chords)
+        # 1. Assign every pluck to a string
         picker_motor_positions, slide_toggles = self.parsePlucks(pluck)
         if self.graph:
             plan_viz.log_slide_toggles(slide_toggles)
 
-        # 2. Interpolate (RH first — also emits LH prep events for fretted plucks)
+        # 2. Interpolate (RH first — also emits the LH prep event for each pluck)
         pick_array, lh_pick_pos = self.interpPick(picker_motor_positions, slide_toggles, self.initial_point)
-        lh_array = self.lh_interpolate(lh_motor_positions, lh_pick_pos, self.initial_point)
+
+        # Lift every presser a second after the last note so no finger holds torque after the song.
+        song_end = max((timestamp + event[3] for event, timestamp in picker_motor_positions), default=0.0)
+        prep_time = float(tu.LH_PREP_TIME_BEFORE_PICK)
+        release_start = song_end + 1.0 - prep_time
+        lh_pick_pos += [[string, -1, 0, release_start, prep_time] for string in range(len(tu.STRING_MIDI_RANGES))]
+
+        lh_array = self.lh_interpolate(lh_pick_pos, self.initial_point, mutes=mutes)
 
         # 3. Combine and Finalize Trajectory
         num_lh_rows = lh_array.shape[0]
@@ -89,18 +93,9 @@ class GuitarBotParser:
 
         return curve.astype(int)
 
-    def lh_interpolate(self, lh_motor_positions, lh_pick_pos, initial_point, num_points=tu.PRESSER_INTERPOLATION_POINTS, tb_cent=tu.TRAJECTORY_BLEND_PERCENT):
+    def lh_interpolate(self, lh_pick_pos, initial_point, tb_cent=tu.TRAJECTORY_BLEND_PERCENT, mutes=None):
 
         motor_available_time = {i: 0.0 for i in range(6)}
-        lh_motor_positions = self.checkSyncEvents(lh_motor_positions)
-        chord_motion_s = ((2 * tu.PRESSER_INTERPOLATION_POINTS) + tu.LH_SLIDER_MOTION_POINTS) * tu.TIME_STEP
-        
-        chord_windows = sorted(
-            (float(ts), float(ts) + chord_motion_s)
-            for _, ts in lh_motor_positions
-            if float(ts) >= 0
-        )
-        next_chord = 0
 
         def unpack_lh_pick_event(raw_event):
             motor_id = int(raw_event[0])
@@ -118,11 +113,6 @@ class GuitarBotParser:
         filtered_lh_pick_pos = []
         for raw_event in sorted(lh_pick_pos, key=lambda event: float(event[3])):
             motor_id, position, slide_toggle, timestamp, prep_time = unpack_lh_pick_event(raw_event)
-            while next_chord < len(chord_windows) and chord_windows[next_chord][0] <= timestamp:
-                chord_end = chord_windows[next_chord][1]
-                for motor in range(6):
-                    motor_available_time[motor] = max(motor_available_time[motor], chord_end)
-                next_chord += 1
             # Check if the motor is available at the required start time
             if timestamp >= motor_available_time.get(motor_id, 0.0):
                 filtered_lh_pick_pos.append([motor_id, position, slide_toggle, timestamp, prep_time])
@@ -180,34 +170,30 @@ class GuitarBotParser:
                     new_timestamp = float(pluck_time - new_prep_time)
                     lh_pick_pos[event_idx] = [motor_id_ev, position, slide_toggle, new_timestamp, new_prep_time]
 
-        initial_point_lh = initial_point[0:12]
-        all_events_for_sizing = []
-        if lh_motor_positions:
-            for _, timestamp in lh_motor_positions:
-                all_events_for_sizing.append({'timestamp': timestamp, 'type': 'chord'})
-
-        if lh_pick_pos:
+        # Mutes damp a string a chord marks silent. They are added after the note
+        # timings are fixed, and only in a gap, so a note on that string is unchanged.
+        if mutes:
+            windows: dict[int, list[tuple[float, float]]] = {}
             for raw_event in lh_pick_pos:
-                _, _, _, timestamp, prep_time = unpack_lh_pick_event(raw_event)
-                if timestamp >= 0:
-                    all_events_for_sizing.append({'timestamp': timestamp, 'type': 'note', 'duration_s': prep_time})
+                motor_id, _position, _slide_toggle, timestamp, prep_time = unpack_lh_pick_event(raw_event)
+                windows.setdefault(motor_id, []).append((timestamp, timestamp + prep_time))
+            for mute in mutes:
+                start, prep_time = float(mute.start), float(mute.prep)
+                if start < 0:
+                    continue
+                end = start + prep_time
+                taken = windows.get(mute.string, [])
+                if any(not (end <= begin or start >= stop) for begin, stop in taken):
+                    continue
+                lh_pick_pos.append([mute.string, SLIDER_MUTE, 0, start, prep_time])
+                windows.setdefault(mute.string, []).append((start, end))
 
-        max_required_time = 0
-        if all_events_for_sizing:
-            # Find the event with the latest start time
-            latest_event = max(all_events_for_sizing, key=lambda x: x['timestamp'])
-            latest_start_time = latest_event['timestamp']
-
-            # Calculate the duration of that latest event to find its end time
-            duration_of_last_event = 0
-            if latest_event['type'] == 'chord':
-                num_generated_points = (2 * tu.PRESSER_INTERPOLATION_POINTS) + tu.LH_SLIDER_MOTION_POINTS
-                duration_of_last_event = num_generated_points * tu.TIME_STEP
-            elif latest_event['type'] == 'note':
-                duration_of_last_event = float(latest_event.get('duration_s', tu.LH_PREP_TIME_BEFORE_PICK))
-
-            # The total time needed is the start of the last event plus its duration
-            max_required_time = latest_start_time + duration_of_last_event
+        initial_point_lh = initial_point[0:12]
+        lh_pick_pos.sort(key=lambda event: event[3])
+        max_required_time = max(
+            (timestamp + prep_time for _, _, _, timestamp, prep_time in lh_pick_pos if timestamp >= 0),
+            default=0.0,
+        )
 
         # Add a small safety buffer (e.g., 200 timesteps) to prevent edge case errors
         buffer = 200 * tu.TIME_STEP
@@ -216,21 +202,6 @@ class GuitarBotParser:
             num_rows = 1
 
         trajectory_array = np.full((num_rows, 12), np.nan)
-
-        if self.graph:
-            plan_viz.log_lh_events_header()
-            plan_viz.print_events(lh_motor_positions)
-
-        full_LH = []
-        for motor_pos, timestamp in lh_motor_positions:
-            full_LH.append({'type': 'chord', 'positions': motor_pos, 'timestamp': timestamp})
-        for raw_event in lh_pick_pos:
-            motor_id, position, slide_toggle, timestamp, prep_time = unpack_lh_pick_event(raw_event)
-            full_LH.append(
-                {'type': 'note', 'motor_id': motor_id, 'position': position, 'slide_toggle': slide_toggle,
-                 'timestamp': timestamp, 'prep_time': prep_time})
-        full_LH.sort(key=lambda x: x['timestamp'])
-
         trajectory_array[0, :] = initial_point_lh
         current_encoder_position = list(initial_point_lh)
 
@@ -249,325 +220,73 @@ class GuitarBotParser:
 
         prev_position, prev_motor_id = None, None
 
-        for event in full_LH:
+        for motor_index, position, slide_toggle, timestamp, prep_time_s in lh_pick_pos:
             # Ignore events with negative timestamps
-            if event['timestamp'] < 0:
+            if timestamp < 0:
                 continue
 
-            timestamp = round(event['timestamp'], 3)
+            timestamp = round(timestamp, 3)
             start_index = int(timestamp / tu.TIME_STEP)
             curr_pos = _state_at(start_index - 1 if start_index > 0 else 0)
 
-            if event['type'] == 'chord':
-                target_positions_slider = event['positions'][:6]
-                target_positions_presser = event['positions'][6:12]
-                all_points = []
+            slider_motor_ID, presser_motor_ID = motor_index, motor_index + 6
+            q0_slider_motor = curr_pos[slider_motor_ID]
+            q0_presser_motor = curr_pos[presser_motor_ID]
+            action = action_for_lh_event(motor_index, position, timestamp, prep_time_s, slide_toggle)
+            slider_points, presser_points = action.render(
+                q0_slider_motor,
+                q0_presser_motor,
+                same_as_prev=prev_position == position and prev_motor_id == motor_index,
+                blend=self.interp_with_blend,
+                tb_cent=tb_cent,
+            )
 
-                # 1. UNPRESS
-                unpress_sliders = np.array([self.interp_with_blend(curr_pos[i], curr_pos[i], num_points, tb_cent) for i in range(6)]).T
-                unpress_pressers = np.array([self.interp_with_blend(curr_pos[i + 6], tu.LH_PRESSER_UNPRESSED_POS, num_points, tb_cent) for i in range(6)]).T
+            if start_index + len(slider_points) <= num_rows:
+                end_index = start_index + len(slider_points)
+                trajectory_array[start_index: end_index, slider_motor_ID] = slider_points
+                trajectory_array[start_index: end_index, presser_motor_ID] = presser_points
 
-                all_points.extend(np.hstack([unpress_sliders, unpress_pressers]))
+                if end_index < num_rows:
+                    trajectory_array[end_index:, slider_motor_ID] = np.nan
+                    trajectory_array[end_index:, presser_motor_ID] = np.nan
 
-                # 2. SLIDE
-                slide_sliders = np.array([self.interp_with_blend(curr_pos[i], target_positions_slider[i], tu.LH_SLIDER_MOTION_POINTS, tb_cent) for i in range(6)]).T
-                slide_pressers = np.array([self.interp_with_blend(tu.LH_PRESSER_UNPRESSED_POS, tu.LH_PRESSER_UNPRESSED_POS, tu.LH_SLIDER_MOTION_POINTS, tb_cent) for i in range(6)]).T
-                all_points.extend(np.hstack([slide_sliders, slide_pressers]))
+                current_encoder_position[slider_motor_ID] = slider_points[-1]
+                current_encoder_position[presser_motor_ID] = presser_points[-1]
+            else:
+                safe_points = num_rows - start_index
+                if safe_points > 0:
+                    trajectory_array[start_index:, slider_motor_ID] = slider_points[:safe_points]
+                    trajectory_array[start_index:, presser_motor_ID] = presser_points[:safe_points]
+                    current_encoder_position[slider_motor_ID] = slider_points[safe_points - 1]
+                    current_encoder_position[presser_motor_ID] = presser_points[safe_points - 1]
 
-                # 3. PRESS
-                press_sliders = np.array([self.interp_with_blend(target_positions_slider[i], target_positions_slider[i], num_points, tb_cent) for i in range(6)]).T
-                press_pressers = np.array([self.interp_with_blend(tu.LH_PRESSER_UNPRESSED_POS, target_positions_presser[i], num_points, tb_cent) for i in range(6)]).T
-                all_points.extend(np.hstack([press_sliders, press_pressers]))
-
-                num_generated_points = len(all_points)
-                if start_index + num_generated_points <= num_rows:
-                    end_index = start_index + num_generated_points
-                    trajectory_array[start_index: end_index, :] = all_points
-
-                    if end_index < num_rows:
-                        trajectory_array[end_index:, :] = np.nan
-                    current_encoder_position = list(all_points[-1])
-                else:
-                    safe_points = num_rows - start_index
-                    if safe_points > 0:
-                        trajectory_array[start_index:, :] = all_points[:safe_points]
-                        current_encoder_position = list(all_points[safe_points - 1])
-
-
-            elif event['type'] == 'note':
-                slider_points, presser_points = [], []
-                prep_time_s = float(event.get('prep_time', tu.LH_PREP_TIME_BEFORE_PICK))
-                total_points = max(3, int(round(prep_time_s / float(tu.TIME_STEP))))
-                base, remainder = divmod(total_points, 3)
-                phase1_points = phase2_points = base
-                phase3_points = base + remainder
-
-                motor_index = event['motor_id']
-                slider_motor_ID, presser_motor_ID = motor_index, motor_index + 6
-
-                q0_slider_motor = curr_pos[slider_motor_ID]
-                q0_presser_motor = curr_pos[presser_motor_ID]
-                qf_slider = int(event['position'])
-                qf1_presser = tu.LH_PRESSER_UNPRESSED_POS
-                qf2_presser = tu.LH_PRESSER_PRESSED_POS
-
-                if int(event['position']) == -1:
-                    qf_slider, qf2_presser = q0_slider_motor, tu.LH_PRESSER_UNPRESSED_POS
-                if int(event['position']) == int(round(q0_slider_motor)) and int(event['position']) != -1:
-                    qf_slider, qf1_presser = q0_slider_motor, tu.LH_PRESSER_PRESSED_POS
-
-                if not (prev_position == event['position'] and prev_motor_id == event['motor_id']):
-                    if event['slide_toggle']:
-                        s1 = self.interp_with_blend(q0_slider_motor, q0_slider_motor, phase1_points, tb_cent)
-                        p1 = self.interp_with_blend(q0_presser_motor, tu.LH_PRESSER_SLIDE_PRESS_POS, phase1_points, tb_cent)
-                        slider_points.extend(s1)
-                        presser_points.extend(p1)
-
-                        s2 = self.interp_with_blend(q0_slider_motor, qf_slider, phase2_points, tb_cent)
-                        p2 = self.interp_with_blend(tu.LH_PRESSER_SLIDE_PRESS_POS, tu.LH_PRESSER_SLIDE_PRESS_POS, phase2_points, tb_cent)
-                        slider_points.extend(s2)
-                        presser_points.extend(p2)
-
-                        s3 = self.interp_with_blend(qf_slider, qf_slider, phase3_points, tb_cent)
-                        p3 = self.interp_with_blend(tu.LH_PRESSER_SLIDE_PRESS_POS, qf2_presser, phase3_points, tb_cent)
-                        slider_points.extend(s3)
-                        presser_points.extend(p3)
-                    else:
-                        s1 = self.interp_with_blend(q0_slider_motor, q0_slider_motor, phase1_points, tb_cent)
-                        p1 = self.interp_with_blend(q0_presser_motor, qf1_presser, phase1_points, tb_cent)
-                        slider_points.extend(s1)
-                        presser_points.extend(p1)
-
-                        s2 = self.interp_with_blend(q0_slider_motor, qf_slider, phase2_points, tb_cent)
-                        p2 = self.interp_with_blend(qf1_presser, qf1_presser, phase2_points, tb_cent)
-                        slider_points.extend(s2)
-                        presser_points.extend(p2)
-
-                        s3 = self.interp_with_blend(qf_slider, qf_slider, phase3_points, tb_cent)
-                        p3 = self.interp_with_blend(qf1_presser, qf2_presser, phase3_points, tb_cent)
-                        slider_points.extend(s3)
-                        presser_points.extend(p3)
-                else:
-                    total_points = max(phase1_points + phase2_points + phase3_points, 1)
-                    s3 = self.interp_with_blend(q0_slider_motor, qf_slider, total_points, tb_cent)
-                    p3 = self.interp_with_blend(q0_presser_motor, qf2_presser, total_points, tb_cent)
-                    slider_points.extend(s3)
-                    presser_points.extend(p3)
-
-                if start_index + len(slider_points) <= num_rows:
-                    end_index = start_index + len(slider_points)
-                    trajectory_array[start_index: end_index, slider_motor_ID] = slider_points
-                    trajectory_array[start_index: end_index, presser_motor_ID] = presser_points
-
-                    if end_index < num_rows:
-                        trajectory_array[end_index:, slider_motor_ID] = np.nan
-                        trajectory_array[end_index:, presser_motor_ID] = np.nan
-
-                    current_encoder_position[slider_motor_ID] = slider_points[-1]
-                    current_encoder_position[presser_motor_ID] = presser_points[-1]
-                else:
-                    safe_points = num_rows - start_index
-                    if safe_points > 0:
-                        trajectory_array[start_index:, slider_motor_ID] = slider_points[:safe_points]
-                        trajectory_array[start_index:, presser_motor_ID] = presser_points[:safe_points]
-                        current_encoder_position[slider_motor_ID] = slider_points[safe_points - 1]
-                        current_encoder_position[presser_motor_ID] = presser_points[safe_points - 1]
-
-                prev_position, prev_motor_id = event["position"], event["motor_id"]
+            prev_position, prev_motor_id = position, motor_index
 
         df = pd.DataFrame(trajectory_array)
         df.ffill(inplace=True)
         return df.to_numpy()
 
-    def checkSyncEvents(self, motor_positions):
-        prev_timestamp = -10000
-        new_motor_positions = []
-        lh_chord_change_points = (2 * tu.PRESSER_INTERPOLATION_POINTS) + tu.LH_SLIDER_MOTION_POINTS
-        required_delta = lh_chord_change_points * tu.TIME_STEP
+    def parsePlucks(self, picks):
+        """Ask the configured planner for a string, then aim each picker's stroke."""
+        strings = assign(picks, self.initial_point[:6], load_config().get("planner", "astar"))
 
-        for event in motor_positions:
-            timestamp = event[1]
-            delta = round(timestamp - prev_timestamp, 3)
-            if delta >= required_delta:
-                new_motor_positions.append(event)
-                prev_timestamp = timestamp
-            else:
-                print(f"Not enough space between LH events, ignoring event: {event}")
-        return new_motor_positions
-
-    def _get_voicing(self, symbol):
-        """Chord symbol → (fret numbers, press commands) for the cheapest library voicing."""
-        key, chord_type = 'n', "MAJOR"
-        if len(symbol) > 1:
-            curr_index = 1
-            key = symbol[curr_index]
-            if key not in ['#', 'f']:
-                key = 'n'
-            else:
-                curr_index += 1
-            remaining_input = symbol[curr_index:]
-            if len(remaining_input) == 1:
-                chord_types_one_letter = {'m': "MINOR", '7': "DOMINANT", '9': "DOMINANT", '13': "DOMINANT",
-                                          'o': "HALF-DIM", '5': "FIFTH"}
-                chord_type = chord_types_one_letter.get(remaining_input, chord_type)
-            elif len(remaining_input) == 2:
-                chord_types_two_letters = {"M6": "MAJOR6", "M7": "MAJOR7", "M9": "MAJOR9", "m6": "MINOR6",
-                                           "m7": "MINOR7", "m9": "MINOR9"}
-                chord_type = chord_types_two_letters.get(remaining_input, chord_type)
-            elif len(remaining_input) >= 3:
-                chord_types_three_letters = {"sus": "SUS4", "sus4": "SUS4", "sus2": "SUS2", "dim": "DIMINISHED",
-                                             "dim7": "DIMINISHED"}
-                chord_type = chord_types_three_letters.get(remaining_input, chord_type)
-        note = str.upper(symbol[0])
-        voicing = find_lowest_cost_chord(self.current_fret_positions, tu.CHORD_LIBRARY_FILE, note + key, chord_type)
-
-        self.current_fret_positions = voicing
-        fret_numbers = voicing.copy()
-
-        press_commands = []
-        for i in range(6):
-            if fret_numbers[i] == 0:
-                fret_numbers[i] = 1
-                press_commands.append(1)
-            elif fret_numbers[i] == -1:
-                fret_numbers[i] = 1
-                press_commands.append(3)
-            else:
-                press_commands.append(2)
-
-        return fret_numbers, press_commands
-
-    def parseChords(self, chords):
-        """Chord planner rows → LH motor position events."""
-        lh_events = []
-        for curr_chord in chords:
-            timestamp = round(curr_chord[1] * tu.TIMESTAMP_ROUNDING_FACTOR) / tu.TIMESTAMP_ROUNDING_FACTOR
-            frets, command = self._get_voicing(curr_chord[0])
-            lh_events.append(["LH", [frets, command], timestamp])
-
-        lh_motor_positions = []
-        slider_encoder_values = [((v * 2048) / tu.MM_TO_ENCODER_CONVERSION_FACTOR + tu.SLIDER_ENCODER_OFFSET) for v in tu.SLIDER_MM_PER_FRET]
-
-        for _, (positions, command), timestamp in lh_events:
-            motor_values = []
-            for i, fret in enumerate(positions):
-                mult = tu.SLIDER_MOTOR_DIRECTION[i]
-                if 1 <= fret <= len(slider_encoder_values):
-                    motor_values.append(slider_encoder_values[fret - 1] * mult)
-                else:
-                    motor_values.append(0)  # Default for open or invalid
-
-            for i, press_cmd in enumerate(command):
-                if 1 <= press_cmd <= len(tu.PRESSER_ENCODER_POSITIONS):
-                    motor_values.append(tu.PRESSER_ENCODER_POSITIONS[press_cmd - 1])
-                else:
-                    motor_values.append(tu.LH_PRESSER_UNPRESSED_POS)
-                    
-            lh_motor_positions.append([motor_values, timestamp])
-        return lh_motor_positions
-
-    def _tremolo_fill_points(self, speed):
-        fill_points = min(30, int(30 - (speed - 1) * (25 / 9))) - 4
-        return max(0, fill_points)
-
-    def _estimate_tremolo_pick_count(self, duration, speed):
-        fill_points = self._tremolo_fill_points(speed)
-        single_pick_duration = (fill_points * tu.TIME_STEP) + (tu.PICKER_PLUCK_MOTION_POINTS * tu.TIME_STEP)
-
-        return max(0, math.floor(duration / single_pick_duration))
-
-    def _picker_ready_for_note(self, picker_id, note, slide_toggle, timestamp, last_notes, active_pickers):
-        if last_notes[picker_id] == note and int(slide_toggle) != 1:
-            return True
-
-        prep_time = float(tu.LH_PREP_TIME_BEFORE_PICK)
-        return float(timestamp) - prep_time + 1e-9 >= float(active_pickers[picker_id])
-
-    def parsePlucks(self, picks): 
-        """assigns each pluck once and turns that list into motor positions"""
-
-        explicit_override_indices = {idx for idx, pick in enumerate(picks) if len(pick) == 6 and pick[4] is not None}
-
-        if self.use_path_planner:
-            picks = plan_strings(picks, initial_frets=list(self.current_fret_positions))
-
-        n_strings = len(tu.STRING_MIDI_RANGES)
         pick_events = []
         slide_toggles = []
-        # Free before the song, including a note at t=0 that still needs LH prep.
-        active_pickers = [-0.5] * n_strings
-        last_notes = [None] * n_strings
-
-        def playable_on(note_value, picker_id):
-            if not 0 <= picker_id < n_strings:
-                return False
-            low, high, _direction = tu.STRING_MIDI_RANGES[picker_id]
-            return low <= note_value <= high
-
-        def commit(picker_id, note, duration, speed, slide_toggle, timestamp, is_tremolo, remember_note):
-            pick_events.append((picker_id, note, duration, speed, timestamp, is_tremolo))
-            slide_toggles.append(slide_toggle)
-            active_pickers[picker_id] = timestamp
-            if remember_note:
-                last_notes[picker_id] = note
-
-        for pick_idx, pick_info in enumerate(picks):
-            if len(pick_info) == 6:
-                note, duration, speed, slide_toggle, specified_string, timestamp = pick_info
+        for pick, string in zip(picks, strings):
+            if len(pick) == 6:
+                note, duration, speed, slide_toggle, _specified, timestamp = pick
             else:
-                note, duration, speed, slide_toggle, timestamp = pick_info
-                specified_string = None
+                note, duration, speed, slide_toggle, timestamp = pick
             timestamp = round(timestamp * tu.TIMESTAMP_ROUNDING_FACTOR) / tu.TIMESTAMP_ROUNDING_FACTOR
-
-            # Chord pluck: note 0-5 is the string index. The plucker fires; the slider stays put.
-            if 0 <= note <= 5:
-                if timestamp >= active_pickers[note]:
-                    commit(
-                        note, note, duration, speed, slide_toggle, timestamp,
-                        duration >= tu.TREMOLO_DURATION_THRESHOLD, False,
-                    )
-                else:
-                    print(f"Warning: Picker {note} busy at {timestamp}, skipping chord pluck on string {note}.")
-                continue
-
             duration = round(duration, 3)
             is_tremolo = duration >= tu.TREMOLO_DURATION_THRESHOLD
             if not is_tremolo:
                 duration = tu.SHORT_NOTE_DEFAULT_DURATION
-            assigned = False
-
-            if specified_string is not None:
-                picker_id = int(specified_string)
-                if playable_on(note, picker_id):
-                    ready = self._picker_ready_for_note(picker_id, note, slide_toggle, timestamp, last_notes, active_pickers)
-                    if pick_idx in explicit_override_indices:
-                        if not ready:
-                            print(
-                                f"Warning: Specified picker {picker_id} busy for note {note} at {timestamp}. "
-                                "Honoring explicit string override."
-                            )
-                        commit(picker_id, note, duration, speed, slide_toggle, timestamp, is_tremolo, True)
-                        assigned = True
-                    elif ready:
-                        commit(picker_id, note, duration, speed, slide_toggle, timestamp, is_tremolo, True)
-                        assigned = True
-                    else:
-                        print(
-                            f"Warning: Specified picker {picker_id} busy for note {note} at {timestamp}. "
-                            "Falling back to auto-assignment."
-                        )
-                else:
-                    print(f"Warning: Note {note} is not playable on specified string {specified_string}. Falling back to auto-assignment.")
-
-            if not assigned:
-                for picker_id, (low, high, _direction) in enumerate(tu.STRING_MIDI_RANGES):
-                    if low <= note <= high and self._picker_ready_for_note(picker_id, note, slide_toggle, timestamp, last_notes, active_pickers):
-                        commit(picker_id, note, duration, speed, slide_toggle, timestamp, is_tremolo, True)
-                        assigned = True
-                        break
-
-            if not assigned:
-                print(f"Warning: No available picker for note {note} at timestamp {timestamp}")
+            if string is None:
+                print(f"Warning: No string can play note {note} at {timestamp} in the prep time available.")
+                continue
+            pick_events.append((string, note, duration, speed, timestamp, is_tremolo))
+            slide_toggles.append(slide_toggle)
 
         # Start each picker on the nearer of its up/down stops. Physical columns
         # are remapped (B↔e); calibration stays on the logical picker.
@@ -592,7 +311,7 @@ class GuitarBotParser:
             up_enc, down_enc = endpoints[motor_id]
             dest = down_enc if picker_is_up[motor_id] else up_enc
             pick_motor_positions.append([[motor_id, note, round(dest, 3), duration, speed], timestamp])
-            odd_tremolo = is_tremolo and self._estimate_tremolo_pick_count(duration, speed) % 2 == 1
+            odd_tremolo = is_tremolo and tremolo_pick_count(duration, speed) % 2 == 1
             if not is_tremolo or odd_tremolo:
                 picker_is_up[motor_id] = not picker_is_up[motor_id]
 
@@ -617,22 +336,17 @@ class GuitarBotParser:
             # Logical string keeps calibration / LH routing; RH column may differ (B↔e).
             phys_id = tu.picker_physical_index(motor_id)
             start_index = int(timestamp / tu.TIME_STEP)
-            is_pluck = duration < tu.TREMOLO_DURATION_THRESHOLD
             pluck_time = float(timestamp)
 
-            # Chord plucks (note 0-5) never move the slider. Fretted notes start LH
-            # prep a fixed window before the pluck.
-            lh_event = None  # [motor_id, enc, slide, t_start, prep] or None
-
-            if note > 5:
-                fret = note - tu.STRING_MIDI_RANGES[motor_id][0]
-                if fret == 0:
-                    lh_enc_val = -1
-                else:
-                    s_dir = tu.STRING_MIDI_RANGES[motor_id][2]
-                    lh_enc_val = ((tu.SLIDER_MM_PER_FRET[fret - 1] * 2048) / tu.MM_TO_ENCODER_CONVERSION_FACTOR + tu.SLIDER_ENCODER_OFFSET) * s_dir
-                t_min = float(tu.LH_PREP_TIME_BEFORE_PICK)
-                lh_event = [motor_id, lh_enc_val, slide_toggles[i], pluck_time - t_min, t_min]
+            # LH prep starts a fixed window before the pluck. Open strings leave the slider put.
+            fret = note - tu.STRING_MIDI_RANGES[motor_id][0]
+            hand, sound = actions_for(
+                motor_id, fret, pluck_time,
+                slide=bool(slide_toggles[i]), duration=duration, speed=speed,
+            )
+            lh_pick_events.append([
+                motor_id, fret_to_encoder(motor_id, fret), slide_toggles[i], hand.start, hand.prep,
+            ])
 
             start_pos = current_positions[phys_id]
             info = tu.PICKER_MOTOR_INFO[motor_id]
@@ -640,39 +354,18 @@ class GuitarBotParser:
             down_enc = (info['down_pluck_mm'] * res) / tu.MM_TO_ENCODER_CONVERSION_FACTOR
             up_enc = (info['up_pluck_mm'] * res) / tu.MM_TO_ENCODER_CONVERSION_FACTOR
 
-            all_points = np.array([])
-            if is_pluck:
-                dest_pos = float(commanded_dest_pos)
-                all_points = self.interp_with_blend(
-                    start_pos, dest_pos, tu.PICKER_PLUCK_MOTION_POINTS, tb_cent
-                )
+            if isinstance(sound, Pluck):
+                all_points = sound.render(start_pos, commanded_dest_pos, self.interp_with_blend, tb_cent)
+            elif isinstance(sound, Tremolo):
+                all_points = sound.render(start_pos, down_enc, up_enc, self.interp_with_blend)
             else:
-                tremolo_points = []
-                fill_points = self._tremolo_fill_points(speed)
-                num_picks = self._estimate_tremolo_pick_count(duration, speed)
-                current_pick_pos = start_pos
-                for _ in range(num_picks):
-                    dest_pos = (
-                        down_enc
-                        if abs(current_pick_pos - up_enc) < abs(current_pick_pos - down_enc)
-                        else up_enc
-                    )
-                    points1 = self.interp_with_blend(current_pick_pos, dest_pos, tu.PICKER_PLUCK_MOTION_POINTS, 0.2)
-                    points2 = np.full(fill_points, dest_pos)
-                    tremolo_points.extend(points1)
-                    tremolo_points.extend(points2)
-                    current_pick_pos = dest_pos
-                if tremolo_points:
-                    all_points = np.array(tremolo_points)
+                all_points = np.array([])
 
             if all_points.size > 0:
                 num_gen = len(all_points)
                 if start_index + num_gen <= num_rows:
                     trajectory_array[start_index : start_index + num_gen, phys_id] = all_points
                 current_positions[phys_id] = all_points[-1]
-
-            if lh_event is not None:
-                lh_pick_events.append(lh_event)
 
         df = pd.DataFrame(trajectory_array)
         df.ffill(inplace=True)

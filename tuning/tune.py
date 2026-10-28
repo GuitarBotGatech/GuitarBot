@@ -31,9 +31,6 @@ PRESSER_INTERPOLATION_POINTS = 50
 # 60 pts × 5ms = 300ms release time (adjust up if the motor still snaps back).
 PRESSER_UNPRESS_AFTER_POINTS = 500
 
-# Number of interpolation points for the main sliding motion of the left hand.
-LH_SLIDER_MOTION_POINTS = 120
-
 # Number of interpolation points when the left hand is moving to a single note.
 LH_SINGLE_NOTE_MOTION_POINTS = 40
 
@@ -45,6 +42,9 @@ LH_PRESSER_UNPRESSED_POS = -650
 
 # Position value for a fully pressed left-hand presser motor.
 LH_PRESSER_PRESSED_POS = 500
+
+# Partial press that damps a string without fretting it. The slider can stay wherever it is.
+LH_PRESSER_MUTE_POS = 100
 
 # Torque value for a press, used for sliding to ensure string contact.
 # Given in terms of LH_PRESSER_SLIDE_PRESS_POS/1000 % of torque rating. For example, LH_PRESSER_SLIDE_PRESS_POS = 650 then the motor is outputting 65% of the motors' rated torque value.
@@ -90,11 +90,6 @@ MIDI_INTERPOLATION_INTERVAL_S = 0.005
 # Controls where the slider lands for fret 1, fret 2, fret 3, etc. respectively.
 # Index 0 corresponds to Fret 1.
 SLIDER_MM_PER_FRET = [19, 52, 85, 112, 139, 164, 187, 211, 234]
-
-
-# Position values for the three states of the presser motors:
-# 1: Open/Unpressed, 2: Pressed, 3: Muted (partially pressed).
-PRESSER_ENCODER_POSITIONS = [-650, 500, 100]
 
 # Conversion factor from millimeters to encoder ticks for the slider motors.
 # Generally only needs to change if the motor is not Maxxon

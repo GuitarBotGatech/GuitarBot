@@ -19,8 +19,8 @@ from notation.Songs.legacy.pluck_message_to_json import load_pluck_message_from_
 
 @dataclass
 class PlannerPayload:
-    chords: list[list[Any]]
     pluck: list[list[Any]]
+    mutes: list[Any] | None = None
 
 
 @dataclass
@@ -68,23 +68,23 @@ def normalize_pluck_rows(rows: list[list[Any]]) -> list[tuple[int, float, float,
 
 
 def load_json_payload(path: str | Path) -> PlannerPayload:
-    data = Path(path).read_text(encoding="utf-8")
-    arrangement = SongArrangement.from_json_str(data)
-    chords, pluck = arrangement.to_planner_rows()
-    return PlannerPayload(chords=chords, pluck=pluck)
+    data = json.loads(Path(path).read_text(encoding="utf-8"))
+    arrangement = SongArrangement.from_dict(data)
+    plucks, mutes = arrangement.to_plan()
+    return PlannerPayload(pluck=plucks, mutes=mutes)
 
 
 def load_python_payload(path: str | Path, variable_name: str = "pluck_message") -> PlannerPayload:
     pluck_rows = load_pluck_message_from_python_file(path, variable_name=variable_name)
-    return PlannerPayload(chords=[], pluck=pluck_rows)
+    return PlannerPayload(pluck=pluck_rows)
 
 
 def compute_trajectory(payload: PlannerPayload, *, quiet: bool = True) -> np.ndarray:
     parser = GuitarBotParser(initial_point=copy.deepcopy(tu.initial_point), graph=False)
     if quiet:
         with contextlib.redirect_stdout(io.StringIO()):
-            return parser.parseAll(payload.chords, payload.pluck)
-    return parser.parseAll(payload.chords, payload.pluck)
+            return parser.parseAll(payload.pluck, payload.mutes)
+    return parser.parseAll(payload.pluck, payload.mutes)
 
 
 def _derive_lh_pick_events(payload: PlannerPayload, *, quiet: bool = True) -> list[list[Any]]:
@@ -371,14 +371,8 @@ class TrajectoryHarness:
         return {
             "pass": overall_pass,
             "analyses": analyses,
-            "python_payload": {
-                "chords": len(python_payload.chords),
-                "pluck": len(python_payload.pluck),
-            },
-            "json_payload": {
-                "chords": len(json_payload.chords),
-                "pluck": len(json_payload.pluck),
-            },
+            "python_payload": {"pluck": len(python_payload.pluck)},
+            "json_payload": {"pluck": len(json_payload.pluck)},
         }
 
 

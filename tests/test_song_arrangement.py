@@ -14,25 +14,25 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 from notation.events import SongArrangement, beat_label_to_seconds
 
 
-def _example_path() -> Path:
-    return Path(__file__).resolve().parent.parent / "Docs" / "song-format" / "example.json"
+def _example() -> SongArrangement:
+    path = Path(__file__).resolve().parent.parent / "Docs" / "song-format" / "example.json"
+    return SongArrangement.from_dict(json.loads(path.read_text(encoding="utf-8")))
 
 
 def test_load_example():
-    arrangement = SongArrangement.from_json_file(_example_path())
+    arrangement = _example()
     assert arrangement.name == "MVP Example Song"
-    assert arrangement.meta.bpm == pytest.approx(92.0)
+    assert arrangement.bpm == pytest.approx(92.0)
     assert arrangement.plucks
     assert arrangement.chords
 
 
-def test_event_rows_and_tempo_curve():
-    arrangement = SongArrangement.from_json_file(_example_path())
-    warped = arrangement.event_rows()
-    raw = arrangement.event_rows(apply_meta_tempo_curve=False)
-    assert warped["chords"][0] == ["Em", 0.0]
-    assert warped["pluck"][0][0] == 52
-    assert warped["pluck"][0][-1] > raw["pluck"][0][-1]
+def test_tempo_curve_delays_later_plucks():
+    arrangement = _example()
+    plucks, _mutes = arrangement.to_plan()
+    assert arrangement.chords[0] == ["Em", 0.0]
+    assert plucks[0][0] == 52
+    assert plucks[0][-1] > arrangement.plucks[0][-1]
 
 
 def test_beat_labels():
@@ -74,9 +74,8 @@ def test_beat_labels_in_events():
             }
         }
     )
-    rows = arrangement.event_rows()
-    assert rows["chords"] == [["Em", 0.0], ["D", 2.0]]
-    assert rows["pluck"][0][-1] == pytest.approx(4.625)
+    assert arrangement.chords == [["Em", 0.0], ["D", 2.0]]
+    assert arrangement.plucks[0][-1] == pytest.approx(4.625)
 
 
 def test_pluck_duration_units():
@@ -99,13 +98,13 @@ def test_pluck_duration_units():
             }
         }
     )
-    rows = arrangement.event_rows(apply_meta_tempo_curve=False)["pluck"]
+    rows = arrangement.plucks
     assert rows[0][1] == pytest.approx(0.5)
     assert rows[1][1] == pytest.approx(0.25)
     assert rows[2][1] == pytest.approx(0.25)
 
 
-def test_to_planner_rows_default_on_chord():
+def test_to_plan_pluck_only():
     arrangement = SongArrangement.from_dict(
         {
             "song": {
@@ -123,13 +122,13 @@ def test_to_planner_rows_default_on_chord():
             }
         }
     )
-    chords, pluck = arrangement.to_planner_rows()
-    assert pluck
-    assert chords[0][0] == "On"
+    plucks, mutes = arrangement.to_plan()
+    assert plucks == [[60, 0.5, 5.0, 0, 0.0]]
+    assert mutes == []
 
 
 def test_roundtrip_to_dict():
-    arrangement = SongArrangement.from_json_path(_example_path())
+    arrangement = _example()
     again = SongArrangement.from_dict(arrangement.to_dict())
     assert again.name == arrangement.name
     assert len(again.plucks) == len(arrangement.plucks)

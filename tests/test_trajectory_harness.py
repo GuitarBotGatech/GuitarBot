@@ -1,10 +1,6 @@
-import copy
-
 import numpy as np
-import pytest
 
 from tuning import tune as tu
-from control.plan import GuitarBotParser
 from notation.Songs.legacy.pluck_message_to_json import pluck_message_to_song_dict
 from control.debug.trajectory_harness import (
     PayloadFidelityAnalyzer,
@@ -30,9 +26,8 @@ def test_payload_fidelity_analyzer_passes_for_equivalent_python_and_json_payload
     )
 
     # Simulate source payloads used by the harness.
-    python_payload = PlannerPayload(chords=[], pluck=pluck_rows)
+    python_payload = PlannerPayload(pluck=pluck_rows)
     json_payload = PlannerPayload(
-        chords=[],
         pluck=[
             [event["note"], event["duration_s"], event["speed"], event["slide"], event["timestamp"]]
             for event in song_dict["song"]["tracks"][0]["events"]
@@ -55,70 +50,18 @@ def test_payload_fidelity_analyzer_passes_for_equivalent_python_and_json_payload
     assert result["json_slide_events"] == 1
 
 
-# ---------------------------------------------------------------------------
-# Chord pluck tests
-# ---------------------------------------------------------------------------
+def test_open_string_pluck_moves_picker_without_moving_slider():
+    """A resolved open-string pluck fires its picker and leaves the slider where it is."""
+    payload = PlannerPayload(pluck=[[tu.STRING_MIDI_RANGES[0][0], 0.4, 3, 0, 0, 1.0]])
+    traj = compute_trajectory(payload)
 
-class TestChordPluckParsing:
-    """parsePlucks: note 0-5 is a direct string index, not a MIDI pitch."""
+    start_idx = int(1.0 / tu.TIME_STEP)
+    window = traj[start_idx: start_idx + tu.PICKER_PLUCK_MOTION_POINTS + 5, 12]
+    assert not np.allclose(window, tu.initial_point[12])
+    np.testing.assert_array_equal(traj[:, 0], tu.initial_point[0])
 
-    def _parser(self):
-        return GuitarBotParser(initial_point=copy.deepcopy(tu.initial_point), graph=False)
-
-    @pytest.mark.parametrize("string_index, expected_events", [
-        (0, 1),  # string 0  → picker 0
-        (1, 1),  # string 1  → picker 1
-        (2, 1),  # string 2  → picker 2
-        (3, 1),  # string 3  → picker 3
-        (4, 1),  # string 4  → picker 4
-        (5, 1),  # string 5  → picker 5
-    ])
-    def test_chord_pluck_routing(self, string_index, expected_events):
-        positions, toggles = self._parser().parsePlucks([[string_index, 0.4, 3, 0, 1.0]])
-        assert len(positions) == expected_events, (
-            f"String {string_index}: expected {expected_events} pick event(s), got {len(positions)}"
-        )
-        assert len(toggles) == expected_events
-
-    def test_chord_pluck_does_not_generate_lh_pick_event(self):
-        """Chord pluck should activate the picker but leave the slider untouched."""
-        payload = PlannerPayload(chords=[], pluck=[[0, 0.4, 3, 0, 1.0]])
-        lh_events = _derive_lh_pick_events(payload, quiet=True)
-        assert lh_events == [], f"Expected no LH pick events, got: {lh_events}"
-
-    def test_chord_pluck_picker_trajectory_has_movement(self):
-        """The plucker column in the trajectory should change position on a chord pluck."""
-        payload = PlannerPayload(chords=[], pluck=[[0, 0.4, 3, 0, 1.0]])
-        traj = compute_trajectory(payload)
-
-        picker_col = 12  # first plucker column (string 0)
-        start_idx = int(1.0 / tu.TIME_STEP)
-        window = traj[start_idx: start_idx + tu.PICKER_PLUCK_MOTION_POINTS + 5, picker_col]
-
-        initial_pos = tu.initial_point[12]
-        assert not np.allclose(window, initial_pos), (
-            "Expected picker to move on chord pluck, but position was unchanged."
-        )
-
-    def test_chord_pluck_slider_unchanged_compared_to_chord_only(self):
-        """Adding a chord pluck on top of a chord should not alter the slider trajectory."""
-        chord = [["Em", 0.0]]
-
-        chord_only = PlannerPayload(chords=chord, pluck=[])
-        chord_plus_pluck = PlannerPayload(chords=chord, pluck=[[0, 0.4, 3, 0, 0.8]])
-
-        traj_base = compute_trajectory(chord_only)
-        traj_pluck = compute_trajectory(chord_plus_pluck)
-
-        # Trim to the shorter of the two
-        rows = min(traj_base.shape[0], traj_pluck.shape[0])
-        slider_cols = slice(0, 6)  # columns 0-5 are sliders
-
-        np.testing.assert_array_equal(
-            traj_base[:rows, slider_cols],
-            traj_pluck[:rows, slider_cols],
-            err_msg="Chord pluck modified slider positions unexpectedly.",
-        )
+    lh_events = _derive_lh_pick_events(payload, quiet=True)
+    assert [(event[0], event[1]) for event in lh_events] == [(0, -1)]
 
 
 def _build_context_from_payload(payload: PlannerPayload):
@@ -137,7 +80,6 @@ def _build_context_from_payload(payload: PlannerPayload):
 
 def test_tremolo_readiness_flags_early_pick_start():
     payload = PlannerPayload(
-        chords=[],
         pluck=[
             [43, 1.0, 6, 0, 4.0],
             [45, 1.0, 6, 1, 5.0],
@@ -155,7 +97,6 @@ def test_tremolo_readiness_flags_early_pick_start():
 
 def test_tremolo_readiness_passes_with_sufficient_lead_time():
     payload = PlannerPayload(
-        chords=[],
         pluck=[
             [43, 0.25, 6, 0, 4.0],
             [43, 1.0, 6, 0, 4.5],

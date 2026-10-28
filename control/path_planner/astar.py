@@ -9,7 +9,7 @@ steps at full cost accuracy.
 import heapq
 from .model import (
     Note, Assignment, StringState, NUM_STRINGS,
-    candidates, transition_cost, W_TRAVEL,
+    candidates, transition_cost, viable, W_TRAVEL,
 )
 
 NODE_BUDGET = 20_000
@@ -28,6 +28,7 @@ def _heuristic(notes: list[Note], from_idx: int, frets: tuple) -> float:
 def plan(
     notes: list[Note],
     initial_frets: list[int] | tuple[int, ...] | None = None,
+    free_at: list[float] | tuple[float, ...] | None = None,
 ) -> list[Assignment]:
     N = len(notes)
     if N == 0:
@@ -39,7 +40,12 @@ def plan(
         frets_list = list(initial_frets) + [0] * NUM_STRINGS
         init_frets = tuple(int(frets_list[i]) for i in range(NUM_STRINGS))
 
-    init_last_pluck = (-1e9,) * NUM_STRINGS
+    # Free before the song, so a note at t=0 still has its prep window.
+    if free_at is None:
+        init_last_pluck = (-0.5,) * NUM_STRINGS
+    else:
+        free = list(free_at) + [-0.5] * NUM_STRINGS
+        init_last_pluck = tuple(float(free[i]) for i in range(NUM_STRINGS))
     counter = [0]
 
     def push(f_score, g, i, frets, last_pluck, path):
@@ -72,10 +78,15 @@ def plan(
 
         expanded += 1
         n = notes[i]
-        cands = candidates(n)
+        # Drop frets the slider cannot reach in time, then rank the rest by travel.
+        playable = []
+        for s, fr in candidates(n):
+            st = StringState(frets[s], last_pluck[s])
+            if viable(st, n, fr):
+                playable.append((transition_cost(st, n, fr)[0], s, fr))
+        playable.sort()
 
-        if not cands:
-            # Note unplayable on every string — skip it.
+        if not playable:
             push(
                 g + _heuristic(notes, i + 1, frets),
                 g,
@@ -86,7 +97,7 @@ def plan(
             )
             continue
 
-        for s, fr in cands:
+        for _cost, s, fr in playable:
             st = StringState(frets[s], last_pluck[s])
             c, _ = transition_cost(st, n, fr)
             new_frets = tuple(fr if k == s else frets[k] for k in range(NUM_STRINGS))

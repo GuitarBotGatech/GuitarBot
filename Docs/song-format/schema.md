@@ -3,7 +3,7 @@
 Canonical document for the robot play path.
 
 - UI posts this to `POST /play`
-- Python: `SongArrangement.from_dict` / `from_json_path` → `to_planner_rows()`
+- Python: `SongArrangement.from_dict` → `to_plan()`
 - `configs/default.yaml` fills missing pluck `speed` / `slide`
 - Legacy `type: "midi"` tracks are ignored
 
@@ -56,8 +56,13 @@ Canonical document for the robot play path.
 
 `chord` + `timestamp` or `beat`.
 
+A chord sounds nothing by itself. A pluck whose `note` is `0`–`5` is a string
+index: it plays that string at the fret the active chord gives it, pinned to
+that string. Before the first chord the string plays open. A string the chord
+mutes is not plucked; the presser damps it instead, and the slider stays put.
+
 ## Planner rows
 
-`to_planner_rows()` → `(chord_rows, pluck_rows)` for `GuitarBotParser`.
-Missing chords → default `On` after last pluck.
+`to_plan()` → pluck rows for `GuitarBotParser`, with chord-string plucks
+resolved to pitches, plus a mute for each string the chord damps.
 `meta.tempo_curve` is applied when present.

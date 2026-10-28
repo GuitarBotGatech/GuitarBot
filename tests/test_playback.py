@@ -77,7 +77,6 @@ def test_reset_returns_home_trajectory_and_restores_parser_state(monkeypatch):
     assert traj.shape[1] == NUM_MOTORS
     assert traj.shape[0] > 0
     np.testing.assert_allclose(session.last_position, session.parser.initial_point)
-    assert session.parser.current_fret_positions == [0, 0, 0, 0, 0, 0]
 
 
 def test_missing_plucks_raise():

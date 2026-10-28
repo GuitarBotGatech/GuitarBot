@@ -1,6 +1,9 @@
 # Interpretation defaults for Events (sidecar).
 # Event fields always win when present in the score / UI JSON.
 
+# Which algorithm in control/path_planner assigns each pluck to a string.
+planner: astar
+
 pluck:
   speed: 5
   slide: 0

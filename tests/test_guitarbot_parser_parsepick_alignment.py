@@ -25,10 +25,9 @@ def test_parse_pick_midi_keeps_slide_toggles_aligned_when_event_skipped():
 
 def test_parse_plucks_honors_zero_based_string_override_for_ambiguous_note():
     parser = GuitarBotParser(initial_point=copy.deepcopy(tu.initial_point), graph=False)
-    parser.use_path_planner = False
 
     # note 59 is playable on multiple strings; override string_index=2 (0-based)
-    # must force picker 2 so a later note can still be auto-assigned independently.
+    # pins that string. 68 is then the nearer of the strings that can play it.
     picks = [
         [59, 0.25, 6, 0, 2, 27.0],
         [68, 0.25, 6, 0, 27.0],
@@ -38,23 +37,21 @@ def test_parse_plucks_honors_zero_based_string_override_for_ambiguous_note():
     assert len(pick_motor_positions) == 2
 
     assigned = sorted((int(event[0][0]), int(event[0][1])) for event in pick_motor_positions)
-    assert assigned == [(2, 59), (4, 68)]
+    assert assigned == [(2, 59), (5, 68)]
 
 
 def test_parse_plucks_string_index_is_strictly_zero_based():
     """string_index uses 0..5 only; never remap 1..6 as guitar 1-based numbering."""
     parser = GuitarBotParser(initial_point=copy.deepcopy(tu.initial_point), graph=False)
-    parser.use_path_planner = False
 
     # 45 is playable on E (0) and A (1); forcing 1 must mean A, not "1-based → E".
     positions, _ = parser.parsePlucks([[45, 0.25, 6, 0, 1, 1.0]])
     assert len(positions) == 1
     assert int(positions[0][0][0]) == 1
 
-    # 6 is invalid 0-based; legacy 1-based would have mapped 6 → picker 5.
+    # 6 is not a string. It is not remapped to picker 5.
     positions, _ = parser.parsePlucks([[64, 0.25, 6, 0, 6, 2.0]])
-    assert len(positions) == 1
-    assert int(positions[0][0][0]) != 5
+    assert positions == []
 
 
 def test_parse_pick_midi_honors_override_even_when_picker_is_busy():
@@ -85,7 +82,7 @@ def test_parse_pick_midi_keeps_plucker_motion_synced_across_segments():
     parser = GuitarBotParser(initial_point=copy.deepcopy(tu.initial_point), graph=False)
 
     # Segment 1 ends with picker 0 at down-pluck destination.
-    parser.parseAll([], [[44, 0.125, 6, 0, 1.0]])
+    parser.parseAll([[44, 0.125, 6, 0, 1.0]])
 
     # Segment 2 starts with the same note; first pluck should still move (up-stroke),
     # not be a no-op due to picker state reset.
@@ -94,7 +91,7 @@ def test_parse_pick_midi_keeps_plucker_motion_synced_across_segments():
         [45, 0.125, 6, 1, 2.125],
         [44, 0.125, 6, 1, 2.25],
     ]
-    traj = parser.parseAll([], segment_two)
+    traj = parser.parseAll(segment_two)
 
     picker_col = 12
     start_idx = int(2.0 / tu.TIME_STEP)
@@ -114,7 +111,7 @@ def test_tremolo_then_pluck_on_same_picker_still_moves(tremolo_duration):
         [44, 0.125, 6, 0, second_timestamp],
     ]
 
-    traj = parser.parseAll([], picks)
+    traj = parser.parseAll(picks)
 
     picker_col = 12
     start_idx = int(second_timestamp / tu.TIME_STEP)
@@ -128,10 +125,10 @@ def test_tremolo_end_state_is_respected_across_segments():
     parser = GuitarBotParser(initial_point=copy.deepcopy(tu.initial_point), graph=False)
 
     # First segment is a tremolo with duration that previously could leave stale picker state.
-    parser.parseAll([], [[44, 1.6, 6, 0, 1.0]])
+    parser.parseAll([[44, 1.6, 6, 0, 1.0]])
 
     # Second segment starts with the same string; it should still produce motion.
-    traj = parser.parseAll([], [[44, 0.125, 6, 0, 2.8]])
+    traj = parser.parseAll([[44, 0.125, 6, 0, 2.8]])
 
     picker_col = 12
     start_idx = int(2.8 / tu.TIME_STEP)
