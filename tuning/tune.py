@@ -59,9 +59,8 @@ LH_PRESSER_SLIDE_PRESS_POS = 200
 # Time (in seconds) the left hand needs to prepare before a picker plucks a new note.
 LH_PREP_TIME_BEFORE_PICK = 0.450
 
-# Slow-slide tuning when a string is idle (no nearby pluck events).
+# After a string is idle this long, its next move takes LH_SLOW_SLIDE_TIME_MAX seconds.
 LH_SLOW_SLIDE_IDLE_WINDOW = 20.0
-LH_SLOW_SLIDE_TIME_MIN = 0.3
 LH_SLOW_SLIDE_TIME_MAX = 5.0
 
 # The duration (in seconds) below which a MIDI note is considered a single "pluck"

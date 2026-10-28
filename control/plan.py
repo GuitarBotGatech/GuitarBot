@@ -116,59 +116,33 @@ class GuitarBotParser:
             # Check if the motor is available at the required start time
             if timestamp >= motor_available_time.get(motor_id, 0.0):
                 filtered_lh_pick_pos.append([motor_id, position, slide_toggle, timestamp, prep_time])
-
-                # Update the time this motor will next be available
                 motor_available_time[motor_id] = timestamp + prep_time
             else:
-                # This event is too close to the previous one for the same finger, so we skip it.
                 print(f"Skipping overlapping LH note event for motor {motor_id} at timestamp {timestamp}")
 
         # Use the filtered list for the rest of the function
         lh_pick_pos = filtered_lh_pick_pos
-        # Idle slow-slide stretch when a string has a long gap between plucks.
-        if lh_pick_pos:
-            idle_window = float(getattr(tu, "LH_SLOW_SLIDE_IDLE_WINDOW", 0.0))
-            slow_min = float(getattr(tu, "LH_SLOW_SLIDE_TIME_MIN", 0.0))
-            slow_max = float(getattr(tu, "LH_SLOW_SLIDE_TIME_MAX", 0.0))
-            slow_scale = (slow_max / idle_window) if idle_window > 0.0 else 0.0
-            slow_allowed = idle_window > 0.0 and slow_max > 0.0
-
-            pluck_times_by_motor: dict[int, list[float]] = {}
-            index_by_motor: dict[int, list[int]] = {}
+        # After a long gap on one string, start the next non-slide move early so it takes slow_max seconds.
+        idle_window = float(tu.LH_SLOW_SLIDE_IDLE_WINDOW)
+        slow_max = float(tu.LH_SLOW_SLIDE_TIME_MAX)
+        if lh_pick_pos and idle_window > 0.0 and slow_max > 0.0:
+            by_motor: dict[int, list[int]] = {}
             for idx, raw_event in enumerate(lh_pick_pos):
-                motor_id, _position, _slide_toggle, timestamp, prep_time = unpack_lh_pick_event(raw_event)
-                pluck_time = float(timestamp) + float(prep_time)
-                pluck_times_by_motor.setdefault(motor_id, []).append(pluck_time)
-                index_by_motor.setdefault(motor_id, []).append(idx)
-
-            for motor_id, pluck_times in pluck_times_by_motor.items():
-                indices = index_by_motor.get(motor_id, [])
-                for local_idx, event_idx in enumerate(indices):
-                    if local_idx == 0:
+                by_motor.setdefault(int(raw_event[0]), []).append(idx)
+            for indices in by_motor.values():
+                for prev_idx, event_idx in zip(indices, indices[1:]):
+                    _motor, _position, _slide, prev_timestamp, prev_prep = unpack_lh_pick_event(lh_pick_pos[prev_idx])
+                    motor_id, position, slide_toggle, timestamp, prep_time = unpack_lh_pick_event(lh_pick_pos[event_idx])
+                    if int(slide_toggle) == 1:
                         continue
-                    prev_pluck_time = pluck_times[local_idx - 1]
-                    pluck_time = pluck_times[local_idx]
-                    gap = pluck_time - prev_pluck_time
-
-                    motor_id_ev, position, slide_toggle, timestamp, prep_time = unpack_lh_pick_event(
-                        lh_pick_pos[event_idx]
-                    )
-                    if int(slide_toggle) == 1 or not slow_allowed:
-                        continue
+                    pluck_time = float(timestamp) + float(prep_time)
+                    gap = pluck_time - (float(prev_timestamp) + float(prev_prep))
                     if gap < idle_window:
                         continue
-
-                    target_slow = max(slow_min, slow_scale * gap) if slow_min > 0.0 else slow_scale * gap
-                    target_slow = min(slow_max, target_slow) if slow_max > 0.0 else target_slow
-                    if target_slow <= 0.0:
-                        continue
-
-                    pluck_time = float(timestamp) + float(prep_time)
-                    new_prep_time = max(float(prep_time), target_slow)
+                    new_prep = max(float(prep_time), slow_max)
                     if pluck_time > 0:
-                        new_prep_time = min(new_prep_time, pluck_time)
-                    new_timestamp = float(pluck_time - new_prep_time)
-                    lh_pick_pos[event_idx] = [motor_id_ev, position, slide_toggle, new_timestamp, new_prep_time]
+                        new_prep = min(new_prep, pluck_time)
+                    lh_pick_pos[event_idx] = [motor_id, position, slide_toggle, pluck_time - new_prep, new_prep]
 
         # Mutes damp a string a chord marks silent. They are added after the note
         # timings are fixed, and only in a gap, so a note on that string is unchanged.
