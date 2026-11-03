@@ -32,7 +32,6 @@ class Gp3Compile:
     track_index: int
     events: int
     moved: int
-    lowered: int
     skipped: int
 
 
@@ -43,7 +42,6 @@ class _Pluck:
     duration_s: float
     slide: int
     preferred: int | None
-    lowered: bool = False
     string_index: int | None = None
 
 
@@ -55,17 +53,15 @@ def gp3_to_song_dict(path: str | Path, *, track=None) -> dict[str, Any]:
 def compile_gp3(path: str | Path, *, track=None) -> Gp3Compile:
     """Read ``path`` and compile one track into pluck events.
 
-    A pitch above every string drops by octaves until one can sound it. The tab
-    string is kept when the left hand can reach that fret in time. Otherwise the
-    note moves to another string that can sound it. If a fret change is still
-    too soon, the whole song slows until the hand can make it. Two pitches that
-    need the same string at the same instant are left out.
+    The tab string is kept when the left hand can reach that fret in time.
+    Otherwise the note moves to another string that can sound it. Notes outside
+    the robot's range, or too fast for every string, are left out.
     """
     guitarpro = _guitarpro()
     source = Path(path)
     song = guitarpro.parse(str(source))
     chosen, index = _select_track(song, track)
-    plucks, moved, skipped, bpm = _compile_track(song, chosen)
+    plucks, moved, skipped = _compile_track(song, chosen)
     if not plucks:
         raise ValueError(f"No playable notes on track {chosen.name!r}")
 
@@ -78,7 +74,7 @@ def compile_gp3(path: str | Path, *, track=None) -> Gp3Compile:
             "meta": {
                 "key": _key_name(song.key),
                 "time_signature": _time_signature(song),
-                "bpm": bpm,
+                "bpm": _song_bpm(song),
             },
             "tracks": [
                 {
@@ -95,7 +91,6 @@ def compile_gp3(path: str | Path, *, track=None) -> Gp3Compile:
         track_index=index,
         events=len(plucks),
         moved=moved,
-        lowered=sum(1 for pluck in plucks if pluck.lowered),
         skipped=skipped,
     )
 
@@ -171,11 +166,10 @@ def playback_measure_indices(headers) -> list[int]:
     return order
 
 
-def _compile_track(song, track) -> tuple[list[_Pluck], int, int, float]:
+def _compile_track(song, track) -> tuple[list[_Pluck], int, int]:
     guitarpro = _guitarpro()
     tempo_at = _tempo_changes(song)
-    initial_bpm = _song_bpm(song)
-    bpm = initial_bpm
+    bpm = _song_bpm(song)
     seconds = 0.0
     last_tick = 0
     cursor = 0
@@ -211,34 +205,7 @@ def _compile_track(song, track) -> tuple[list[_Pluck], int, int, float]:
                 raw,
             )
         cursor += int(measure.length)
-    kept, moved, skipped, timing = _fit_strings(raw)
-    if timing == 0:
-        return kept, moved, skipped, initial_bpm
-
-    # Place every note the fretboard can sound, then stretch the song so each
-    # fret change has the left hand's prep window. The written tempo already
-    # failed that test, so keep this assignment instead of letting a slower
-    # tempo pick a busier string.
-    for pluck in raw:
-        pluck.string_index = None
-    moved = _place_without_time(raw)
-    scale = _hand_scale(raw)
-    if scale > 1.0:
-        for pluck in raw:
-            pluck.timestamp *= scale
-            pluck.duration_s *= scale
-    # The planner will not start a fret change before time 0, so the first
-    # fretted note has to sit a full prep window into the song.
-    lead = _lead_in(raw)
-    if lead:
-        for pluck in raw:
-            pluck.timestamp += lead
-    for pluck in raw:
-        if pluck.string_index is not None:
-            pluck.preferred = pluck.string_index
-            pluck.string_index = None
-    kept, _, skipped, _timing = _fit_strings(raw)
-    return kept, moved, skipped, initial_bpm / scale
+    return _fit_strings(raw)
 
 
 def _emit_beat(guitarpro, track, beat, tick, seconds, bpm, slide_into, held, raw) -> None:
@@ -305,11 +272,9 @@ def _emit_pitch(
     hammer_or_slide_to_next,
 ) -> None:
     gp_string = int(gp_string)
-    written = int(midi)
-    sounding = _lower_into_range(written)
     if is_tie:
         previous = held.get(gp_string)
-        if previous is not None and previous.midi == sounding:
+        if previous is not None and previous.midi == int(midi):
             previous.duration_s = round(previous.duration_s + float(duration_s), 6)
         return
 
@@ -320,25 +285,21 @@ def _emit_pitch(
 
     open_midi = int(track.strings[gp_string - 1].value)
     robot = _robot_string(open_midi)
-    fret = sounding - open_midi
+    fret = int(midi) - open_midi
     preferred = robot if robot is not None and _fret_in_range(robot, fret) else None
     pluck = _Pluck(
-        midi=sounding,
+        midi=int(midi),
         timestamp=float(timestamp),
         duration_s=float(duration_s),
         slide=1 if slide or arriving else 0,
         preferred=preferred,
-        lowered=sounding != written,
     )
     held[gp_string] = pluck
     raw.append(pluck)
 
 
-def _fit_strings(raw: list[_Pluck]) -> tuple[list[_Pluck], int, int, int]:
-    """Pin each note to a string the left hand can reach before the pluck.
-
-    The last count is how many skipped notes a slower tempo could still reach.
-    """
+def _fit_strings(raw: list[_Pluck]) -> tuple[list[_Pluck], int, int]:
+    """Pin each note to a string the left hand can reach before the pluck."""
     from control.path_planner.model import Note, StringState, candidates, viable
 
     ordered = sorted(raw, key=lambda pluck: pluck.timestamp)
@@ -347,7 +308,6 @@ def _fit_strings(raw: list[_Pluck]) -> tuple[list[_Pluck], int, int, int]:
     kept: list[_Pluck] = []
     moved = 0
     skipped = 0
-    timing = 0
     for pluck in ordered:
         probe = Note(
             pitch=pluck.midi,
@@ -374,121 +334,16 @@ def _fit_strings(raw: list[_Pluck]) -> tuple[list[_Pluck], int, int, int]:
                 ranked.sort()
                 _, string, fret = ranked[0]
                 chosen = (string, fret)
+                moved += 1
         if chosen is None:
-            busy = {
-                other.string_index
-                for other in kept
-                if abs(other.timestamp - pluck.timestamp) < 1e-6
-            }
-            if any(string not in busy for string, _fret in options):
-                timing += 1
             skipped += 1
             continue
         string, fret = chosen
-        # Octave-lowering can stack two written notes on one pitch. One pluck sounds it.
-        if any(
-            other.string_index == string
-            and other.midi == pluck.midi
-            and abs(other.timestamp - pluck.timestamp) < 1e-6
-            for other in kept
-        ):
-            continue
-        if pluck.preferred != string:
-            moved += 1
         pluck.string_index = string
         frets[string] = fret
         free_at[string] = pluck.timestamp
         kept.append(pluck)
-    return kept, moved, skipped, timing
-
-
-def _place_without_time(raw: list[_Pluck]) -> int:
-    """Give every note a string, ignoring how soon the hand must move.
-
-    A string already used at that instant is taken. The return value is how
-    many notes left their tab string.
-    """
-    from control.path_planner.model import Note, candidates
-
-    ordered = sorted(raw, key=lambda pluck: pluck.timestamp)
-    frets = [0] * len(tu.STRING_MIDI_RANGES)
-    moved = 0
-    for pluck in ordered:
-        pluck.string_index = None
-        probe = Note(
-            pitch=pluck.midi,
-            t=pluck.timestamp,
-            dur=pluck.duration_s,
-            slide_in=bool(pluck.slide),
-            forced_string=None,
-        )
-        busy = {
-            other.string_index
-            for other in ordered
-            if other.string_index is not None and abs(other.timestamp - pluck.timestamp) < 1e-6
-        }
-        ranked = []
-        for string, fret in candidates(probe):
-            if string in busy:
-                continue
-            prefer = 0 if string == pluck.preferred else 1
-            ranked.append((prefer, abs(fret - frets[string]), string, fret))
-        if not ranked:
-            continue
-        ranked.sort()
-        _, _, string, fret = ranked[0]
-        if pluck.preferred != string:
-            moved += 1
-        pluck.string_index = string
-        frets[string] = fret
-    return moved
-
-
-def _lead_in(notes: list[_Pluck]) -> float:
-    """Delay so the first fret change's prep starts at time 0."""
-    prep = float(tu.LH_PREP_TIME_BEFORE_PICK)
-    earliest = 0.0
-    for note in notes:
-        if note.string_index is None:
-            continue
-        fret = note.midi - tu.STRING_MIDI_RANGES[note.string_index][0]
-        if fret == 0 and not note.slide:
-            continue
-        earliest = min(earliest, note.timestamp - prep)
-    if earliest >= -1e-9:
-        return 0.0
-    return -earliest + 1e-4
-
-
-def _hand_scale(notes: list[_Pluck]) -> float:
-    """Stretch factor so every assigned fret change gets the prep window."""
-    from control.path_planner.model import _MAX_FRETS_PER_S
-
-    prep = float(tu.LH_PREP_TIME_BEFORE_PICK)
-    scale = 1.0
-    groups: dict[int, list[_Pluck]] = {}
-    for note in notes:
-        if note.string_index is None:
-            continue
-        groups.setdefault(note.string_index, []).append(note)
-    for string, group in groups.items():
-        group.sort(key=lambda note: note.timestamp)
-        fret = 0
-        last_t = -0.5
-        open_pitch = tu.STRING_MIDI_RANGES[string][0]
-        for note in group:
-            target = note.midi - open_pitch
-            if last_t >= 0 and (target != fret or note.slide):
-                gap = note.timestamp - last_t
-                if gap > 1e-9:
-                    need = prep
-                    travel = abs(target - fret)
-                    if travel:
-                        need = max(need, travel / float(_MAX_FRETS_PER_S))
-                    scale = max(scale, (need + 1e-4) / gap)
-            fret = target
-            last_t = note.timestamp
-    return scale
+    return kept, moved, skipped
 
 
 def _event_dict(pluck: _Pluck) -> dict[str, Any]:
@@ -573,9 +428,9 @@ def _track_score(track) -> int:
                     if note.type == guitarpro.NoteType.tie:
                         continue
                     open_midi = int(track.strings[note.string - 1].value)
-                    midi = _lower_into_range(open_midi + int(note.value) + capo)
+                    midi = open_midi + int(note.value) + capo
                     robot = _robot_string(open_midi)
-                    if robot is not None and _fret_in_range(robot, midi - open_midi):
+                    if robot is not None and _fret_in_range(robot, int(note.value) + capo):
                         score += 2
                     elif _playable(midi):
                         score += 1
@@ -596,20 +451,6 @@ def _fret_in_range(string: int, fret: int) -> bool:
 
 def _playable(midi: int) -> bool:
     return any(low <= int(midi) <= high for low, high in tu.STRING_MIDI_RANGES)
-
-
-def _lower_into_range(midi: int) -> int:
-    """Drop a pitch by octaves until a robot string can sound it.
-
-    Notes that already fit, and notes below the fretboard, stay where they are.
-    One octave below the top fret is still inside the fretboard, so a high note
-    always lands on a playable pitch.
-    """
-    pitch = int(midi)
-    high = max(top for _low, top in tu.STRING_MIDI_RANGES)
-    while pitch > high:
-        pitch -= 12
-    return pitch
 
 
 def _song_bpm(song) -> float:
@@ -677,11 +518,9 @@ def main(argv: list[str] | None = None) -> None:
             print(f"{row['index']}: {row['name']} ({kind}, score {row['score']})")
         return
     compiled = compile_gp3(args.path, track=args.track)
-    bpm = compiled.song["song"]["meta"]["bpm"]
     print(
         f"{compiled.song['song']['name']}: {compiled.events} plucks "
-        f"on {compiled.track_name!r} at {bpm:g} bpm "
-        f"({compiled.moved} moved, {compiled.lowered} lowered, {compiled.skipped} skipped)"
+        f"on {compiled.track_name!r} ({compiled.moved} moved, {compiled.skipped} skipped)"
     )
     if args.output:
         destination = Path(args.output)
