@@ -18,3 +18,4 @@ dependencies:
     - python-osc>=1.8.0
     - flask
     - PyYAML>=6.0
+    - pyguitarpro>=0.11

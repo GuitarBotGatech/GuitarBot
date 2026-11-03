@@ -1,4 +1,4 @@
-"""Events document: UI JSON → pluck rows for the planner."""
+"""Events document: UI JSON or a Guitar Pro 3 tab → pluck rows for the planner."""
 
 from __future__ import annotations
 
@@ -223,6 +223,18 @@ class SongArrangement:
             plucks=plucks,
             tempo_curve=_parse_tempo_curve(meta_raw.get("tempo_curve")),
         )
+
+    @classmethod
+    def from_gp3(cls, path, *, track=None, config: dict[str, Any] | None = None) -> "SongArrangement":
+        """Guitar Pro 3 file → arrangement.
+
+        ``track`` is a track name or zero-based index. When omitted, the compiler
+        picks the guitar part whose fretting fits the robot. The pluck events are
+        the list ``to_plan`` turns into a trajectory.
+        """
+        from notation.gp3 import gp3_to_song_dict
+
+        return cls.from_dict(gp3_to_song_dict(path, track=track), config=config)
 
     def to_dict(self) -> dict[str, Any]:
         tracks: list[dict[str, Any]] = []
