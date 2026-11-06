@@ -1,0 +1,146 @@
+{
+  "song": {
+    "name": "Presser cam edge probe slide (lowE)",
+    "meta": {
+      "key": "C",
+      "time_signature": "4/4",
+      "bpm": 95.0
+    },
+    "tracks": [
+      {
+        "name": "probe",
+        "type": "pluck",
+        "events": [
+          {
+            "note": 45,
+            "duration_s": 0.316,
+            "speed": 0,
+            "slide": 1,
+            "timestamp": 1.0,
+            "string_index": 0
+          },
+          {
+            "note": 45,
+            "duration_s": 0.158,
+            "speed": 0,
+            "slide": 0,
+            "timestamp": 1.474,
+            "string_index": 0
+          },
+          {
+            "note": 45,
+            "duration_s": 0.158,
+            "speed": 0,
+            "slide": 0,
+            "timestamp": 1.789,
+            "string_index": 0
+          },
+          {
+            "note": 44,
+            "duration_s": 0.316,
+            "speed": 0,
+            "slide": 1,
+            "timestamp": 2.263,
+            "string_index": 0
+          },
+          {
+            "note": 44,
+            "duration_s": 0.158,
+            "speed": 0,
+            "slide": 0,
+            "timestamp": 2.737,
+            "string_index": 0
+          },
+          {
+            "note": 44,
+            "duration_s": 0.158,
+            "speed": 0,
+            "slide": 0,
+            "timestamp": 3.052,
+            "string_index": 0
+          },
+          {
+            "note": 43,
+            "duration_s": 0.316,
+            "speed": 0,
+            "slide": 1,
+            "timestamp": 3.526,
+            "string_index": 0
+          },
+          {
+            "note": 43,
+            "duration_s": 0.158,
+            "speed": 0,
+            "slide": 0,
+            "timestamp": 4.0,
+            "string_index": 0
+          },
+          {
+            "note": 43,
+            "duration_s": 0.158,
+            "speed": 0,
+            "slide": 0,
+            "timestamp": 4.315,
+            "string_index": 0
+          },
+          {
+            "note": 42,
+            "duration_s": 0.316,
+            "speed": 0,
+            "slide": 1,
+            "timestamp": 4.789,
+            "string_index": 0
+          },
+          {
+            "note": 42,
+            "duration_s": 0.158,
+            "speed": 0,
+            "slide": 0,
+            "timestamp": 5.263,
+            "string_index": 0
+          },
+          {
+            "note": 42,
+            "duration_s": 0.158,
+            "speed": 0,
+            "slide": 0,
+            "timestamp": 5.578,
+            "string_index": 0
+          },
+          {
+            "note": 41,
+            "duration_s": 0.316,
+            "speed": 0,
+            "slide": 1,
+            "timestamp": 6.052,
+            "string_index": 0
+          },
+          {
+            "note": 41,
+            "duration_s": 0.158,
+            "speed": 0,
+            "slide": 0,
+            "timestamp": 6.526,
+            "string_index": 0
+          },
+          {
+            "note": 41,
+            "duration_s": 0.158,
+            "speed": 0,
+            "slide": 0,
+            "timestamp": 6.841,
+            "string_index": 0
+          },
+          {
+            "note": 40,
+            "duration_s": 0.316,
+            "speed": 0,
+            "slide": 0,
+            "timestamp": 7.315,
+            "string_index": 0
+          }
+        ]
+      }
+    ]
+  }
+}
