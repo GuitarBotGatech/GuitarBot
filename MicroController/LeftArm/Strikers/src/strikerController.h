@@ -281,32 +281,9 @@ public:
 
         for (int x = 0; x < NUM_MOTORS; x++) {
             if (x < 18) {
-                if (x > 5 && x < 12) {
-                    int curr_pos;
-                    curr_pos = pInstance->m_striker[x + 1].getPosition_ticks();
-                    //Serial.print("Current pos at ");
-//                    Serial.print(x + 1);
-//                    Serial.print(" ");
-//                    Serial.print(curr_pos);
-                    if (curr_pos <= 15 && trajPoint[x] <= 0) {
-                        if (m_striker[x + 1].getPressState()) {
-                            m_striker[x + 1].setModePOSITION();
-                            //Serial.print(", Setting Position since ");
-                        }
-                        //Serial.println(", PRESS STATE FALSE");
-                        all_Trajs[x][0] = 0;
-                    } else {
-                        if (!m_striker[x + 1].getPressState()) {
-                            m_striker[x + 1].setModeTORQUE();
-                            //Serial.print(", Setting Torque since ");
-                        }
-                        //Serial.print(", is already in Torque mode; ");
-                    }
-                    all_Trajs[x][0] = trajPoint[x];
-                    //Serial.println(", PRESS STATE TRUE");
-                } else {
-                    all_Trajs[x][0] = trajPoint[x];
-                }
+                // Pressers included: park vs press is decided in the 5 ms loop
+                // from the live encoder, including after this queue drains.
+                all_Trajs[x][0] = trajPoint[x];
             }
         }
 
@@ -523,6 +500,11 @@ private:
     //NetworkHandler m_socket;
     Striker m_striker[NUM_MOTORS + 1]; // 0 is dummy
     int pickerStates[NUM_PLUCKERS]; // Array to hold state of each picker (0=up state, 1=down state)
+    static constexpr int PRESSER_HOME_TICKS = 15;
+    static constexpr int PRESSER_RELEASE_TORQUE = -650;
+    // True after a press was accepted from home. Cleared on a lift, so the next
+    // press waits until the cam is home again.
+    bool m_pressFromHome[NUM_MOTORS + 1] = {};
     static StrikerController* pInstance;
     volatile bool m_bPlaying = false;
     MotorSpec m_motorSpec = MotorSpec::EC45_Slider;
@@ -631,6 +613,38 @@ private:
         }
     }
 
+    // Presser torque is applied here, every PDO tick, from the encoder right now.
+    // A lift parks only once the cam is within PRESSER_HOME_TICKS of zero.
+    // A new press is refused until that happens, so a sticky unpress cannot
+    // keep the last torque running after the trajectory has moved on or ended.
+    void drivePresser(int nodeId, int command) {
+        Striker& motor = m_striker[nodeId];
+        bool atHome = (int)motor.getPosition_ticks() <= PRESSER_HOME_TICKS;
+        bool wantRelease = command <= 0;
+
+        if (wantRelease) {
+            m_pressFromHome[nodeId] = false;
+            if (atHome) {
+                if (motor.getPressState()) motor.setModePOSITION();
+                else motor.rotate(0);
+                return;
+            }
+            if (!motor.getPressState()) motor.setModeTORQUE();
+            motor.applyTorque(command < 0 ? command : PRESSER_RELEASE_TORQUE);
+            return;
+        }
+
+        if (atHome || m_pressFromHome[nodeId]) {
+            if (!motor.getPressState()) motor.setModeTORQUE();
+            m_pressFromHome[nodeId] = true;
+            motor.applyTorque(command);
+            return;
+        }
+
+        if (!motor.getPressState()) motor.setModeTORQUE();
+        motor.applyTorque(PRESSER_RELEASE_TORQUE);
+    }
+
     static void RPDOTimerIRQHandler() {
         static bool errorAtPop = false;
         static ulong idx = 0;
@@ -712,12 +726,7 @@ private:
                 // drive actuators here...
                 for (int i = 1; i < NUM_MOTORS + 1; ++i){
                     if(i > 6 && i < 13){
-                        if(!pInstance->m_striker[i].getPressState()){
-                            pInstance->m_striker[i].rotate(0);
-                        }
-                        else{
-                            pInstance->m_striker[i].applyTorque(point[i - 1]);
-                        }
+                        pInstance->drivePresser(i, point[i - 1]);
                     }
                     else{
                         pInstance->m_striker[i].rotate(point[i - 1]);
