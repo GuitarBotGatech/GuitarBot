@@ -65,7 +65,7 @@ SHORT_NOTE_DEFAULT_DURATION = 0.025
 # The physical distance (in mm) from the nut to the center of each fret.
 # Controls where the slider lands for fret 1, fret 2, fret 3, etc. respectively.
 # Index 0 corresponds to Fret 1.
-SLIDER_MM_PER_FRET = [19, 52, 85, 112, 139, 164, 187, 211, 234]
+SLIDER_MM_PER_FRET = [21, 52, 83, 112, 139, 164, 187, 211, 234]
 
 # Conversion factor from millimeters to encoder ticks for the slider motors.
 # Generally only needs to change if the motor is not Maxxon
@@ -75,7 +75,7 @@ MM_TO_ENCODER_CONVERSION_FACTOR = 9.4
 
 # An offset (in encoder ticks) applied to all slider motor calculations.
 # Offsets the positions relative to the nut
-SLIDER_ENCODER_OFFSET = -2000
+SLIDER_ENCODER_OFFSET = -2900
 
 # Multiplier to reverse the direction of specific slider motors if they are mounted mirrored.
 # A value of -1 reverses the motor, 1 keeps it the same.
@@ -94,9 +94,9 @@ SLIDER_MOTOR_DIRECTION = [-1, 1, 1, -1, -1, 1]
 PICKER_MOTOR_INFO = {
     0: {'down_pluck_mm': -2.75, 'up_pluck_mm': -6, 'resolution': 1024}, # E
     1: {'down_pluck_mm': 0.6, 'up_pluck_mm': 4.2, 'resolution': 2048}, # A
-    2: {'down_pluck_mm': -0.8, 'up_pluck_mm': -3.6, 'resolution': 2048}, # D
-    3: {'down_pluck_mm': 0.9, 'up_pluck_mm': 4.35, 'resolution': 1024}, # G
-    4: {'down_pluck_mm': -2, 'up_pluck_mm':-5, 'resolution': 2048}, # B
+    2: {'down_pluck_mm': -0.7, 'up_pluck_mm': -3.6, 'resolution': 2048}, # D
+    3: {'down_pluck_mm': 0.95, 'up_pluck_mm': 4.3, 'resolution': 1024}, # G
+    4: {'down_pluck_mm': -2, 'up_pluck_mm':-5.1, 'resolution': 2048}, # B
     5: {'down_pluck_mm': 1.1, 'up_pluck_mm': 4, 'resolution': 2048} # E
 }
 
