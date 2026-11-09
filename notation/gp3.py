@@ -1,7 +1,9 @@
-"""Compile a Guitar Pro 3 tab into the song dict ``SongArrangement`` plans.
+"""Compile a Guitar Pro tab into the song dict ``SongArrangement`` plans.
 
-The decoder is ``pyguitarpro``. This module turns one guitar track into pluck
-events: MIDI pitch, duration, time, and the string the robot should use.
+The decoder is ``pyguitarpro`` (``.gp3``, ``.gp4``, and ``.gp5``). This module
+turns one guitar track into pluck events: MIDI pitch, duration, time, and the
+string the robot should use. Eighth-note and sixteenth-note triplet feel is
+played as swing, and repeats are unfolded with their alternate endings.
 """
 
 from __future__ import annotations
@@ -33,6 +35,8 @@ class Gp3Compile:
     events: int
     moved: int
     skipped: int
+    thinned: int = 0
+    absorbed: int = 0
 
 
 @dataclass
@@ -46,27 +50,29 @@ class _Pluck:
 
 
 def gp3_to_song_dict(path: str | Path, *, track=None) -> dict[str, Any]:
-    """``.gp3`` file → the song dict ``SongArrangement.from_dict`` expects."""
+    """Guitar Pro file → the song dict ``SongArrangement.from_dict`` expects."""
     return compile_gp3(path, track=track).song
 
 
 def compile_gp3(path: str | Path, *, track=None) -> Gp3Compile:
     """Read ``path`` and compile one track into pluck events.
 
-    The tab string is kept when the left hand can reach that fret in time.
-    Otherwise the note moves to another string that can sound it. Notes outside
-    the robot's range, or too fast for every string, are left out.
+    Each attack is placed on a fret the left hand can reach, moving a fast run
+    onto another string when the written one is still in motion. Hammer-ons and
+    slides are plucked. Inner chord tones are left out unless a finger is
+    already on that fret. A note that still will not fit is rolled into a
+    tremolo on the previous melody or bass note.
     """
     guitarpro = _guitarpro()
     source = Path(path)
     song = guitarpro.parse(str(source))
     chosen, index = _select_track(song, track)
-    plucks, moved, skipped = _compile_track(song, chosen)
+    plucks, moved, skipped, thinned, absorbed = _compile_track(song, chosen)
     if not plucks:
         raise ValueError(f"No playable notes on track {chosen.name!r}")
 
     title = (song.title or source.stem).strip() or source.stem
-    track_name = chosen.name.strip() or f"track {index}"
+    track_name = _track_label(chosen, index)
     name = title if track_name.casefold() in title.casefold() else f"{title} ({track_name})"
     payload = {
         "song": {
@@ -92,6 +98,8 @@ def compile_gp3(path: str | Path, *, track=None) -> Gp3Compile:
         events=len(plucks),
         moved=moved,
         skipped=skipped,
+        thinned=thinned,
+        absorbed=absorbed,
     )
 
 
@@ -103,7 +111,7 @@ def list_tracks(path: str | Path) -> list[dict[str, Any]]:
         rows.append(
             {
                 "index": index,
-                "name": track.name.strip(),
+                "name": _track_label(track, index),
                 "percussion": bool(track.isPercussionTrack),
                 "strings": [int(string.value) for string in track.strings],
                 "score": _track_score(track),
@@ -115,9 +123,12 @@ def list_tracks(path: str | Path) -> list[dict[str, Any]]:
 def playback_measure_indices(headers) -> list[int]:
     """Measure indices in the order they are played, with repeats unfolded.
 
-    ``repeatClose`` is the total number of times that group plays (the count
-    written in the tab). Alternate endings use the bitmask Guitar Pro stores
-    after a repeat opens: bit 0 is the first ending.
+    ``repeatClose`` is how many times playback jumps back to the opening
+    repeat. A repeat sign with no extra count is 1, so the group plays twice.
+    Guitar Pro 5 stores one more than that in the file; pyguitarpro has
+    already subtracted it, and the same number comes out of a GP3 file.
+    Alternate endings use the bitmask stored after a repeat opens: bit 0 is
+    the first ending. A repeat that closes on a skipped ending still jumps.
     """
     count = len(headers)
     order: list[int] = []
@@ -141,32 +152,44 @@ def playback_measure_indices(headers) -> list[int]:
         if alternative and stack:
             bit = 1 << (stack[-1][1] - 1)
             if alternative & bit == 0:
+                if _repeat_jumps(header, index, stack, returns_left):
+                    index = stack[-1][0]
+                    entered_by_jump = True
+                    continue
                 index += 1
                 continue
 
         order.append(index)
-        close = header.repeatClose
-        close = -1 if close is None else int(close)
-        if close > 0 and stack:
-            left = returns_left.get(index)
-            if left is None:
-                left = close - 1
-            if left > 0:
-                returns_left[index] = left - 1
-                start = stack[-1][0]
-                for key in [key for key in returns_left if start <= key < index]:
-                    del returns_left[key]
-                stack[-1][1] += 1
-                index = start
-                entered_by_jump = True
-                continue
-            returns_left[index] = 0
-            stack.pop()
+        if _repeat_jumps(header, index, stack, returns_left):
+            index = stack[-1][0]
+            entered_by_jump = True
+            continue
         index += 1
     return order
 
 
-def _compile_track(song, track) -> tuple[list[_Pluck], int, int]:
+def _repeat_jumps(header, index: int, stack: list[list[int]], returns_left: dict[int, int]) -> bool:
+    """Jump back when this bar still owes repeats. Pop the group on the last pass."""
+    close = header.repeatClose
+    close = -1 if close is None else int(close)
+    if close <= 0 or not stack:
+        return False
+    left = returns_left.get(index)
+    if left is None:
+        left = close
+    if left > 0:
+        returns_left[index] = left - 1
+        start = stack[-1][0]
+        for key in [key for key in returns_left if start <= key < index]:
+            del returns_left[key]
+        stack[-1][1] += 1
+        return True
+    returns_left[index] = 0
+    stack.pop()
+    return False
+
+
+def _compile_track(song, track) -> tuple[list[_Pluck], int, int, int, int]:
     guitarpro = _guitarpro()
     tempo_at = _tempo_changes(song)
     bpm = _song_bpm(song)
@@ -180,6 +203,7 @@ def _compile_track(song, track) -> tuple[list[_Pluck], int, int]:
 
     for measure_index in playback_measure_indices(song.measureHeaders):
         measure = track.measures[measure_index]
+        feel = song.measureHeaders[measure_index].tripletFeel
         origin = int(measure.start)
         beats = []
         for voice in measure.voices:
@@ -188,16 +212,18 @@ def _compile_track(song, track) -> tuple[list[_Pluck], int, int]:
         beats.sort(key=lambda item: item[0])
 
         for local, beat in beats:
-            tick = cursor + local
-            if tick > last_tick:
-                seconds += _seconds(tick - last_tick, bpm)
-                last_tick = tick
+            swung = cursor + _swing_offset(local, feel)
+            if swung > last_tick:
+                seconds += _seconds(swung - last_tick, bpm)
+                last_tick = swung
             bpm = tempo_at.get((measure_index, local), bpm)
             _emit_beat(
                 guitarpro,
                 track,
                 beat,
-                tick,
+                local,
+                cursor,
+                feel,
                 seconds,
                 bpm,
                 slide_into,
@@ -205,10 +231,10 @@ def _compile_track(song, track) -> tuple[list[_Pluck], int, int]:
                 raw,
             )
         cursor += int(measure.length)
-    return _fit_strings(raw)
+    return _arrange(raw)
 
 
-def _emit_beat(guitarpro, track, beat, tick, seconds, bpm, slide_into, held, raw) -> None:
+def _emit_beat(guitarpro, track, beat, local, cursor, feel, seconds, bpm, slide_into, held, raw) -> None:
     notes = list(beat.notes)
     if not notes:
         return
@@ -218,15 +244,19 @@ def _emit_beat(guitarpro, track, beat, tick, seconds, bpm, slide_into, held, raw
         if grace is None:
             continue
         grace_ticks = int(grace.durationTime)
-        grace_tick = tick if grace.isOnBeat else max(0, tick - grace_ticks)
-        grace_time = seconds + _seconds(grace_tick - tick, bpm)
+        grace_local = _grace_local(local, grace_ticks, bool(grace.isOnBeat), cursor)
+        # The grace sounds before this beat, so the offset is negative.
+        grace_time = seconds + _seconds(
+            _swing_offset(grace_local, feel) - _swing_offset(float(local), feel),
+            bpm,
+        )
         open_midi = int(track.strings[note.string - 1].value)
         _emit_pitch(
             track,
             note.string,
             open_midi + int(grace.fret) + int(track.offset),
-            grace_time,
-            _seconds(max(grace_ticks, 1), bpm),
+            max(0.0, grace_time),
+            _span_seconds(grace_local, grace_local + max(grace_ticks, 1), feel, bpm),
             0,
             slide_into,
             held,
@@ -247,7 +277,7 @@ def _emit_beat(guitarpro, track, beat, tick, seconds, bpm, slide_into, held, raw
             note.string,
             int(note.realValue) + int(track.offset),
             seconds,
-            _seconds(max(duration_ticks, 1), bpm),
+            _span_seconds(local, local + max(duration_ticks, 1), feel, bpm),
             slide_flag,
             slide_into,
             held,
@@ -298,52 +328,207 @@ def _emit_pitch(
     raw.append(pluck)
 
 
-def _fit_strings(raw: list[_Pluck]) -> tuple[list[_Pluck], int, int]:
-    """Pin each note to a string the left hand can reach before the pluck."""
-    from control.path_planner.model import Note, StringState, candidates, viable
+def _arrange(raw: list[_Pluck]) -> tuple[list[_Pluck], int, int, int, int]:
+    """Place every attack on a fret the hand can reach before the pluck.
 
-    ordered = sorted(raw, key=lambda pluck: pluck.timestamp)
-    frets = [0] * len(tu.STRING_MIDI_RANGES)
-    free_at = [-0.5] * len(tu.STRING_MIDI_RANGES)
+    The written string is kept when it is free. A run that comes back before
+    that slider can move is searched across the other frets of the same pitch,
+    including an octave when the written one does not fit. Chords keep their
+    bass and melody; an inner voice is played only when a finger is already
+    standing on it. Anything still too fast lengthens the previous melody or
+    bass note into a tremolo instead of leaving a hole. Hammer-ons and slides
+    are ordinary plucks.
+    """
+    strings = len(tu.STRING_MIDI_RANGES)
+    frets = [0] * strings
+    # Free long enough before the first beat that any fret is in reach at t = 0.
+    free_at = [-float(tu.LH_PREP_TIME_BEFORE_PICK)] * strings
     kept: list[_Pluck] = []
     moved = 0
     skipped = 0
-    for pluck in ordered:
-        probe = Note(
-            pitch=pluck.midi,
-            t=pluck.timestamp,
-            dur=pluck.duration_s,
-            slide_in=bool(pluck.slide),
-            forced_string=None,
-        )
-        options = candidates(probe)
-        chosen = None
-        if pluck.preferred is not None:
-            for string, fret in options:
-                state = StringState(frets[string], free_at[string])
-                if string == pluck.preferred and viable(state, probe, fret):
-                    chosen = (string, fret)
-                    break
-        if chosen is None:
-            ranked = []
-            for string, fret in options:
-                state = StringState(frets[string], free_at[string])
-                if viable(state, probe, fret):
-                    ranked.append((abs(fret - frets[string]), string, fret))
-            if ranked:
-                ranked.sort()
-                _, string, fret = ranked[0]
-                chosen = (string, fret)
+    thinned = 0
+    absorbed = 0
+    melody: _Pluck | None = None
+    bass: _Pluck | None = None
+
+    for group in _chords(raw):
+        hi = max(group, key=lambda pluck: pluck.midi)
+        lo = min(group, key=lambda pluck: pluck.midi)
+        roles = [hi] if lo.midi == hi.midi else [hi, lo]
+        roles.sort(key=lambda pluck: (len(_frettings(_folded(pluck.midi))), -pluck.midi))
+        used: set[int] = set()
+        placed: dict[int, _Pluck] = {}
+        for pluck in roles:
+            choice = _place(pluck, frets, free_at, used)
+            if choice is None:
+                anchor = melody if pluck is hi else bass
+                if anchor is not None and _roll_into(anchor, pluck, free_at):
+                    absorbed += 1
+                else:
+                    skipped += 1
+                continue
+            pitch, string, fret, retuned = choice
+            _commit(pluck, pitch, string, fret, frets, free_at)
+            used.add(string)
+            placed[id(pluck)] = pluck
+            kept.append(pluck)
+            if retuned:
                 moved += 1
-        if chosen is None:
-            skipped += 1
+        if id(hi) in placed:
+            melody = hi
+        if lo is not hi and id(lo) in placed:
+            bass = lo
+        for pluck in group:
+            if pluck is hi or pluck is lo:
+                continue
+            if _place_parked(pluck, frets, free_at, used):
+                kept.append(pluck)
+                continue
+            thinned += 1
+    kept.sort(key=lambda pluck: pluck.timestamp)
+    return kept, moved, skipped, thinned, absorbed
+
+
+def _chords(raw: list[_Pluck]):
+    """Notes that sound together, in time order."""
+    ordered = sorted(raw, key=lambda pluck: (pluck.timestamp, -pluck.midi))
+    group: list[_Pluck] = []
+    for pluck in ordered:
+        if group and pluck.timestamp - group[0].timestamp > 1e-4:
+            yield group
+            group = []
+        group.append(pluck)
+    if group:
+        yield group
+
+
+def _pitches(midi: int) -> list[int]:
+    """Written pitch folded onto the fretboard, then the neighboring octave."""
+    low = min(bottom for bottom, _top in tu.STRING_MIDI_RANGES)
+    high = max(top for _bottom, top in tu.STRING_MIDI_RANGES)
+    shifted = int(midi)
+    while shifted > high:
+        shifted -= 12
+    while shifted < low:
+        shifted += 12
+    if shifted < low or shifted > high:
+        return []
+    found = [shifted]
+    for alt in (shifted + 12, shifted - 12):
+        if low <= alt <= high and alt not in found:
+            found.append(alt)
+    return found
+
+
+def _folded(midi: int) -> int | None:
+    pitches = _pitches(midi)
+    return pitches[0] if pitches else None
+
+
+def _frettings(midi: int | None) -> list[tuple[int, int]]:
+    if midi is None:
+        return []
+    found = []
+    for string, (open_midi, top) in enumerate(tu.STRING_MIDI_RANGES):
+        fret = int(midi) - open_midi
+        if 0 <= fret <= top - open_midi:
+            found.append((string, fret))
+    return found
+
+
+def _hand_ready(current: int, free: float, fret: int, when: float) -> bool:
+    """The slider can be on `fret` at `when` without rushing the prep window."""
+    if current == fret:
+        return when + 1e-9 >= free
+    prep = float(tu.LH_PREP_TIME_BEFORE_PICK)
+    if when - prep + 1e-9 < free:
+        return False
+    dt = when - free
+    travel = abs(fret - current)
+    return not travel or (dt > 0 and travel / dt <= 80.0)
+
+
+def _ready(midi: int, when: float, frets: list[int], free_at: list[float], used: set[int]):
+    ready = []
+    for string, fret in _frettings(midi):
+        if string in used:
             continue
-        string, fret = chosen
-        pluck.string_index = string
-        frets[string] = fret
-        free_at[string] = pluck.timestamp
-        kept.append(pluck)
-    return kept, moved, skipped
+        if _hand_ready(frets[string], free_at[string], fret, when):
+            ready.append((string, fret))
+    return ready
+
+
+def _choose(options, frets, free_at, when: float, preferred: int | None):
+    """Written string first, then a fret a finger is already on, then the string left idle longest."""
+
+    def key(item):
+        string, fret = item
+        home = preferred is not None and string == preferred
+        parked = frets[string] == fret
+        return (
+            0 if home else 1,
+            0 if parked else 1,
+            -(when - free_at[string]),
+            abs(fret - frets[string]),
+            string,
+        )
+
+    return min(options, key=key)
+
+
+def _place(pluck: _Pluck, frets, free_at, used: set[int]):
+    for index, pitch in enumerate(_pitches(pluck.midi)):
+        options = _ready(pitch, pluck.timestamp, frets, free_at, used)
+        if not options:
+            continue
+        preferred = pluck.preferred if index == 0 else None
+        string, fret = _choose(options, frets, free_at, pluck.timestamp, preferred)
+        retuned = pitch != int(pluck.midi) or string != pluck.preferred
+        return pitch, string, fret, retuned
+    return None
+
+
+def _commit(pluck: _Pluck, pitch: int, string: int, fret: int, frets, free_at) -> None:
+    pluck.midi = int(pitch)
+    pluck.string_index = int(string)
+    pluck.slide = 0
+    frets[string] = int(fret)
+    end = pluck.timestamp
+    if pluck.duration_s >= float(tu.TREMOLO_DURATION_THRESHOLD):
+        end = pluck.timestamp + pluck.duration_s
+    free_at[string] = end
+
+
+def _place_parked(pluck: _Pluck, frets, free_at, used: set[int]) -> bool:
+    """Pluck an inner voice only where a slider is already standing on that pitch."""
+    pitch = _folded(pluck.midi)
+    for string, fret in _frettings(pitch):
+        if string in used or frets[string] != fret:
+            continue
+        if not _hand_ready(frets[string], free_at[string], fret, pluck.timestamp):
+            continue
+        _commit(pluck, pitch, string, fret, frets, free_at)
+        used.add(string)
+        return True
+    return False
+
+
+def _roll_into(anchor: _Pluck, missed: _Pluck, free_at: list[float]) -> bool:
+    """Lengthen `anchor` so the picker rolls through an attack the hand cannot fret."""
+    if anchor.string_index is None:
+        return False
+    if missed.timestamp <= anchor.timestamp + 1e-4:
+        return False
+    if missed.timestamp > anchor.timestamp + 1.0:
+        return False
+    threshold = float(tu.TREMOLO_DURATION_THRESHOLD)
+    end = max(missed.timestamp, anchor.timestamp + threshold)
+    end = min(end, anchor.timestamp + 1.0)
+    if end - anchor.timestamp + 1e-9 < threshold:
+        return False
+    anchor.duration_s = round(max(anchor.duration_s, end - anchor.timestamp), 6)
+    free_at[anchor.string_index] = anchor.timestamp + anchor.duration_s
+    return True
 
 
 def _event_dict(pluck: _Pluck) -> dict[str, Any]:
@@ -491,19 +676,93 @@ def _seconds(ticks: float, bpm: float) -> float:
     return float(ticks) * 60.0 / (float(bpm) * _QUARTER)
 
 
+def _swing_offset(offset: float, feel) -> float:
+    """Straight tick offset → where it sounds under this measure's triplet feel.
+
+    Eighth feel plays two written eighths as a quarter-note triplet, long then
+    short. Sixteenth feel does the same inside each eighth. Barlines stay put,
+    and no feel returns the offset unchanged.
+    """
+    kind = _feel_name(feel)
+    if kind == "eighth":
+        group = float(_QUARTER)
+    elif kind == "sixteenth":
+        group = float(_QUARTER // 2)
+    else:
+        return float(offset)
+    pivot = group / 2.0
+    group_index, rem = divmod(float(offset), group)
+    long = group * 2.0 / 3.0
+    short = group / 3.0
+    if rem <= pivot:
+        swung = rem * long / pivot
+    else:
+        swung = long + (rem - pivot) * short / pivot
+    return group_index * group + swung
+
+
+def _span_seconds(start: float, end: float, feel, bpm: float) -> float:
+    """Seconds between two straight tick positions after triplet feel."""
+    return _seconds(max(_swing_offset(end, feel) - _swing_offset(start, feel), 1), bpm)
+
+
+def _grace_local(local: float, grace_ticks: float, on_beat: bool, cursor: float) -> float:
+    """Tick offset of a grace note. One that would fall before the song starts at 0."""
+    if on_beat:
+        return float(local)
+    grace_at = float(cursor) + float(local) - float(grace_ticks)
+    if grace_at < 0:
+        return -float(cursor)
+    return float(local) - float(grace_ticks)
+
+
+def _feel_name(feel) -> str:
+    name = getattr(feel, "name", None)
+    if name:
+        return str(name)
+    text = str(feel or "none")
+    return text.rsplit(".", 1)[-1]
+
+
+# General MIDI program numbers pyguitarpro leaves on the channel. Empty track
+# names in a GP5 file fall back to these.
+_INSTRUMENT_NAMES = {
+    24: "Nylon Guitar",
+    25: "Steel Guitar",
+    26: "Jazz Guitar",
+    27: "Clean Guitar",
+    32: "Acoustic Bass",
+    33: "Finger Bass",
+}
+
+
+def _track_label(track, index: int) -> str:
+    name = track.name.strip()
+    if name:
+        return name
+    instrument = int(getattr(track.channel, "instrument", -1))
+    if instrument in _INSTRUMENT_NAMES:
+        return _INSTRUMENT_NAMES[instrument]
+    if len(track.strings) >= 6:
+        return "Guitar"
+    if track.strings and int(track.strings[-1].value) < 40:
+        return "Bass"
+    return f"track {index}"
+
+
 def _guitarpro():
     try:
         import guitarpro
     except ImportError as exc:
         raise ImportError(
-            "Reading .gp3 files requires pyguitarpro. Install it with: pip install pyguitarpro"
+            "Reading Guitar Pro files requires pyguitarpro. Install it with: pip install pyguitarpro"
         ) from exc
     return guitarpro
 
 
 def _build_parser() -> argparse.ArgumentParser:
-    parser = argparse.ArgumentParser(description="Compile a Guitar Pro 3 file into GuitarBot pluck events")
-    parser.add_argument("path", help="Path to a .gp3 file")
+    parser = argparse.ArgumentParser(description="Compile a Guitar Pro file into GuitarBot pluck events")
+    parser.add_argument("path", help="Path to a .gp3, .gp4, or .gp5 file")
     parser.add_argument("--track", default=None, help="Track name or zero-based index. Default: the guitar part that fits the robot")
     parser.add_argument("--list", action="store_true", help="List tracks and exit")
     parser.add_argument("--output", "-o", help="Write the song JSON here")
@@ -520,7 +779,9 @@ def main(argv: list[str] | None = None) -> None:
     compiled = compile_gp3(args.path, track=args.track)
     print(
         f"{compiled.song['song']['name']}: {compiled.events} plucks "
-        f"on {compiled.track_name!r} ({compiled.moved} moved, {compiled.skipped} skipped)"
+        f"on {compiled.track_name!r} ({compiled.moved} retuned, "
+        f"{compiled.thinned} inner voices left out, "
+        f"{compiled.absorbed} rolled into tremolo, {compiled.skipped} dropped)"
     )
     if args.output:
         destination = Path(args.output)

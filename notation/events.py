@@ -1,4 +1,4 @@
-"""Events document: UI JSON or a Guitar Pro 3 tab → pluck rows for the planner."""
+"""Events document: UI JSON or a Guitar Pro tab → pluck rows for the planner."""
 
 from __future__ import annotations
 
@@ -226,7 +226,7 @@ class SongArrangement:
 
     @classmethod
     def from_gp3(cls, path, *, track=None, config: dict[str, Any] | None = None) -> "SongArrangement":
-        """Guitar Pro 3 file → arrangement.
+        """Guitar Pro file (``.gp3``, ``.gp4``, or ``.gp5``) → arrangement.
 
         ``track`` is a track name or zero-based index. When omitted, the compiler
         picks the guitar part whose fretting fits the robot. The pluck events are

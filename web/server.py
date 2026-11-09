@@ -37,11 +37,11 @@ def create_app(
     def _busy_error():
         return jsonify({"ok": False, "error": "robot is busy"}), 409
 
-    def _send_in_background(traj) -> None:
+    def _send_in_background(traj, telemetry_label: str = "play") -> None:
         try:
             from control.playback import send_trajectory
 
-            send_trajectory(traj)
+            send_trajectory(traj, telemetry_label=telemetry_label)
         except Exception:
             import traceback
 
@@ -88,7 +88,7 @@ def create_app(
 
         worker = threading.Thread(
             target=_send_in_background,
-            args=(traj,),
+            args=(traj, "play"),
             daemon=True,
             name="guitarbot-play",
         )
@@ -119,7 +119,7 @@ def create_app(
 
         worker = threading.Thread(
             target=_send_in_background,
-            args=(traj,),
+            args=(traj, "reset"),
             daemon=True,
             name="guitarbot-reset",
         )

@@ -19,6 +19,7 @@ EthernetUDP udp;
 // --- Network Configuration ---
 byte mac[] = { 0xDE, 0xAD, 0xBE, 0xEF, 0xFE, 0xED };
 IPAddress ip(10, 2, 1, 177);
+IPAddress masterIp(10, 2, 1, 1);
 unsigned int localPort = 8888;
 char packetBuffer[2048]; // Buffer for one chunk (20 * 15 * 4 = 1200 bytes)
 
@@ -37,6 +38,22 @@ ArduinoQueue<TrajectoryPoint> g_softwareBufferQueue(100);
 // --- Timing Control ---
 unsigned long g_previousTime = 0;
 const unsigned long g_interval = 1; // 5 milliseconds per point
+unsigned long g_lastTelemMs = 0;
+
+void sendTelemetry() {
+    if (pController == nullptr) {
+        return;
+    }
+    float positions[FLOATS_PER_POINT];
+    for (int i = 0; i < FLOATS_PER_POINT; i++) {
+        positions[i] = pController->getMotorPosition(i + 1);
+    }
+    if (udp.beginPacket(masterIp, TELEM_PORT) != 1) {
+        return;
+    }
+    udp.write(reinterpret_cast<const uint8_t*>(positions), sizeof(positions));
+    udp.endPacket();
+}
 
 void setup() {
     Serial.begin(115200);
@@ -53,6 +70,7 @@ void setup() {
     pController->init(MotorSpec::EC45_Slider);
     pController->start();
     LOG_LOG("Controller Ready. Listening for Points.");
+    LOG_LOG("UDP telemetry -> %s:%i every %i ms", MASTER_ADDR, TELEM_PORT, TELEM_INTERVAL_MS);
 }
 
 void loop() {
@@ -74,6 +92,12 @@ void loop() {
                 pController->processTrajPoints(pointToProcess.values);
             }
         }
+    }
+
+    // 3. Stream encoder ticks to the host for debugging (not from the RPDO ISR).
+    if (currentTime - g_lastTelemMs >= TELEM_INTERVAL_MS) {
+        g_lastTelemMs = currentTime;
+        sendTelemetry();
     }
 }
 

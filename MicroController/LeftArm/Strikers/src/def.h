@@ -8,6 +8,8 @@
 #define IP_ADDR "10.2.1.177"
 #define MASTER_ADDR "10.2.1.1"
 #define PORT 8888
+#define TELEM_PORT 8889
+#define TELEM_INTERVAL_MS 20  // 50 Hz encoder feed back to host
 #define CS_PIN 10
 #define MAX_BUFFER_SIZE 1024
 //change num pressers, TRACE_ME

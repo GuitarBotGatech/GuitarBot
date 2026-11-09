@@ -53,33 +53,59 @@ def build_reset_trajectory(current_position=None, target_position=None) -> np.nd
     return np.vstack([unpress_trajectory, home_trajectory])
 
 
-def send_trajectory(traj: np.ndarray) -> None:
-    """Send a trajectory to OpenCR in timed UDP batches, without waiting for ACKs."""
-    udp_ip = "10.2.1.177"
-    udp_port = 8888
-    batch_size = 20
-    time_per_point_s = tu.TIME_STEP
+def send_trajectory(
+    traj: np.ndarray,
+    *,
+    record_telemetry: bool = True,
+    telemetry_label: str = "play",
+) -> None:
+    """Send a trajectory to OpenCR in timed UDP batches, without waiting for ACKs.
 
-    sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-    num_total_points = len(traj)
-    print(f"Starting song with {num_total_points} points.")
-    print(f"Sending in batches of {batch_size} points every {batch_size * time_per_point_s:.2f} seconds.")
+    When record_telemetry is True, also listen for the OpenCR encoder feed on
+    UDP :8889 and save CSV/npy under logs/telemetry/.
+    """
+    from control.telemetry import capture_telemetry
 
-    total_start_time = time.time()
-    for i in range(0, num_total_points, batch_size):
-        start_time = time.time()
-        chunk = traj[i : i + batch_size]
-        byte_payload = chunk.astype(np.float32).tobytes()
-        sock.sendto(byte_payload, (udp_ip, udp_port))
+    def _send() -> None:
+        udp_ip = "10.2.1.177"
+        udp_port = 8888
+        batch_size = 20
+        time_per_point_s = tu.TIME_STEP
 
-        num_points_in_chunk = len(chunk)
-        print(f"Sent batch {i // batch_size + 1}: {num_points_in_chunk} points ({len(byte_payload)} bytes).")
-        sleep_time = max(0, num_points_in_chunk * time_per_point_s - (time.time() - start_time))
-        print(f"--> Sleeping for {sleep_time:.4f} seconds...\n")
-        time.sleep(sleep_time)
+        sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        num_total_points = len(traj)
+        print(f"Starting song with {num_total_points} points.")
+        print(
+            f"Sending in batches of {batch_size} points every "
+            f"{batch_size * time_per_point_s:.2f} seconds."
+        )
 
-    print(f"Total elapsed time: {time.time() - total_start_time:.4f} seconds")
-    print("All batches sent. Song Complete.")
+        total_start_time = time.time()
+        for i in range(0, num_total_points, batch_size):
+            start_time = time.time()
+            chunk = traj[i : i + batch_size]
+            byte_payload = chunk.astype(np.float32).tobytes()
+            sock.sendto(byte_payload, (udp_ip, udp_port))
+
+            num_points_in_chunk = len(chunk)
+            print(
+                f"Sent batch {i // batch_size + 1}: {num_points_in_chunk} points "
+                f"({len(byte_payload)} bytes)."
+            )
+            sleep_time = max(
+                0, num_points_in_chunk * time_per_point_s - (time.time() - start_time)
+            )
+            print(f"--> Sleeping for {sleep_time:.4f} seconds...\n")
+            time.sleep(sleep_time)
+
+        print(f"Total elapsed time: {time.time() - total_start_time:.4f} seconds")
+        print("All batches sent. Song Complete.")
+
+    if record_telemetry:
+        with capture_telemetry(label=telemetry_label):
+            _send()
+    else:
+        _send()
 
 
 class PlaybackSession:
@@ -116,14 +142,14 @@ class PlaybackSession:
     def play_arrangement(self, song_dict, *, send, parser: GuitarBotParser | None = None) -> np.ndarray:
         traj = self.plan_arrangement(song_dict, parser=parser)
         if send:
-            send_trajectory(traj)
+            send_trajectory(traj, telemetry_label="play")
         return traj
 
     def reset(self, *, current_position: np.ndarray | list[float] | None = None, send: bool = True) -> np.ndarray:
         current = self.last_position if current_position is None else current_position
         traj = build_reset_trajectory(current_position=current)
         if send:
-            send_trajectory(traj)
+            send_trajectory(traj, telemetry_label="reset")
         target = np.asarray(tu.initial_point, dtype=float)
         self.last_position = target.copy()
         self.parser.initial_point = target.tolist()

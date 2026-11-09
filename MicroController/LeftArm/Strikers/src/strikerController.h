@@ -492,6 +492,14 @@ public:
         return kNoError;
     }
 
+    // Encoder ticks for nodeId in [1, NUM_MOTORS]. Used by UDP telemetry.
+    float getMotorPosition(uint8_t nodeId) {
+        if (nodeId < 1 || nodeId > NUM_MOTORS) {
+            return 0.f;
+        }
+        return m_striker[nodeId].getPosition_ticks();
+    }
+
 //    void poll() {
 //        m_socket.poll();
 //    }
@@ -583,12 +591,12 @@ private:
 //        Serial.println();
 
 
-        // Handle TPDO3 messages (0x480 + nodeID)
+        // Handle TPDO3 messages (0x380 + nodeID) — keep encoder positions fresh for all motors
 //        Serial.println(rawId - 0x380);
         if((rawId & 0x780) == 0x380) { // Check TPDO range
 //            Serial.println("TRIGGERED PDO");
             uint8_t nodeID = rawId - 0x380;
-            if(nodeID > 6 && nodeID <= 12) {
+            if(nodeID > 0 && nodeID <= NUM_MOTORS) {
                 pInstance->m_striker[nodeID].PDO_processMsg(*arg);
             }
             return;

@@ -240,3 +240,6 @@ fabric.properties
 
 .vscode/*
 /.idea
+
+# Motor telemetry dumps from OpenCR UDP feed
+logs/telemetry/
