@@ -76,9 +76,12 @@ public:
         epos.PDO_setPosition(pos);
     }
     void setModePOSITION(){
+        setModePOSITION(0);
+    }
+    void setModePOSITION(int pos){
         epos.PDO_setOpMode(CyclicSyncPosition);
         press_state = false;
-        epos.PDO_setPosition(0);
+        epos.PDO_setPosition(pos);
     }
     void setModeTORQUE(){
         epos.PDO_setOpMode(OpMode::CyclicSyncTorque);

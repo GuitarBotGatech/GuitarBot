@@ -510,11 +510,12 @@ private:
     int pickerStates[NUM_PLUCKERS]; // Array to hold state of each picker (0=up state, 1=down state)
     static constexpr int PRESSER_HOME_TICKS = 15;
     static constexpr int PRESSER_RELEASE_TORQUE = -650;
-    // Temporary. Node 12's measured rest is about -48, not ~0 like the other
-    // pressers, so a press to about -20 still looks released under <= 15.
-    // Remove once that drive homes to the same zero as the others.
+    // Node 12 rests near -50, not 0. Parking it at 0 pulls the cam back down
+    // and the release torque then fires again. Home is the released side of
+    // that rest; the park target is the rest itself.
     static constexpr int HIGH_E_PRESSER_NODE = 12;
     static constexpr int HIGH_E_HOME_TICKS = -30;
+    static constexpr int HIGH_E_PARK_TICKS = -50;
     // True after a press was accepted from home. Cleared on a lift, so the next
     // press waits until the cam is home again.
     bool m_pressFromHome[NUM_MOTORS + 1] = {};
@@ -634,16 +635,16 @@ private:
     void drivePresser(int nodeId, int command) {
         Striker& motor = m_striker[nodeId];
         int ticks = (int)motor.getPosition_ticks();
-        bool atHome = (nodeId == HIGH_E_PRESSER_NODE)
-            ? ticks <= HIGH_E_HOME_TICKS
-            : ticks <= PRESSER_HOME_TICKS;
+        bool highE = nodeId == HIGH_E_PRESSER_NODE;
+        bool atHome = highE ? ticks <= HIGH_E_HOME_TICKS : ticks <= PRESSER_HOME_TICKS;
+        int park = highE ? HIGH_E_PARK_TICKS : 0;
         bool wantRelease = command <= 0;
 
         if (wantRelease) {
             m_pressFromHome[nodeId] = false;
             if (atHome) {
-                if (motor.getPressState()) motor.setModePOSITION();
-                else motor.rotate(0);
+                if (motor.getPressState()) motor.setModePOSITION(park);
+                else motor.rotate(park);
                 return;
             }
             if (!motor.getPressState()) motor.setModeTORQUE();
