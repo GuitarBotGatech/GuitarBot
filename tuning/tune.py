@@ -45,6 +45,10 @@ LH_PRESSER_SLIDE_PRESS_POS = 200
 # Time (in seconds) the left hand needs to prepare before a picker plucks a new note.
 LH_PREP_TIME_BEFORE_PICK = 0.450
 
+# Time (in seconds) the finished press command is held before the pluck.
+# The trajectory step is TIME_STEP (0.005 s), so 0.005 holds the press for 5 ms.
+LH_PRESS_SETTLE_TIME = 0.005
+
 # After a string is idle this long, its next move takes LH_SLOW_SLIDE_TIME_MAX seconds.
 LH_SLOW_SLIDE_IDLE_WINDOW = 20.0
 LH_SLOW_SLIDE_TIME_MAX = 5.0

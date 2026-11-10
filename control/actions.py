@@ -39,6 +39,24 @@ def _slider_targets(position, q0_slider):
     return qf_slider, qf1_presser, qf2_presser
 
 
+def _settle_points(segment_points):
+    """Points at the end of a press segment held at the finished command."""
+    requested = int(round(float(tu.LH_PRESS_SETTLE_TIME) / float(tu.TIME_STEP)))
+    return min(max(0, requested), max(0, segment_points - 1))
+
+
+def _held_press(q0_slider, qf_slider, q0_presser, qf_presser, points, blend, tb_cent):
+    """Blend the press, then hold the finished command for LH_PRESS_SETTLE_TIME."""
+    settle = _settle_points(points)
+    motion = points - settle
+    slider = list(blend(q0_slider, qf_slider, motion, tb_cent))
+    presser = list(blend(q0_presser, qf_presser, motion, tb_cent))
+    if settle:
+        slider.extend([qf_slider] * settle)
+        presser.extend([qf_presser] * settle)
+    return slider, presser
+
+
 def _hand_points(q0_slider, q0_presser, qf_slider, qf1_presser, qf2_presser, slide, same_as_prev, prep_time_s, blend, tb_cent):
     total_points = max(3, int(round(float(prep_time_s) / float(tu.TIME_STEP))))
     base, remainder = divmod(total_points, 3)
@@ -58,8 +76,10 @@ def _hand_points(q0_slider, q0_presser, qf_slider, qf1_presser, qf2_presser, sli
             slider_points.extend(s2)
             presser_points.extend(p2)
 
-            s3 = blend(qf_slider, qf_slider, phase3_points, tb_cent)
-            p3 = blend(tu.LH_PRESSER_SLIDE_PRESS_POS, qf2_presser, phase3_points, tb_cent)
+            s3, p3 = _held_press(
+                qf_slider, qf_slider, tu.LH_PRESSER_SLIDE_PRESS_POS, qf2_presser,
+                phase3_points, blend, tb_cent,
+            )
             slider_points.extend(s3)
             presser_points.extend(p3)
         else:
@@ -73,14 +93,18 @@ def _hand_points(q0_slider, q0_presser, qf_slider, qf1_presser, qf2_presser, sli
             slider_points.extend(s2)
             presser_points.extend(p2)
 
-            s3 = blend(qf_slider, qf_slider, phase3_points, tb_cent)
-            p3 = blend(qf1_presser, qf2_presser, phase3_points, tb_cent)
+            s3, p3 = _held_press(
+                qf_slider, qf_slider, qf1_presser, qf2_presser,
+                phase3_points, blend, tb_cent,
+            )
             slider_points.extend(s3)
             presser_points.extend(p3)
     else:
         total_points = max(phase1_points + phase2_points + phase3_points, 1)
-        s3 = blend(q0_slider, qf_slider, total_points, tb_cent)
-        p3 = blend(q0_presser, qf2_presser, total_points, tb_cent)
+        s3, p3 = _held_press(
+            q0_slider, qf_slider, q0_presser, qf2_presser,
+            total_points, blend, tb_cent,
+        )
         slider_points.extend(s3)
         presser_points.extend(p3)
 
