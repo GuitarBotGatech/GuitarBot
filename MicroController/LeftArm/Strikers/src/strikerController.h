@@ -513,6 +513,10 @@ private:
     // True after a press was accepted from home. Cleared on a lift, so the next
     // press waits until the cam is home again.
     bool m_pressFromHome[NUM_MOTORS + 1] = {};
+    // High E's press reads negative. Track a positive lift so a wrong torque
+    // sign aborts before the cam is driven into the stop.
+    bool m_liftingNegative[NUM_MOTORS + 1] = {};
+    int m_liftStartTicks[NUM_MOTORS + 1] = {};
     static StrikerController* pInstance;
     volatile bool m_bPlaying = false;
     MotorSpec m_motorSpec = MotorSpec::EC45_Slider;
@@ -622,19 +626,36 @@ private:
     }
 
     // Presser torque is applied here, every PDO tick, from the encoder right now.
-    // A lift parks only once the cam is within PRESSER_HOME_TICKS of zero.
-    // Distance is unsigned: high E's encoder counts a press negative, and a
-    // one-sided <= test treated that press as already home and skipped the lift.
+    // A lift parks once the cam is at or below PRESSER_HOME_TICKS. That includes
+    // the homed offset (~-25): treating that as "not home" and applying the
+    // negative release torque drives high E into the press stop.
     // A new press is refused until that happens, so a sticky unpress cannot
     // keep the last torque running after the trajectory has moved on or ended.
     void drivePresser(int nodeId, int command) {
         Striker& motor = m_striker[nodeId];
         int ticks = (int)motor.getPosition_ticks();
-        bool atHome = ticks <= PRESSER_HOME_TICKS && ticks >= -PRESSER_HOME_TICKS;
+        bool atHome = ticks <= PRESSER_HOME_TICKS;
         bool wantRelease = command <= 0;
 
         if (wantRelease) {
             m_pressFromHome[nodeId] = false;
+            // Pressed, but the encoder went negative (high E) so the one-sided
+            // home test would park immediately and skip the lift. Negative
+            // release torque drives that axis further negative, into the press.
+            if (motor.getPressState() && ticks < -PRESSER_HOME_TICKS) {
+                if (!m_liftingNegative[nodeId]) {
+                    m_liftingNegative[nodeId] = true;
+                    m_liftStartTicks[nodeId] = ticks;
+                }
+                if (ticks < m_liftStartTicks[nodeId] - 10) {
+                    m_liftingNegative[nodeId] = false;
+                    motor.setModePOSITION();
+                    return;
+                }
+                motor.applyTorque(-PRESSER_RELEASE_TORQUE);
+                return;
+            }
+            m_liftingNegative[nodeId] = false;
             if (atHome) {
                 if (motor.getPressState()) motor.setModePOSITION();
                 else motor.rotate(0);
@@ -644,6 +665,7 @@ private:
             motor.applyTorque(command < 0 ? command : PRESSER_RELEASE_TORQUE);
             return;
         }
+        m_liftingNegative[nodeId] = false;
 
         if (atHome || m_pressFromHome[nodeId]) {
             if (!motor.getPressState()) motor.setModeTORQUE();
