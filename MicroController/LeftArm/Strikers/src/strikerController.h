@@ -623,11 +623,14 @@ private:
 
     // Presser torque is applied here, every PDO tick, from the encoder right now.
     // A lift parks only once the cam is within PRESSER_HOME_TICKS of zero.
+    // Distance is unsigned: high E's encoder counts a press negative, and a
+    // one-sided <= test treated that press as already home and skipped the lift.
     // A new press is refused until that happens, so a sticky unpress cannot
     // keep the last torque running after the trajectory has moved on or ended.
     void drivePresser(int nodeId, int command) {
         Striker& motor = m_striker[nodeId];
-        bool atHome = (int)motor.getPosition_ticks() <= PRESSER_HOME_TICKS;
+        int ticks = (int)motor.getPosition_ticks();
+        bool atHome = ticks <= PRESSER_HOME_TICKS && ticks >= -PRESSER_HOME_TICKS;
         bool wantRelease = command <= 0;
 
         if (wantRelease) {
