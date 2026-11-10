@@ -510,13 +510,14 @@ private:
     int pickerStates[NUM_PLUCKERS]; // Array to hold state of each picker (0=up state, 1=down state)
     static constexpr int PRESSER_HOME_TICKS = 15;
     static constexpr int PRESSER_RELEASE_TORQUE = -650;
+    // Temporary. Node 12's measured rest is about -48, not ~0 like the other
+    // pressers, so a press to about -20 still looks released under <= 15.
+    // Remove once that drive homes to the same zero as the others.
+    static constexpr int HIGH_E_PRESSER_NODE = 12;
+    static constexpr int HIGH_E_HOME_TICKS = -30;
     // True after a press was accepted from home. Cleared on a lift, so the next
     // press waits until the cam is home again.
     bool m_pressFromHome[NUM_MOTORS + 1] = {};
-    // High E's press reads negative. Track a positive lift so a wrong torque
-    // sign aborts before the cam is driven into the stop.
-    bool m_liftingNegative[NUM_MOTORS + 1] = {};
-    int m_liftStartTicks[NUM_MOTORS + 1] = {};
     static StrikerController* pInstance;
     volatile bool m_bPlaying = false;
     MotorSpec m_motorSpec = MotorSpec::EC45_Slider;
@@ -626,36 +627,20 @@ private:
     }
 
     // Presser torque is applied here, every PDO tick, from the encoder right now.
-    // A lift parks once the cam is at or below PRESSER_HOME_TICKS. That includes
-    // the homed offset (~-25): treating that as "not home" and applying the
-    // negative release torque drives high E into the press stop.
+    // A lift parks once the cam is back within PRESSER_HOME_TICKS of the
+    // released pose the other pressers reach (near 0, press stroke positive).
     // A new press is refused until that happens, so a sticky unpress cannot
     // keep the last torque running after the trajectory has moved on or ended.
     void drivePresser(int nodeId, int command) {
         Striker& motor = m_striker[nodeId];
         int ticks = (int)motor.getPosition_ticks();
-        bool atHome = ticks <= PRESSER_HOME_TICKS;
+        bool atHome = (nodeId == HIGH_E_PRESSER_NODE)
+            ? ticks <= HIGH_E_HOME_TICKS
+            : ticks <= PRESSER_HOME_TICKS;
         bool wantRelease = command <= 0;
 
         if (wantRelease) {
             m_pressFromHome[nodeId] = false;
-            // Pressed, but the encoder went negative (high E) so the one-sided
-            // home test would park immediately and skip the lift. Negative
-            // release torque drives that axis further negative, into the press.
-            if (motor.getPressState() && ticks < -PRESSER_HOME_TICKS) {
-                if (!m_liftingNegative[nodeId]) {
-                    m_liftingNegative[nodeId] = true;
-                    m_liftStartTicks[nodeId] = ticks;
-                }
-                if (ticks < m_liftStartTicks[nodeId] - 10) {
-                    m_liftingNegative[nodeId] = false;
-                    motor.setModePOSITION();
-                    return;
-                }
-                motor.applyTorque(-PRESSER_RELEASE_TORQUE);
-                return;
-            }
-            m_liftingNegative[nodeId] = false;
             if (atHome) {
                 if (motor.getPressState()) motor.setModePOSITION();
                 else motor.rotate(0);
@@ -665,7 +650,6 @@ private:
             motor.applyTorque(command < 0 ? command : PRESSER_RELEASE_TORQUE);
             return;
         }
-        m_liftingNegative[nodeId] = false;
 
         if (atHome || m_pressFromHome[nodeId]) {
             if (!motor.getPressState()) motor.setModeTORQUE();
