@@ -127,11 +127,32 @@ public:
         return kNoError;
     }
 
+    bool waitForStatus(_WORD mask, _WORD value, unsigned long timeoutMs) {
+        unsigned long startMs = millis();
+        _WORD stat = 0;
+        while (millis() - startMs < timeoutMs) {
+            if (readStatusWord(stat) && (stat & mask) == value) return true;
+            delay(2);
+        }
+        return false;
+    }
+
     // Profile position move over SDO; speed in rpm.
+    // The drive only takes a new target on a rising edge of controlword bit 4,
+    // and ignores it if the edge arrives before the drive is fully enabled.
     Error_t startMove(int32_t pos, uint32_t speed) {
         if (epos.setOpMode(OpMode::ProfilePosition) != 0) return kSetValueError;
         if (epos.setProfile(speed, speed * 10) != 0) return kSetValueError;
+        if (!waitForStatus(0x6F, 0x27, 500)) {
+            LOG_ERROR("Motor %i never reached operation enabled", epos.getNodeId());
+            return kSetValueError;
+        }
         if (epos.moveToPosition(pos, false) != 0) return kSetValueError;
+        if (!waitForStatus(1 << 12, 1 << 12, 200)) {
+            LOG_ERROR("Motor %i did not acknowledge target %i", epos.getNodeId(), (int) pos);
+            return kSetValueError;
+        }
+        if (epos.setControlWord(0x000F) != 0) return kSetValueError;
         return kNoError;
     }
 
