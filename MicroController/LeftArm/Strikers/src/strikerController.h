@@ -516,8 +516,9 @@ private:
     static constexpr unsigned long PRESSER_STALL_MS = 300;
     static constexpr unsigned long PRESSER_TORQUE_RAMP_MS = 500;
     static constexpr unsigned long PRESSER_STALL_TIMEOUT_MS = 3000;
-    static constexpr int PRESSER_MIDPOINT_SPREAD_WARN = 30;
-    static constexpr int PRESSER_MIN_RANGE_TICKS = 50;
+    // A full stall-to-stall range is roughly 50-100 ticks (a press moves ~30-50 ticks from rest).
+    static constexpr int PRESSER_MIDPOINT_SPREAD_WARN = 8;
+    static constexpr int PRESSER_MIN_RANGE_TICKS = 10;
     static constexpr uint32_t PRESSER_CAL_SPEED = 300; // rpm
     static constexpr uint32_t SLIDER_CAL_SPEED = 300; // rpm
     static constexpr int MOVE_ARRIVED_TICKS = 20;
