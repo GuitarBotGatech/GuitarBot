@@ -531,11 +531,10 @@ private:
     // string until the motor current falls (the pick released). Both directions,
     // on an open string and with the string pressed at fret 9.
     static constexpr float PLUCK_CAL_BACKOFF_MM = 0.2f;
-    static constexpr int PLUCK_BASELINE_TICKS = 20;
     static constexpr float PLUCK_CAL_MARGIN_MM = 0.3f;
     static constexpr float PLUCK_CAL_MAX_MM = 8.f;
-    // The first run plucked every string without the current ever clearing 80 mA, so the
-    // rise that counts as contact is much smaller. The printed peak is the value to tune against.
+    // Leaving the hard stop draws a few hundred mA. A release only counts after that spike
+    // has fallen and the pick has moved an eighth of a turn, which is still short of the string.
     static constexpr int PLUCK_CURRENT_RISE_MA = 15;
     static constexpr int PLUCK_CURRENT_DROP_MA = 10;
     // Continuous sweep speed. The full pluck stroke is about 1/4 turn; 2 rpm takes ~7.5 s.
@@ -1013,20 +1012,19 @@ private:
 
     // Moves every picker toward its target until the pick releases.
     // One move is commanded per picker; the loop only reads position and current.
-    // learnBaseline averages the free-air current over the first PLUCK_BASELINE_TICKS.
-    // The return stroke reuses that baseline and waits to go clear before arming,
-    // so it does not treat the string it just left as a new pluck.
+    // learnBaseline blanks the breakaway from the hard stop for an eighth of a turn.
+    // The return stroke only blanks its own acceleration, because the string is close.
     bool sweepPluckers(const int* sign, int* baseline, bool learnBaseline, bool pressing, int32_t* release, int* peak) {
         const int n = NUM_PLUCKERS;
         int32_t pos[NUM_PLUCKERS];
         int32_t origin[NUM_PLUCKERS];
         int32_t target[NUM_PLUCKERS];
         int margin[NUM_PLUCKERS];
-        long baseSum[NUM_PLUCKERS] = {};
-        int baseCount[NUM_PLUCKERS] = {};
+        int blank[NUM_PLUCKERS];
+        int startPeak[NUM_PLUCKERS] = {};
         int lastCurrent[NUM_PLUCKERS] = {};
         bool sawCurrent[NUM_PLUCKERS] = {};
-        bool clear[NUM_PLUCKERS];
+        bool settled[NUM_PLUCKERS] = {};
         bool contact[NUM_PLUCKERS] = {};
         bool done[NUM_PLUCKERS] = {};
         int remaining = n;
@@ -1039,12 +1037,12 @@ private:
             }
             origin[k] = pos[k];
             margin[k] = pickerTicks(node, PLUCK_CAL_MARGIN_MM);
+            blank[k] = learnBaseline ? m_striker[node].encoderResolution() / 8 : margin[k];
             int32_t travel = pickerTicks(node, PLUCK_CAL_MAX_MM);
             target[k] = learnBaseline ? origin[k] + sign[k] * travel : 0;
-            clear[k] = learnBaseline;
             release[k] = 0;
             peak[k] = 0;
-            if (learnBaseline) baseline[k] = 0;
+            baseline[k] = 0;
             if (m_striker[node].startMove(target[k], PLUCK_CAL_SPEED) != kNoError) {
                 LOG_ERROR("Plucker %i could not start its sweep", node);
                 done[k] = true;
@@ -1078,21 +1076,23 @@ private:
                 lastCurrent[k] = current;
                 int mag = abs(current);
 
-                if (learnBaseline && abs(pos[k] - origin[k]) <= PLUCK_BASELINE_TICKS) {
-                    baseSum[k] += mag;
-                    baseCount[k] += 1;
-                    baseline[k] = (int)(baseSum[k] / baseCount[k]);
-                    continue;
-                }
-
-                int rise = mag - baseline[k];
-                if (!clear[k]) {
-                    if (rise < PLUCK_CURRENT_RISE_MA / 2) {
-                        clear[k] = true;
+                // The first current hump is the motor breaking away, not the pick leaving the string.
+                // The spike is measured only inside the blanking distance, so a later pluck cannot raise it.
+                if (!settled[k]) {
+                    if (abs(pos[k] - origin[k]) < blank[k]) {
+                        if (mag > startPeak[k]) startPeak[k] = mag;
+                        continue;
+                    }
+                    bool fallen = startPeak[k] < 80 || mag <= startPeak[k] - 80;
+                    if (fallen) {
+                        settled[k] = true;
+                        baseline[k] = mag;
                         peak[k] = 0;
                     }
                     continue;
                 }
+
+                int rise = mag - baseline[k];
                 if (rise > peak[k]) peak[k] = rise;
                 if (!contact[k]) {
                     if (rise >= PLUCK_CURRENT_RISE_MA) contact[k] = true;
