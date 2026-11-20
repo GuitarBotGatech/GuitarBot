@@ -8,17 +8,11 @@ from tuning import tune as tu
 # -1 already means "leave the slider and lift the presser".
 SLIDER_MUTE = -2
 
-# Slider encoder counts per revolution.
-_SLIDER_RESOLUTION = 2048
-
-
 def fret_to_encoder(string, fret):
     """Slider target for a fret. Fret 0 and a mute leave the slider put, encoded as -1."""
     if fret <= 0:
         return -1
-    direction = tu.SLIDER_MOTOR_DIRECTION[string]
-    mm = tu.SLIDER_MM_PER_FRET[fret - 1]
-    return ((mm * _SLIDER_RESOLUTION) / tu.MM_TO_ENCODER_CONVERSION_FACTOR + tu.SLIDER_ENCODER_OFFSET) * direction
+    return tu.slider_encoder_for_fret(string, fret)
 
 
 def tremolo_pick_count(duration, speed):

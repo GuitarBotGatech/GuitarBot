@@ -41,8 +41,19 @@ def _fmt_scalar(val: Any, ctype: str) -> str:
 
 
 def _fmt_array(vals: Iterable[Any], ctype: str) -> str:
-    parts = (_fmt_scalar(v, ctype) for v in vals)
+    parts = (
+        _fmt_array(v, ctype) if isinstance(v, (list, tuple)) else _fmt_scalar(v, ctype)
+        for v in vals
+    )
     return "{" + ", ".join(parts) + "}"
+
+
+def _array_dims(val: Any) -> str:
+    dims = ""
+    while isinstance(val, (list, tuple)):
+        dims += f"[{len(val)}]"
+        val = val[0]
+    return dims
 
 
 def generate_tune_h(
@@ -72,6 +83,9 @@ def generate_tune_h(
         "pos_control_PICK": ("POS_CONTROL_PICK", "uint32_t", True),
         "pos_control_PRESS": ("POS_CONTROL_PRESS", "uint32_t", True),
         "mm_to_enc_conversion_factor": ("MM_TO_ENC_CONVERSION_FACTOR", "float", False),
+        "presser_cal_frets": ("PRESSER_CAL_FRETS", "int", True),
+        "presser_cal_torque": ("PRESSER_CAL_TORQUE", "int", False),
+        "presser_cal_slider_ticks": ("PRESSER_CAL_SLIDER_TICKS", "int", True),
     }
 
     lines: list[str] = []
@@ -88,7 +102,7 @@ def generate_tune_h(
             continue
         val = getattr(mod, py_name)
         if is_array:
-            lines.append(f"const {ctype} {header_name}[{len(val)}] = {_fmt_array(val, ctype)};")
+            lines.append(f"const {ctype} {header_name}{_array_dims(val)} = {_fmt_array(val, ctype)};")
         else:
             lines.append(f"const {ctype} {header_name} = {_fmt_scalar(val, ctype)};")
 

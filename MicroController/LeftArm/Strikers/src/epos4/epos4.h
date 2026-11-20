@@ -93,6 +93,8 @@ public:
     int setFollowErrorWindow(_DWORD errWindow);
     int quickStop();
     int startHoming();
+    // Makes the current position encoder 0 without moving (homing method 37).
+    int setActualPositionAsHome();
     int setTargetTorque(int16_t torque);
     int SetHomePosition(int32_t iPos);
     int SetHomeOffset(int32_t iPos);

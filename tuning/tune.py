@@ -86,6 +86,30 @@ SLIDER_ENCODER_OFFSET = -2900
 # Index corresponds to motor ID (String 1 = 0, String 2 = 1, etc.).
 SLIDER_MOTOR_DIRECTION = [-1, 1, 1, -1, -1, 1]
 
+# Slider encoder counts per revolution.
+SLIDER_ENCODER_RESOLUTION = 2048
+
+
+def slider_encoder_for_fret(string, fret):
+    """Slider encoder position for a fret (1-9). Fret 0 is the homed slider position."""
+    if fret <= 0:
+        return 0
+    mm = SLIDER_MM_PER_FRET[fret - 1]
+    return ((mm * SLIDER_ENCODER_RESOLUTION) / MM_TO_ENCODER_CONVERSION_FACTOR + SLIDER_ENCODER_OFFSET) * SLIDER_MOTOR_DIRECTION[string]
+
+
+# Presser homing (runs at boot in firmware).
+# Each presser cam is rotated with PRESSER_CAL_TORQUE until it stalls on the fretboard,
+# once in each direction, at every fret in PRESSER_CAL_FRETS. The midpoint of the two
+# stalls, averaged over the frets, becomes the presser's rest position (encoder 0).
+# The torque is the same in both directions so the string deflects equally on each side.
+PRESSER_CAL_FRETS = [0, 4, 9]
+PRESSER_CAL_TORQUE = 500
+PRESSER_CAL_SLIDER_TICKS = [
+    [int(round(slider_encoder_for_fret(string, fret))) for string in range(6)]
+    for fret in PRESSER_CAL_FRETS
+]
+
 # ----------------------------------------------------------------------------
 # 4. Right Hand (RH) / Picker Physical Parameters
 # ----------------------------------------------------------------------------

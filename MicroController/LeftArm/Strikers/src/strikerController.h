@@ -148,10 +148,7 @@ public:
         delay(500);
 
         LOG_LOG("Homing for sliders complete, starting pressers. ");
-        for (int i = NUM_STRIKERS + 1; i <= NUM_PRESSERS + NUM_STRIKERS; ++i) {
-            m_striker[i].startHome(i);
-        }
-        checkHomingInRange(NUM_STRIKERS + 1, NUM_PRESSERS  + NUM_STRIKERS);
+        homePressers();
         LOG_LOG("Homing for pressers complete, starting pluckers. ");
         for (int i = NUM_STRIKERS + NUM_PRESSERS + NUM_STRUMMER_SLIDERS + NUM_STRUMMER_PICKERS + 1; i <= NUM_PRESSERS + NUM_STRIKERS + NUM_STRUMMER_SLIDERS + NUM_STRUMMER_PICKERS + NUM_PLUCKERS; ++i) {
             m_striker[i].startHome(i);
@@ -510,12 +507,20 @@ private:
     int pickerStates[NUM_PLUCKERS]; // Array to hold state of each picker (0=up state, 1=down state)
     static constexpr int PRESSER_HOME_TICKS = 15;
     static constexpr int PRESSER_RELEASE_TORQUE = -650;
-    // Node 12 rests near -50, not 0. Parking it at 0 pulls the cam back down
-    // and the release torque then fires again. Home is the released side of
-    // that rest; the park target is the rest itself.
-    static constexpr int HIGH_E_PRESSER_NODE = 12;
-    static constexpr int HIGH_E_HOME_TICKS = -30;
-    static constexpr int HIGH_E_PARK_TICKS = -50;
+
+    // Presser homing. A cam has stalled once it moves less than PRESSER_STALL_TICKS
+    // for PRESSER_STALL_MS. A midpoint spread above PRESSER_MIDPOINT_SPREAD_WARN
+    // across the calibration frets means the cam or carriage is not symmetric.
+    static constexpr int NUM_CAL_FRETS = sizeof(presser_cal_frets) / sizeof(presser_cal_frets[0]);
+    static constexpr int PRESSER_STALL_TICKS = 3;
+    static constexpr unsigned long PRESSER_STALL_MS = 150;
+    static constexpr unsigned long PRESSER_STALL_TIMEOUT_MS = 3000;
+    static constexpr int PRESSER_MIDPOINT_SPREAD_WARN = 30;
+    static constexpr uint32_t PRESSER_CAL_SPEED = 300; // rpm
+    static constexpr uint32_t SLIDER_CAL_SPEED = 300; // rpm
+    static constexpr int MOVE_ARRIVED_TICKS = 20;
+    static constexpr unsigned long MOVE_TIMEOUT_MS = 5000;
+
     // True after a press was accepted from home. Cleared on a lift, so the next
     // press waits until the cam is home again.
     bool m_pressFromHome[NUM_MOTORS + 1] = {};
@@ -628,16 +633,15 @@ private:
     }
 
     // Presser torque is applied here, every PDO tick, from the encoder right now.
-    // A lift parks once the cam is back within PRESSER_HOME_TICKS of the
-    // released pose the other pressers reach (near 0, press stroke positive).
+    // A lift parks once the cam is back within PRESSER_HOME_TICKS of rest
+    // (encoder 0, set by presser homing; press stroke positive).
     // A new press is refused until that happens, so a sticky unpress cannot
     // keep the last torque running after the trajectory has moved on or ended.
     void drivePresser(int nodeId, int command) {
         Striker& motor = m_striker[nodeId];
         int ticks = (int)motor.getPosition_ticks();
-        bool highE = nodeId == HIGH_E_PRESSER_NODE;
-        bool atHome = highE ? ticks <= HIGH_E_HOME_TICKS : ticks <= PRESSER_HOME_TICKS;
-        int park = highE ? HIGH_E_PARK_TICKS : 0;
+        bool atHome = ticks <= PRESSER_HOME_TICKS;
+        int park = 0;
         bool wantRelease = command <= 0;
 
         if (wantRelease) {
@@ -795,6 +799,163 @@ private:
 
         // all finished
         return 0;
+    }
+
+    // Moves motors [first, first + count) to their targets and waits until all of them arrive.
+    bool moveAndWait(int first, const int32_t* targets, int count, uint32_t speed) {
+        for (int k = 0; k < count; ++k) {
+            if (m_striker[first + k].startMove(targets[k], speed) != kNoError) {
+                LOG_ERROR("Motor %i could not start its move", first + k);
+                return false;
+            }
+        }
+
+        bool arrived[NUM_MOTORS] = {};
+        int remaining = count;
+        unsigned long startMs = millis();
+        while (remaining > 0) {
+            if (millis() - startMs > MOVE_TIMEOUT_MS) {
+                for (int k = 0; k < count; ++k) {
+                    if (!arrived[k]) LOG_ERROR("Motor %i did not reach %i", first + k, (int) targets[k]);
+                }
+                return false;
+            }
+            for (int k = 0; k < count; ++k) {
+                int32_t pos;
+                if (arrived[k] || !m_striker[first + k].readPosition(pos)) continue;
+                if (abs(pos - targets[k]) <= MOVE_ARRIVED_TICKS && m_striker[first + k].targetReached()) {
+                    arrived[k] = true;
+                    --remaining;
+                }
+            }
+            delay(10);
+        }
+        return true;
+    }
+
+    // Turns every presser cam with the same torque until it stops against the fretboard.
+    bool stallPressers(int16_t torque, int32_t* stall) {
+        const int first = NUM_STRIKERS + 1;
+        for (int k = 0; k < NUM_PRESSERS; ++k) {
+            if (m_striker[first + k].startTorque(torque) != kNoError) {
+                LOG_ERROR("Presser %i could not start torque %i", first + k, torque);
+                return false;
+            }
+        }
+
+        int32_t last[NUM_PRESSERS] = {};
+        unsigned long stillSince[NUM_PRESSERS];
+        bool stalled[NUM_PRESSERS] = {};
+        int remaining = NUM_PRESSERS;
+        unsigned long startMs = millis();
+        for (int k = 0; k < NUM_PRESSERS; ++k) {
+            m_striker[first + k].readPosition(last[k]);
+            stillSince[k] = startMs;
+        }
+
+        while (remaining > 0) {
+            unsigned long now = millis();
+            if (now - startMs > PRESSER_STALL_TIMEOUT_MS) {
+                for (int k = 0; k < NUM_PRESSERS; ++k) {
+                    if (!stalled[k]) LOG_ERROR("Presser %i never stalled with torque %i", first + k, torque);
+                }
+                return false;
+            }
+            for (int k = 0; k < NUM_PRESSERS; ++k) {
+                int32_t pos;
+                if (stalled[k] || !m_striker[first + k].readPosition(pos)) continue;
+                if (abs(pos - last[k]) > PRESSER_STALL_TICKS) {
+                    last[k] = pos;
+                    stillSince[k] = now;
+                } else if (now - stillSince[k] >= PRESSER_STALL_MS) {
+                    stall[k] = pos;
+                    stalled[k] = true;
+                    --remaining;
+                }
+            }
+            delay(10);
+        }
+        return true;
+    }
+
+    // Finds each presser's rest as the midpoint between its two fretboard stalls,
+    // averaged over the calibration frets, and makes that position encoder 0.
+    void homePressers() {
+        const int first = NUM_STRIKERS + 1;
+        int32_t sliderTargets[NUM_STRIKERS];
+        int32_t presserTargets[NUM_PRESSERS];
+        int32_t plus[NUM_PRESSERS];
+        int32_t minus[NUM_PRESSERS];
+        int32_t mid[NUM_CAL_FRETS][NUM_PRESSERS];
+        int32_t range[NUM_CAL_FRETS][NUM_PRESSERS];
+
+        bool ok = true;
+        int f = 0;
+        for (; f < NUM_CAL_FRETS; ++f) {
+            for (int s = 0; s < NUM_STRIKERS; ++s) sliderTargets[s] = presser_cal_slider_ticks[f][s];
+            ok = moveAndWait(1, sliderTargets, NUM_STRIKERS, SLIDER_CAL_SPEED)
+                && stallPressers(presser_cal_torque, plus)
+                && stallPressers(-presser_cal_torque, minus);
+            if (!ok) break;
+
+            // Park each cam at this fret's midpoint so it clears the string while the slider moves.
+            for (int k = 0; k < NUM_PRESSERS; ++k) {
+                mid[f][k] = (plus[k] + minus[k]) / 2;
+                range[f][k] = plus[k] - minus[k];
+                presserTargets[k] = mid[f][k];
+            }
+            ok = moveAndWait(first, presserTargets, NUM_PRESSERS, PRESSER_CAL_SPEED);
+            if (!ok) break;
+        }
+
+        for (int s = 0; s < NUM_STRIKERS; ++s) sliderTargets[s] = 0;
+
+        if (!ok) {
+            LOG_ERROR("Presser homing FAILED at fret %i. Presser positions will be wrong.", presser_cal_frets[f]);
+            for (int k = 0; k < NUM_PRESSERS; ++k) m_striker[first + k].startTorque(0);
+            moveAndWait(1, sliderTargets, NUM_STRIKERS, SLIDER_CAL_SPEED);
+            return;
+        }
+
+        moveAndWait(1, sliderTargets, NUM_STRIKERS, SLIDER_CAL_SPEED);
+
+        for (int k = 0; k < NUM_PRESSERS; ++k) {
+            int32_t sum = 0;
+            for (int i = 0; i < NUM_CAL_FRETS; ++i) sum += mid[i][k];
+            presserTargets[k] = sum / NUM_CAL_FRETS;
+        }
+        moveAndWait(first, presserTargets, NUM_PRESSERS, PRESSER_CAL_SPEED);
+
+        Serial.print("Presser homing at frets");
+        for (int i = 0; i < NUM_CAL_FRETS; ++i) {
+            Serial.print(i ? " / " : " ");
+            Serial.print(presser_cal_frets[i]);
+        }
+        Serial.println(" (midpoint offset from rest, stall-to-stall range):");
+
+        for (int k = 0; k < NUM_PRESSERS; ++k) {
+            if (m_striker[first + k].setZeroHere() != kNoError) {
+                LOG_ERROR("Presser %i could not be zeroed at rest", first + k);
+            }
+
+            int32_t lo = mid[0][k], hi = mid[0][k];
+            Serial.print("  Presser ");
+            Serial.print(first + k);
+            Serial.print(": midpoint");
+            for (int i = 0; i < NUM_CAL_FRETS; ++i) {
+                Serial.print(i ? " / " : " ");
+                Serial.print(mid[i][k] - presserTargets[k]);
+                lo = min(lo, mid[i][k]);
+                hi = max(hi, mid[i][k]);
+            }
+            Serial.print(", range");
+            for (int i = 0; i < NUM_CAL_FRETS; ++i) {
+                Serial.print(i ? " / " : " ");
+                Serial.print(range[i][k]);
+            }
+            if (hi - lo > PRESSER_MIDPOINT_SPREAD_WARN) Serial.print("  <- midpoints disagree");
+            Serial.println();
+        }
     }
     // static void clearFaultTimerIRQHandler() {
     //     for (int i = 1; i < NUM_STRIKERS + 1; ++i) {

@@ -1026,6 +1026,7 @@ int Epos4::setProfile(_DWORD vel, _DWORD acc) {
         LOG_ERROR("Switch on & Enable Failed");
         return -1;
     }
+    return 0;
 }
 
 int Epos4::setHomingMethod(HomingMethod method) {
@@ -1041,6 +1042,33 @@ int Epos4::setTargetTorque(int16_t torque){
         LOG_ERROR("Write Obj failed for setting torque. Error code: ", m_uiError);
         return -1;
     }
+    return 0;
+}
+
+int Epos4::setActualPositionAsHome() {
+    int n = writeObj(MODE_OF_OPERATION_ADDR, 0x0, (uint8_t) Homing);
+    if (n != 0) {
+        LOG_ERROR("Write Obj failed. Error code: ", m_uiError);
+        return -1;
+    }
+    m_iCurrentMode = Homing;
+
+    if (setHomingMethod(ActualPosition) != 0 || SetHomeOffset(0) != 0 || SetHomePosition(0) != 0) {
+        LOG_ERROR("Homing setup failed");
+        return -1;
+    }
+    if (setEnable() != 0 || startHoming() != 0) {
+        LOG_ERROR("startHoming");
+        return -1;
+    }
+
+    for (int i = 0; i < 50; ++i) {
+        HomingStatus status = getHomingStatus();
+        if (status == Completed) return 0;
+        if (status == Error) return -1;
+        delay(10);
+    }
+    return -1;
 }
 
 

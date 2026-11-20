@@ -105,6 +105,36 @@ public:
         return epos.getHomingStatus() == InProgress;
     }
 
+    // Reads from the drive over SDO. The cached position is only refreshed by PDO, which starts in start().
+    bool readPosition(int32_t& pos) {
+        return epos.getActualPosition(&pos) == 0;
+    }
+
+    bool targetReached() {
+        _WORD stat = 0;
+        if (epos.readStatusWord(&stat) != 0) return false;
+        return stat & (1 << 10);
+    }
+
+    Error_t startTorque(int16_t torque) {
+        if (epos.setOpMode(OpMode::CyclicSyncTorque) != 0) return kSetValueError;
+        if (epos.setTargetTorque(torque) != 0) return kSetValueError;
+        if (epos.setEnable() != 0) return kSetValueError;
+        return kNoError;
+    }
+
+    // Profile position move over SDO; speed in rpm.
+    Error_t startMove(int32_t pos, uint32_t speed) {
+        if (epos.setOpMode(OpMode::ProfilePosition) != 0) return kSetValueError;
+        if (epos.setProfile(speed, speed * 10) != 0) return kSetValueError;
+        if (epos.moveToPosition(pos, false) != 0) return kSetValueError;
+        return kNoError;
+    }
+
+    Error_t setZeroHere() {
+        return epos.setActualPositionAsHome() == 0 ? kNoError : kSetValueError;
+    }
+
     Error_t startHome(int iNodeID) {
 //        int err = epos.SetHomePosition(0);
 //        if (err != 0) return kSetValueError;

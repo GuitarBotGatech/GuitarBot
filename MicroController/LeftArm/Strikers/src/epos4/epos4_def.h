@@ -146,7 +146,8 @@ enum NMTState {
 
 enum HomingMethod {
     CurrentThresholdPositive = -3,
-    CurrentThresholdNegative = -4
+    CurrentThresholdNegative = -4,
+    ActualPosition = 37
 };
 
 enum HomingStatus {
