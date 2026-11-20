@@ -115,9 +115,9 @@ public:
     }
 
     bool readCurrent(int& currentmA) {
-        int16_t mA = 0;
+        int32_t mA = 0;
         if (epos.readActualCurrent(&mA) != 0) return false;
-        currentmA = mA;
+        currentmA = (int)mA;
         return true;
     }
 

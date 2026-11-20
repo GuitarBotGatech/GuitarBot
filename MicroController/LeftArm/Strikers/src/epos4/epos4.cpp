@@ -637,13 +637,13 @@ int Epos4::getActualPosition(int32_t* piPos) {
     return 0;
 }
 
-int Epos4::readActualCurrent(int16_t* currentmA) {
+int Epos4::readActualCurrent(int32_t* currentmA) {
     _DWORD ret;
-    if (readObj(0x30D1, 0x00, &ret) != 0) {
+    if (readObj(0x30D1, 0x01, &ret) != 0) {
         LOG_ERROR("Get current failed. Error: %h", m_uiError);
         return -1;
     }
-    *currentmA = (int16_t)(ret & 0xFFFF);
+    *currentmA = (int32_t)ret;
     return 0;
 }
 

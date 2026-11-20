@@ -66,8 +66,8 @@ public:
     int readITP(uint8_t* time, int8_t* unit);
     // Refer: FW Spec 6.2.103
     int getActualPosition(int32_t* piPos);
-    // Object 0x30D1, in milliamps.
-    int readActualCurrent(int16_t* currentmA);
+    // Object 0x30D1:01, in milliamps. Subindex 0 is only the entry count.
+    int readActualCurrent(int32_t* currentmA);
 
     // Getter for the stored encoder value from PDO_msg
     int32_t getEncoderPosition() {

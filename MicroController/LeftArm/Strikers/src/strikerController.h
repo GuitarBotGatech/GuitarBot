@@ -538,7 +538,8 @@ private:
     // rise that counts as contact is much smaller. The printed peak is the value to tune against.
     static constexpr int PLUCK_CURRENT_RISE_MA = 15;
     static constexpr int PLUCK_CURRENT_DROP_MA = 10;
-    static constexpr uint32_t PLUCK_CAL_SPEED = 30; // rpm
+    // Continuous sweep speed. The full pluck stroke is about 1/4 turn; 2 rpm takes ~7.5 s.
+    static constexpr uint32_t PLUCK_CAL_SPEED = 2;
 
     // True after a press was accepted from home. Cleared on a lift, so the next
     // press waits until the cam is home again.
@@ -1010,20 +1011,21 @@ private:
         return ticks < 1 ? 1 : ticks;
     }
 
-    // Walks every picker in its sign direction until the pick releases.
-    // learnBaseline measures free-air current over the first PLUCK_CAL_BASELINE_MM.
-    // Otherwise baseline is reused and the sweep waits to go clear before arming,
-    // so the return stroke does not treat the string it just left as a new pluck.
+    // Moves every picker toward its target until the pick releases.
+    // One move is commanded per picker; the loop only reads position and current.
+    // learnBaseline averages the free-air current over the first PLUCK_BASELINE_TICKS.
+    // The return stroke reuses that baseline and waits to go clear before arming,
+    // so it does not treat the string it just left as a new pluck.
     bool sweepPluckers(const int* sign, int* baseline, bool learnBaseline, bool pressing, int32_t* release, int* peak) {
         const int n = NUM_PLUCKERS;
         int32_t pos[NUM_PLUCKERS];
         int32_t origin[NUM_PLUCKERS];
+        int32_t target[NUM_PLUCKERS];
         int margin[NUM_PLUCKERS];
-        int limit[NUM_PLUCKERS];
         long baseSum[NUM_PLUCKERS] = {};
         int baseCount[NUM_PLUCKERS] = {};
-        int streak[NUM_PLUCKERS] = {};
-        int marginLeft[NUM_PLUCKERS] = {};
+        int lastCurrent[NUM_PLUCKERS] = {};
+        bool sawCurrent[NUM_PLUCKERS] = {};
         bool clear[NUM_PLUCKERS];
         bool contact[NUM_PLUCKERS] = {};
         bool done[NUM_PLUCKERS] = {};
@@ -1037,57 +1039,49 @@ private:
             }
             origin[k] = pos[k];
             margin[k] = pickerTicks(node, PLUCK_CAL_MARGIN_MM);
-            limit[k] = pickerTicks(node, PLUCK_CAL_MAX_MM);
+            int32_t travel = pickerTicks(node, PLUCK_CAL_MAX_MM);
+            target[k] = learnBaseline ? origin[k] + sign[k] * travel : 0;
             clear[k] = learnBaseline;
             release[k] = 0;
             peak[k] = 0;
             if (learnBaseline) baseline[k] = 0;
+            if (m_striker[node].startMove(target[k], PLUCK_CAL_SPEED) != kNoError) {
+                LOG_ERROR("Plucker %i could not start its sweep", node);
+                done[k] = true;
+                --remaining;
+            }
         }
 
         while (remaining > 0) {
             for (int k = 0; k < n; ++k) {
                 if (done[k]) continue;
                 int node = pluckerNode(k);
-                if (abs(pos[k] - origin[k]) > limit[k]) {
-                    LOG_ERROR("Plucker %i never released (peak rise %i mA)", node, peak[k]);
-                    done[k] = true;
-                    --remaining;
-                    continue;
-                }
-                int32_t next = pos[k] + sign[k];
-                // The return stroke walks back toward the hard stop. Don't drive into it.
-                if (!learnBaseline && abs(next) < abs(pos[k]) && abs(next) <= 1) {
-                    LOG_ERROR("Plucker %i reached the stop without releasing (peak rise %i mA)", node, peak[k]);
-                    done[k] = true;
-                    --remaining;
-                    continue;
-                }
-                if (m_striker[node].nudge(next) != kNoError) {
-                    LOG_ERROR("Plucker %i nudge failed at %i", node, (int) next);
-                    done[k] = true;
-                    --remaining;
-                    continue;
-                }
-                pos[k] = next;
+                if (!m_striker[node].readPosition(pos[k])) continue;
 
-                // Margin steps after a release. Detection stays disarmed so the drop is recorded once.
-                if (streak[k] < 0) {
-                    marginLeft[k] -= 1;
-                    if (marginLeft[k] <= 0) {
-                        done[k] = true;
-                        --remaining;
-                    }
+                bool atEnd = learnBaseline
+                    ? abs(pos[k] - origin[k]) >= abs(target[k] - origin[k])
+                    : abs(pos[k]) <= margin[k];
+                if (atEnd) {
+                    LOG_ERROR("Plucker %i never released (peak %i mA, baseline %i, last %i)",
+                              node, peak[k], baseline[k], lastCurrent[k]);
+                    done[k] = true;
+                    --remaining;
                     continue;
                 }
 
                 int current = 0;
                 if (!m_striker[node].readCurrent(current)) continue;
+                if (!sawCurrent[k]) {
+                    sawCurrent[k] = true;
+                    LOG_LOG("Plucker %i current %i mA", node, current);
+                }
+                lastCurrent[k] = current;
                 int mag = abs(current);
 
-                if (learnBaseline && baseCount[k] < PLUCK_BASELINE_TICKS) {
+                if (learnBaseline && abs(pos[k] - origin[k]) <= PLUCK_BASELINE_TICKS) {
                     baseSum[k] += mag;
                     baseCount[k] += 1;
-                    if (baseCount[k] == PLUCK_BASELINE_TICKS) baseline[k] = (int)(baseSum[k] / baseCount[k]);
+                    baseline[k] = (int)(baseSum[k] / baseCount[k]);
                     continue;
                 }
 
@@ -1106,12 +1100,13 @@ private:
                 }
                 if (rise <= peak[k] - PLUCK_CURRENT_DROP_MA) {
                     release[k] = pos[k];
-                    marginLeft[k] = margin[k];
-                    streak[k] = -1;
+                    m_striker[node].nudge(pos[k] + sign[k] * margin[k]);
+                    done[k] = true;
+                    --remaining;
                 }
             }
             if (pressing) holdPressers(presser_cal_torque);
-            delay(5);
+            delay(2);
         }
 
         for (int k = 0; k < n; ++k) {
