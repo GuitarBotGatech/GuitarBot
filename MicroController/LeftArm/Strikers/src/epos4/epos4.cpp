@@ -1091,16 +1091,14 @@ int Epos4::moveToPosition(int32_t pos, bool bWait) {
         return -1;
     }
 
-    _WORD stat = 0x0;
-    err = readStatusWord(&stat);
-    if (err != 0) {
-        LOG_ERROR("readStatusWord");
-        return -1;
-    }
-    LOG_LOG("stat (%i): %h", m_uiNodeID, stat);
-
     if (bWait) {
-        // refer FW spec table 7-64 -> 
+        _WORD stat = 0x0;
+        err = readStatusWord(&stat);
+        if (err != 0) {
+            LOG_ERROR("readStatusWord");
+            return -1;
+        }
+        // refer FW spec table 7-64 ->
         while (!(stat & 0x400)) {
             err = readStatusWord(&stat);
             // LOG_LOG("wait stat: %h", stat);

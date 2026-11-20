@@ -513,13 +513,13 @@ private:
     // across the calibration frets means the cam or carriage is not symmetric.
     static constexpr int NUM_CAL_FRETS = sizeof(presser_cal_frets) / sizeof(presser_cal_frets[0]);
     static constexpr int PRESSER_STALL_TICKS = 3;
-    static constexpr unsigned long PRESSER_STALL_MS = 300;
+    static constexpr unsigned long PRESSER_STALL_MS = 500;
     static constexpr unsigned long PRESSER_TORQUE_RAMP_MS = 500;
     static constexpr unsigned long PRESSER_STALL_TIMEOUT_MS = 3000;
     // A full stall-to-stall range is roughly 50-100 ticks (a press moves ~30-50 ticks from rest).
     static constexpr int PRESSER_MIDPOINT_SPREAD_WARN = 8;
     static constexpr int PRESSER_MIN_RANGE_TICKS = 10;
-    static constexpr uint32_t PRESSER_CAL_SPEED = 300; // rpm
+    static constexpr uint32_t PRESSER_CAL_SPEED = 200; // rpm
     static constexpr uint32_t SLIDER_CAL_SPEED = 300; // rpm
     static constexpr int MOVE_ARRIVED_TICKS = 20;
     static constexpr unsigned long MOVE_TIMEOUT_MS = 5000;
@@ -845,8 +845,7 @@ private:
     }
 
     // Turns every presser cam with the same torque until it stops against the fretboard.
-    // status receives each presser's statusword at its stall.
-    bool stallPressers(int16_t torque, int32_t* stall, _WORD* status) {
+    bool stallPressers(int16_t torque, int32_t* stall) {
         const int first = NUM_STRIKERS + 1;
         bool ok = true;
         for (int k = 0; k < NUM_PRESSERS && ok; ++k) {
@@ -890,7 +889,6 @@ private:
                     stillSince[k] = now;
                 } else if (ramped && now - stillFrom >= PRESSER_STALL_MS) {
                     stall[k] = pos;
-                    m_striker[first + k].readStatusWord(status[k]);
                     stalled[k] = true;
                     --remaining;
                 }
@@ -910,8 +908,6 @@ private:
         int32_t presserTargets[NUM_PRESSERS];
         int32_t plus[NUM_PRESSERS];
         int32_t minus[NUM_PRESSERS];
-        _WORD plusStatus[NUM_PRESSERS] = {};
-        _WORD minusStatus[NUM_PRESSERS] = {};
         int32_t mid[NUM_CAL_FRETS][NUM_PRESSERS];
         int32_t range[NUM_CAL_FRETS][NUM_PRESSERS];
 
@@ -920,8 +916,8 @@ private:
         for (; f < NUM_CAL_FRETS; ++f) {
             for (int s = 0; s < NUM_STRIKERS; ++s) sliderTargets[s] = presser_cal_slider_ticks[f][s];
             ok = moveAndWait(1, sliderTargets, NUM_STRIKERS, SLIDER_CAL_SPEED)
-                && stallPressers(presser_cal_torque, plus, plusStatus)
-                && stallPressers(-presser_cal_torque, minus, minusStatus);
+                && stallPressers(presser_cal_torque, plus)
+                && stallPressers(-presser_cal_torque, minus);
             if (!ok) break;
 
             // Park each cam at this fret's midpoint so it clears the string while the slider moves.
@@ -930,8 +926,7 @@ private:
                 range[f][k] = plus[k] - minus[k];
                 presserTargets[k] = mid[f][k];
                 if (range[f][k] < PRESSER_MIN_RANGE_TICKS) {
-                    LOG_ERROR("Presser %i barely moved (range %i). Torque-mode status %h / %h",
-                              first + k, (int) range[f][k], (int) plusStatus[k], (int) minusStatus[k]);
+                    LOG_ERROR("Presser %i barely moved (range %i)", first + k, (int) range[f][k]);
                     ok = false;
                 }
             }

@@ -226,51 +226,6 @@ public:
         return kNoError;
     }
 
-    Error_t home(int iNodeID) {
-//        int err = epos.SetHomePosition(0);
-//        if (err != 0) return kSetValueError;
-//        return prepToGoHome();
-        // Added Homing compatible w/ epos
-        //CHANGE ME
-        //int err = epos.setOpMode(OpMode::Homing, HomingMethod::CurrentThresholdNegative);
-        int err = epos.setOpMode(OpMode::Homing, HomingMethod::CurrentThresholdPositive);
-        if( iNodeID == 2 || iNodeID == 3 || iNodeID == 6 || iNodeID > 6){
-            //LOG_LOG("Passed");
-            err = epos.setHomingMethod(HomingMethod::CurrentThresholdPositive);
-        }
-        if (err != 0) {
-            LOG_ERROR("setOpMode");
-            return kSetValueError;
-        }
-
-        err = epos.setEnable();
-        if (err != 0) {
-            LOG_ERROR("setEnable");
-            return kSetValueError;
-        }
-
-        err = epos.startHoming();
-        if (err != 0) {
-            LOG_ERROR("startHoming");
-            return kSetValueError;
-        }
-
-        int ii = 0;
-        bool isHoming = true;
-        while (isHoming) {
-            isHoming = (epos.getHomingStatus() == InProgress);
-            delay(50);
-//            int32_t pos = epos.getEncoderPosition();
-//            Serial.println(pos);
-
-            if (ii++ > 200) break;
-        }
-
-        if (epos.getHomingStatus() == Completed) LOG_LOG("Homing complete");
-        delay(500);
-
-        return kNoError;
-    }
     Error_t testMove(int32_t pos ){
         int err = epos.moveToPosition(pos, false);
         if(err != 0){
