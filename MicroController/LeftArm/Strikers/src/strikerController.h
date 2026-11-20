@@ -527,11 +527,19 @@ private:
     static constexpr int MOVE_ARRIVED_TICKS = 20;
     static constexpr unsigned long MOVE_TIMEOUT_MS = 5000;
 
-    // Plucker debug sweep. After the hard-stop home, each pick travels past its
-    // tuned up position and back while position and current are logged. Open string, then fret 9.
+    // Plucker release calibration. After the hard-stop home, each pick sweeps slowly
+    // through the string; a sharp current drop marks release. Open string, then fret 9.
+    // Thresholds are from the full-range SWEEP log: real plucks drop 270-530 mA and
+    // fall to under ~65% of the prior sample; mid-stroke noise dips do not.
     static constexpr float PLUCK_CAL_BACKOFF_MM = 0.2f;
-    // Continuous sweep speed, in rpm. The longest tuned stroke is about 6 mm.
-    static constexpr uint32_t PLUCK_CAL_SPEED = 2;
+    static constexpr float PLUCK_CAL_MARGIN_MM = 0.3f;
+    static constexpr uint32_t PLUCK_CAL_SPEED = 2; // rpm
+    static constexpr int PLUCK_DROP_STRONG_MA = 200;
+    static constexpr int PLUCK_LOADED_STRONG_MA = 400;
+    static constexpr int PLUCK_REMAIN_STRONG_PCT = 65;
+    static constexpr int PLUCK_DROP_MILD_MA = 150;
+    static constexpr int PLUCK_LOADED_MILD_MA = 200;
+    static constexpr int PLUCK_REMAIN_MILD_PCT = 40;
 
     // True after a press was accepted from home. Cleared on a lift, so the next
     // press waits until the cam is home again.
@@ -1003,22 +1011,43 @@ private:
         return ticks < 1 ? 1 : ticks;
     }
 
-    // Debug sweep. Outward travel is each plucker's tuned up position plus a margin,
-    // and at least a quarter turn. Back returns to the stop.
-    // Prints "SWEEP <label> <out|back> <node> <ticks> <mA>" along the way.
-    bool logSweep(const int* sign, bool outward, bool pressing, const char* label) {
+    // True when |I| falls sharply between cadence samples: either a strong unload
+    // (high load, >=200 mA drop to <=65%) or a mild one (weaker back-stroke plucks).
+    static bool isPluckRelease(int prevMag, int mag) {
+        int drop = prevMag - mag;
+        if (prevMag >= PLUCK_LOADED_STRONG_MA
+            && drop >= PLUCK_DROP_STRONG_MA
+            && mag <= prevMag * PLUCK_REMAIN_STRONG_PCT / 100) {
+            return true;
+        }
+        if (prevMag >= PLUCK_LOADED_MILD_MA
+            && drop >= PLUCK_DROP_MILD_MA
+            && mag <= prevMag * PLUCK_REMAIN_MILD_PCT / 100) {
+            return true;
+        }
+        return false;
+    }
+
+    // Sweeps every plucker until the pick releases (or travel ends). Travel is each
+    // plucker's tuned up stroke plus 25%, floor a quarter turn. Current is sampled
+    // every travel/16 ticks — the same spacing as the debug SWEEP log the thresholds
+    // were fit to — so dense loop timing cannot turn a cliff into a ramp.
+    // On release, nudges past by PLUCK_CAL_MARGIN_MM and stops that motor.
+    // release[k] is absolute ticks from hard-stop home; 0 means no release found.
+    bool measureSweep(const int* sign, bool outward, bool pressing, const char* label,
+                      int32_t* release, int* peakMag) {
         const int n = NUM_PLUCKERS;
         int32_t pos[NUM_PLUCKERS];
+        int32_t origin[NUM_PLUCKERS];
         int32_t target[NUM_PLUCKERS];
-        int32_t lastLogged[NUM_PLUCKERS];
+        int32_t lastSamplePos[NUM_PLUCKERS];
         int step[NUM_PLUCKERS];
+        int blank[NUM_PLUCKERS];
+        int margin[NUM_PLUCKERS];
+        int prevMag[NUM_PLUCKERS];
+        bool havePrev[NUM_PLUCKERS] = {};
         bool done[NUM_PLUCKERS] = {};
         int remaining = n;
-
-        Serial.print("SWEEP ");
-        Serial.print(label);
-        Serial.print(outward ? " out" : " back");
-        Serial.println(" begin");
 
         for (int k = 0; k < n; ++k) {
             int node = pluckerNode(k);
@@ -1027,7 +1056,13 @@ private:
                 LOG_ERROR("Plucker %i position read failed", node);
                 return false;
             }
-            lastLogged[k] = pos[k] - res;
+            origin[k] = pos[k];
+            lastSamplePos[k] = pos[k];
+            prevMag[k] = 0;
+            release[k] = 0;
+            peakMag[k] = 0;
+            blank[k] = res / 8;
+            margin[k] = pickerTicks(node, PLUCK_CAL_MARGIN_MM);
             int32_t tuned = (int32_t)(fabs(start_state_PICK[k]) * res / mm_to_enc_conversion_factor);
             int32_t travel = tuned + tuned / 4;
             if (travel < res / 4) travel = res / 4;
@@ -1047,36 +1082,72 @@ private:
                 int node = pluckerNode(k);
                 if (!m_striker[node].readPosition(pos[k])) continue;
 
-                if (abs(pos[k] - lastLogged[k]) >= step[k]) {
-                    int current = 0;
-                    m_striker[node].readCurrent(current);
-                    Serial.print("SWEEP ");
+                bool arrived = outward
+                    ? abs(pos[k] - target[k]) <= step[k]
+                    : abs(pos[k]) <= step[k];
+                if (arrived) {
+                    LOG_ERROR("Plucker %i never released on %s %s (peak %i mA)",
+                              node, label, outward ? "out" : "back", peakMag[k]);
+                    done[k] = true;
+                    --remaining;
+                    continue;
+                }
+
+                if (abs(pos[k] - lastSamplePos[k]) < step[k]) continue;
+
+                int current = 0;
+                if (!m_striker[node].readCurrent(current)) continue;
+                int mag = abs(current);
+                lastSamplePos[k] = pos[k];
+
+                Serial.print("SWEEP ");
+                Serial.print(label);
+                Serial.print(outward ? " out " : " back ");
+                Serial.print(node);
+                Serial.print(' ');
+                Serial.print(pos[k]);
+                Serial.print(' ');
+                Serial.println(current);
+
+                if (abs(pos[k] - origin[k]) < blank[k]) {
+                    havePrev[k] = true;
+                    prevMag[k] = mag;
+                    continue;
+                }
+
+                if (mag > peakMag[k]) peakMag[k] = mag;
+
+                if (havePrev[k] && isPluckRelease(prevMag[k], mag)) {
+                    release[k] = pos[k];
+                    Serial.print("RELEASE ");
                     Serial.print(label);
                     Serial.print(outward ? " out " : " back ");
                     Serial.print(node);
                     Serial.print(' ');
                     Serial.print(pos[k]);
-                    Serial.print(' ');
-                    Serial.println(current);
-                    lastLogged[k] = pos[k];
-                }
-
-                bool arrived = outward
-                    ? abs(pos[k] - target[k]) <= step[k]
-                    : abs(pos[k]) <= step[k];
-                if (arrived) {
+                    Serial.print(" drop ");
+                    Serial.print(prevMag[k] - mag);
+                    Serial.print(" mA (");
+                    Serial.print(prevMag[k]);
+                    Serial.print(" -> ");
+                    Serial.print(mag);
+                    Serial.println(")");
+                    m_striker[node].nudge(pos[k] + sign[k] * margin[k]);
                     done[k] = true;
                     --remaining;
+                    continue;
                 }
+
+                havePrev[k] = true;
+                prevMag[k] = mag;
             }
             if (pressing) holdPressers(presser_cal_torque);
             delay(2);
         }
 
-        Serial.print("SWEEP ");
-        Serial.print(label);
-        Serial.print(outward ? " out" : " back");
-        Serial.println(" end");
+        for (int k = 0; k < n; ++k) {
+            if (release[k] == 0) return false;
+        }
         return true;
     }
 
@@ -1088,13 +1159,18 @@ private:
         for (int k = 0; k < NUM_PRESSERS; ++k) m_striker[NUM_STRIKERS + 1 + k].holdTorque(torque);
     }
 
-    // Logs current over a quarter turn out and back, open and with fret 9 pressed.
-    // Playback still uses up_pluck_mm and down_pluck_mm.
+    // Measures both pick releases on an open string and with fret 9 pressed.
+    // Playback still uses up_pluck_mm / down_pluck_mm; this prints measured ticks.
     void homePluckers() {
         const int n = NUM_PLUCKERS;
         int sign[NUM_PLUCKERS];
         int32_t home[NUM_PLUCKERS];
         int32_t backoff[NUM_PLUCKERS];
+        int32_t farTick[2][NUM_PLUCKERS] = {};
+        int32_t nearTick[2][NUM_PLUCKERS] = {};
+        int farPeak[2][NUM_PLUCKERS] = {};
+        int nearPeak[2][NUM_PLUCKERS] = {};
+        bool okState[2] = {};
         const char* stateName[2] = {"open", "fret9"};
 
         int fret9 = -1;
@@ -1134,11 +1210,18 @@ private:
                 holdPressers(presser_cal_torque);
             }
 
-            movePluckersTo(backoff, pressing);
-            logSweep(sign, true, pressing, stateName[state]);
+            bool swept = movePluckersTo(backoff, pressing)
+                && measureSweep(sign, true, pressing, stateName[state], farTick[state], farPeak[state]);
             for (int k = 0; k < n; ++k) sign[k] = -sign[k];
-            logSweep(sign, false, pressing, stateName[state]);
+            // Fret 9 often has weaker / missing signatures; do not fail the whole state
+            // if only the return stroke misses — still record what we got.
+            bool backOk = measureSweep(sign, false, pressing, stateName[state],
+                                       nearTick[state], nearPeak[state]);
             for (int k = 0; k < n; ++k) sign[k] = -sign[k];
+            okState[state] = swept && backOk;
+            if (!okState[state]) {
+                LOG_ERROR("Pluck measurement incomplete for %s", stateName[state]);
+            }
 
             movePluckersTo(home, pressing);
             if (pressing) {
@@ -1148,6 +1231,40 @@ private:
 
         int32_t sliderHome[NUM_STRIKERS] = {};
         moveAndWait(1, sliderHome, NUM_STRIKERS, SLIDER_CAL_SPEED);
+
+        Serial.println("Plucker release ticks from hard stop (near / far), peak |I| in mA:");
+        for (int state = 0; state < 2; ++state) {
+            Serial.print("  ");
+            Serial.print(stateName[state]);
+            Serial.println(okState[state] ? ":" : " (incomplete):");
+            for (int k = 0; k < n; ++k) {
+                Serial.print("    Plucker ");
+                Serial.print(pluckerNode(k));
+                Serial.print(": ");
+                if (nearTick[state][k] == 0) {
+                    Serial.print("no release (");
+                    Serial.print(nearPeak[state][k]);
+                    Serial.print(")");
+                } else {
+                    Serial.print(nearTick[state][k]);
+                    Serial.print(" (");
+                    Serial.print(nearPeak[state][k]);
+                    Serial.print(")");
+                }
+                Serial.print(" / ");
+                if (farTick[state][k] == 0) {
+                    Serial.print("no release (");
+                    Serial.print(farPeak[state][k]);
+                    Serial.print(")");
+                } else {
+                    Serial.print(farTick[state][k]);
+                    Serial.print(" (");
+                    Serial.print(farPeak[state][k]);
+                    Serial.print(")");
+                }
+                Serial.println();
+            }
+        }
     }
     // static void clearFaultTimerIRQHandler() {
     //     for (int i = 1; i < NUM_STRIKERS + 1; ++i) {
