@@ -945,8 +945,8 @@ private:
             for (int i = 0; i < NUM_CAL_FRETS; ++i) {
                 Serial.print(i ? " / " : " ");
                 Serial.print(mid[i][k] - presserTargets[k]);
-                lo = min(lo, mid[i][k]);
-                hi = max(hi, mid[i][k]);
+                if (mid[i][k] < lo) lo = mid[i][k];
+                if (mid[i][k] > hi) hi = mid[i][k];
             }
             Serial.print(", range");
             for (int i = 0; i < NUM_CAL_FRETS; ++i) {
