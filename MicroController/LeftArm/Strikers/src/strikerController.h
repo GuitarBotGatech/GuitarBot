@@ -513,7 +513,8 @@ private:
     // across the calibration frets means the cam or carriage is not symmetric.
     static constexpr int NUM_CAL_FRETS = sizeof(presser_cal_frets) / sizeof(presser_cal_frets[0]);
     static constexpr int PRESSER_STALL_TICKS = 3;
-    static constexpr unsigned long PRESSER_STALL_MS = 150;
+    static constexpr unsigned long PRESSER_STALL_MS = 300;
+    static constexpr unsigned long PRESSER_TORQUE_RAMP_MS = 500;
     static constexpr unsigned long PRESSER_STALL_TIMEOUT_MS = 3000;
     static constexpr int PRESSER_MIDPOINT_SPREAD_WARN = 30;
     static constexpr int PRESSER_MIN_RANGE_TICKS = 50;
@@ -848,7 +849,7 @@ private:
         const int first = NUM_STRIKERS + 1;
         bool ok = true;
         for (int k = 0; k < NUM_PRESSERS && ok; ++k) {
-            if (m_striker[first + k].startTorque(torque) != kNoError) {
+            if (m_striker[first + k].startTorque() != kNoError) {
                 LOG_ERROR("Presser %i could not start torque %i", first + k, torque);
                 ok = false;
             }
@@ -864,23 +865,29 @@ private:
             stillSince[k] = startMs;
         }
 
+        const unsigned long rampEndMs = startMs + PRESSER_TORQUE_RAMP_MS;
         while (ok && remaining > 0) {
             unsigned long now = millis();
-            if (now - startMs > PRESSER_STALL_TIMEOUT_MS) {
+            unsigned long elapsed = now - startMs;
+            if (elapsed > PRESSER_STALL_TIMEOUT_MS) {
                 for (int k = 0; k < NUM_PRESSERS; ++k) {
                     if (!stalled[k]) LOG_ERROR("Presser %i never stalled with torque %i", first + k, torque);
                 }
                 ok = false;
                 break;
             }
+            bool ramped = elapsed >= PRESSER_TORQUE_RAMP_MS;
+            int16_t command = ramped ? torque : (int16_t) ((long) torque * (long) elapsed / (long) PRESSER_TORQUE_RAMP_MS);
             for (int k = 0; k < NUM_PRESSERS; ++k) {
-                m_striker[first + k].holdTorque(torque);
+                m_striker[first + k].holdTorque(command);
                 int32_t pos;
                 if (stalled[k] || !m_striker[first + k].readPosition(pos)) continue;
+                // A stall only counts once full torque has been held without movement.
+                unsigned long stillFrom = stillSince[k] > rampEndMs ? stillSince[k] : rampEndMs;
                 if (abs(pos - last[k]) > PRESSER_STALL_TICKS) {
                     last[k] = pos;
                     stillSince[k] = now;
-                } else if (now - stillSince[k] >= PRESSER_STALL_MS) {
+                } else if (ramped && now - stillFrom >= PRESSER_STALL_MS) {
                     stall[k] = pos;
                     m_striker[first + k].readStatusWord(status[k]);
                     stalled[k] = true;

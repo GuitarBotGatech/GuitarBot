@@ -120,10 +120,21 @@ public:
         return stat & (1 << 10);
     }
 
+    // setOpMode ends with a shutdown that can take a while to finish (notably out of CST).
+    // Until it does, the statusword still reads "operation enabled" from before the switch.
+    Error_t switchMode(OpMode mode) {
+        if (epos.setOpMode(mode) != 0) return kSetValueError;
+        if (!waitForStatus(0x6F, 0x21, 500)) {
+            LOG_ERROR("Motor %i never reached ready to switch on", epos.getNodeId());
+            return kSetValueError;
+        }
+        return kNoError;
+    }
+
     // The pressers did not respond to CST target torque written over SDO in NMT Pre-Operational,
-    // so torque goes over PDO like in playback. Call holdTorque every poll, then stopTorque.
-    Error_t startTorque(int16_t torque) {
-        if (epos.setOpMode(OpMode::CyclicSyncTorque) != 0) return kSetValueError;
+    // so torque goes over PDO like in playback. Starts at zero torque; call holdTorque every poll, then stopTorque.
+    Error_t startTorque() {
+        if (switchMode(OpMode::CyclicSyncTorque) != kNoError) return kSetValueError;
         if (epos.setTargetTorque(0) != 0) return kSetValueError;
         if (epos.setEnable() != 0) return kSetValueError;
         if (!waitForStatus(0x6F, 0x27, 500)) {
@@ -131,7 +142,7 @@ public:
             return kSetValueError;
         }
         if (epos.setNMTState(NMTState::Operational) != 0) return kSetValueError;
-        holdTorque(torque);
+        holdTorque(0);
         return kNoError;
     }
 
@@ -158,14 +169,14 @@ public:
     // The drive only takes a new target on a rising edge of controlword bit 4,
     // and ignores it if the edge arrives before the drive is fully enabled.
     Error_t startMove(int32_t pos, uint32_t speed) {
-        if (epos.setOpMode(OpMode::ProfilePosition) != 0) return kSetValueError;
+        if (switchMode(OpMode::ProfilePosition) != kNoError) return kSetValueError;
         if (epos.setProfile(speed, speed * 10) != 0) return kSetValueError;
         if (!waitForStatus(0x6F, 0x27, 500)) {
             LOG_ERROR("Motor %i never reached operation enabled", epos.getNodeId());
             return kSetValueError;
         }
         if (epos.moveToPosition(pos, false) != 0) return kSetValueError;
-        if (!waitForStatus(1 << 12, 1 << 12, 200)) {
+        if (!waitForStatus(1 << 12, 1 << 12, 500)) {
             LOG_ERROR("Motor %i did not acknowledge target %i", epos.getNodeId(), (int) pos);
             return kSetValueError;
         }
