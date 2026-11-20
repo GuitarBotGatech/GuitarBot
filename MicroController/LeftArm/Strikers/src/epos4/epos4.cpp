@@ -637,6 +637,16 @@ int Epos4::getActualPosition(int32_t* piPos) {
     return 0;
 }
 
+int Epos4::readActualCurrent(int16_t* currentmA) {
+    _DWORD ret;
+    if (readObj(0x30D1, 0x00, &ret) != 0) {
+        LOG_ERROR("Get current failed. Error: %h", m_uiError);
+        return -1;
+    }
+    *currentmA = (int16_t)(ret & 0xFFFF);
+    return 0;
+}
+
 HomingStatus Epos4::getHomingStatus() {
     if (m_iCurrentMode != Homing) {
         return Error;

@@ -110,6 +110,17 @@ public:
         return epos.getActualPosition(&pos) == 0;
     }
 
+    int encoderResolution() const {
+        return epos.getEncoderResolution();
+    }
+
+    bool readCurrent(int& currentmA) {
+        int16_t mA = 0;
+        if (epos.readActualCurrent(&mA) != 0) return false;
+        currentmA = mA;
+        return true;
+    }
+
     bool readStatusWord(_WORD& stat) {
         return epos.readStatusWord(&stat) == 0;
     }
@@ -180,6 +191,14 @@ public:
             LOG_ERROR("Motor %i did not acknowledge target %i", epos.getNodeId(), (int) pos);
             return kSetValueError;
         }
+        if (epos.setControlWord(0x000F) != 0) return kSetValueError;
+        return kNoError;
+    }
+
+    // Next target while a slow sweep is already in profile position mode.
+    Error_t nudge(int32_t pos) {
+        if (epos.moveToPosition(pos, false) != 0) return kSetValueError;
+        if (!waitForStatus(1 << 12, 1 << 12, 80)) return kSetValueError;
         if (epos.setControlWord(0x000F) != 0) return kSetValueError;
         return kNoError;
     }
