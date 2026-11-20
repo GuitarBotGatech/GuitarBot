@@ -110,9 +110,13 @@ public:
         return epos.getActualPosition(&pos) == 0;
     }
 
+    bool readStatusWord(_WORD& stat) {
+        return epos.readStatusWord(&stat) == 0;
+    }
+
     bool targetReached() {
         _WORD stat = 0;
-        if (epos.readStatusWord(&stat) != 0) return false;
+        if (!readStatusWord(stat)) return false;
         return stat & (1 << 10);
     }
 

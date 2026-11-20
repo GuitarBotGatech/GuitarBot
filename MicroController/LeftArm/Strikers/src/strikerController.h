@@ -816,7 +816,15 @@ private:
         while (remaining > 0) {
             if (millis() - startMs > MOVE_TIMEOUT_MS) {
                 for (int k = 0; k < count; ++k) {
-                    if (!arrived[k]) LOG_ERROR("Motor %i did not reach %i", first + k, (int) targets[k]);
+                    if (arrived[k]) continue;
+                    int32_t pos = 0;
+                    _WORD stat = 0;
+                    bool posOk = m_striker[first + k].readPosition(pos);
+                    bool statOk = m_striker[first + k].readStatusWord(stat);
+                    LOG_ERROR("Motor %i did not reach %i: position %i%s, status %h%s",
+                              first + k, (int) targets[k],
+                              (int) pos, posOk ? "" : " (read failed)",
+                              (int) stat, statOk ? "" : " (read failed)");
                 }
                 return false;
             }
