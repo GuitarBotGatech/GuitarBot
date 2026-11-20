@@ -516,6 +516,7 @@ private:
     static constexpr unsigned long PRESSER_STALL_MS = 150;
     static constexpr unsigned long PRESSER_STALL_TIMEOUT_MS = 3000;
     static constexpr int PRESSER_MIDPOINT_SPREAD_WARN = 30;
+    static constexpr int PRESSER_MIN_RANGE_TICKS = 50;
     static constexpr uint32_t PRESSER_CAL_SPEED = 300; // rpm
     static constexpr uint32_t SLIDER_CAL_SPEED = 300; // rpm
     static constexpr int MOVE_ARRIVED_TICKS = 20;
@@ -842,12 +843,14 @@ private:
     }
 
     // Turns every presser cam with the same torque until it stops against the fretboard.
-    bool stallPressers(int16_t torque, int32_t* stall) {
+    // status receives each presser's statusword at its stall.
+    bool stallPressers(int16_t torque, int32_t* stall, _WORD* status) {
         const int first = NUM_STRIKERS + 1;
-        for (int k = 0; k < NUM_PRESSERS; ++k) {
+        bool ok = true;
+        for (int k = 0; k < NUM_PRESSERS && ok; ++k) {
             if (m_striker[first + k].startTorque(torque) != kNoError) {
                 LOG_ERROR("Presser %i could not start torque %i", first + k, torque);
-                return false;
+                ok = false;
             }
         }
 
@@ -861,15 +864,17 @@ private:
             stillSince[k] = startMs;
         }
 
-        while (remaining > 0) {
+        while (ok && remaining > 0) {
             unsigned long now = millis();
             if (now - startMs > PRESSER_STALL_TIMEOUT_MS) {
                 for (int k = 0; k < NUM_PRESSERS; ++k) {
                     if (!stalled[k]) LOG_ERROR("Presser %i never stalled with torque %i", first + k, torque);
                 }
-                return false;
+                ok = false;
+                break;
             }
             for (int k = 0; k < NUM_PRESSERS; ++k) {
+                m_striker[first + k].holdTorque(torque);
                 int32_t pos;
                 if (stalled[k] || !m_striker[first + k].readPosition(pos)) continue;
                 if (abs(pos - last[k]) > PRESSER_STALL_TICKS) {
@@ -877,13 +882,16 @@ private:
                     stillSince[k] = now;
                 } else if (now - stillSince[k] >= PRESSER_STALL_MS) {
                     stall[k] = pos;
+                    m_striker[first + k].readStatusWord(status[k]);
                     stalled[k] = true;
                     --remaining;
                 }
             }
             delay(10);
         }
-        return true;
+
+        for (int k = 0; k < NUM_PRESSERS; ++k) m_striker[first + k].stopTorque();
+        return ok;
     }
 
     // Finds each presser's rest as the midpoint between its two fretboard stalls,
@@ -894,6 +902,8 @@ private:
         int32_t presserTargets[NUM_PRESSERS];
         int32_t plus[NUM_PRESSERS];
         int32_t minus[NUM_PRESSERS];
+        _WORD plusStatus[NUM_PRESSERS] = {};
+        _WORD minusStatus[NUM_PRESSERS] = {};
         int32_t mid[NUM_CAL_FRETS][NUM_PRESSERS];
         int32_t range[NUM_CAL_FRETS][NUM_PRESSERS];
 
@@ -902,8 +912,8 @@ private:
         for (; f < NUM_CAL_FRETS; ++f) {
             for (int s = 0; s < NUM_STRIKERS; ++s) sliderTargets[s] = presser_cal_slider_ticks[f][s];
             ok = moveAndWait(1, sliderTargets, NUM_STRIKERS, SLIDER_CAL_SPEED)
-                && stallPressers(presser_cal_torque, plus)
-                && stallPressers(-presser_cal_torque, minus);
+                && stallPressers(presser_cal_torque, plus, plusStatus)
+                && stallPressers(-presser_cal_torque, minus, minusStatus);
             if (!ok) break;
 
             // Park each cam at this fret's midpoint so it clears the string while the slider moves.
@@ -911,7 +921,13 @@ private:
                 mid[f][k] = (plus[k] + minus[k]) / 2;
                 range[f][k] = plus[k] - minus[k];
                 presserTargets[k] = mid[f][k];
+                if (range[f][k] < PRESSER_MIN_RANGE_TICKS) {
+                    LOG_ERROR("Presser %i barely moved (range %i). Torque-mode status %h / %h",
+                              first + k, (int) range[f][k], (int) plusStatus[k], (int) minusStatus[k]);
+                    ok = false;
+                }
             }
+            if (!ok) break;
             ok = moveAndWait(first, presserTargets, NUM_PRESSERS, PRESSER_CAL_SPEED);
             if (!ok) break;
         }
@@ -920,7 +936,6 @@ private:
 
         if (!ok) {
             LOG_ERROR("Presser homing FAILED at fret %i. Presser positions will be wrong.", presser_cal_frets[f]);
-            for (int k = 0; k < NUM_PRESSERS; ++k) m_striker[first + k].startTorque(0);
             moveAndWait(1, sliderTargets, NUM_STRIKERS, SLIDER_CAL_SPEED);
             return;
         }

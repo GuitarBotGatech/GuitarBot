@@ -120,11 +120,28 @@ public:
         return stat & (1 << 10);
     }
 
+    // The pressers did not respond to CST target torque written over SDO in NMT Pre-Operational,
+    // so torque goes over PDO like in playback. Call holdTorque every poll, then stopTorque.
     Error_t startTorque(int16_t torque) {
         if (epos.setOpMode(OpMode::CyclicSyncTorque) != 0) return kSetValueError;
-        if (epos.setTargetTorque(torque) != 0) return kSetValueError;
+        if (epos.setTargetTorque(0) != 0) return kSetValueError;
         if (epos.setEnable() != 0) return kSetValueError;
+        if (!waitForStatus(0x6F, 0x27, 500)) {
+            LOG_ERROR("Motor %i never reached operation enabled", epos.getNodeId());
+            return kSetValueError;
+        }
+        if (epos.setNMTState(NMTState::Operational) != 0) return kSetValueError;
+        holdTorque(torque);
         return kNoError;
+    }
+
+    void holdTorque(int16_t torque) {
+        epos.PDO_setTorque(torque);
+    }
+
+    Error_t stopTorque() {
+        epos.PDO_setTorque(0);
+        return epos.setNMTState(NMTState::PreOperational) == 0 ? kNoError : kSetValueError;
     }
 
     bool waitForStatus(_WORD mask, _WORD value, unsigned long timeoutMs) {
