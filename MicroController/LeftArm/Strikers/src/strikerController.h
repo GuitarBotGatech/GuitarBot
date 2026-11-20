@@ -530,13 +530,14 @@ private:
     // Plucker homing. After the hard-stop home, each pick walks slowly through the
     // string until the motor current falls (the pick released). Both directions,
     // on an open string and with the string pressed at fret 9.
-    static constexpr float PLUCK_CAL_STEP_MM = 0.1f;
     static constexpr float PLUCK_CAL_BACKOFF_MM = 0.2f;
-    static constexpr float PLUCK_CAL_BASELINE_MM = 0.2f;
+    static constexpr int PLUCK_BASELINE_TICKS = 20;
     static constexpr float PLUCK_CAL_MARGIN_MM = 0.3f;
     static constexpr float PLUCK_CAL_MAX_MM = 8.f;
-    static constexpr int PLUCK_CURRENT_RISE_MA = 80;
-    static constexpr int PLUCK_CURRENT_DROP_MA = 40;
+    // The first run plucked every string without the current ever clearing 80 mA, so the
+    // rise that counts as contact is much smaller. The printed peak is the value to tune against.
+    static constexpr int PLUCK_CURRENT_RISE_MA = 15;
+    static constexpr int PLUCK_CURRENT_DROP_MA = 10;
     static constexpr uint32_t PLUCK_CAL_SPEED = 30; // rpm
 
     // True after a press was accepted from home. Cleared on a lift, so the next
@@ -1017,10 +1018,10 @@ private:
         const int n = NUM_PLUCKERS;
         int32_t pos[NUM_PLUCKERS];
         int32_t origin[NUM_PLUCKERS];
-        int step[NUM_PLUCKERS];
         int margin[NUM_PLUCKERS];
         int limit[NUM_PLUCKERS];
-        int baselineTicks[NUM_PLUCKERS];
+        long baseSum[NUM_PLUCKERS] = {};
+        int baseCount[NUM_PLUCKERS] = {};
         int streak[NUM_PLUCKERS] = {};
         int marginLeft[NUM_PLUCKERS] = {};
         bool clear[NUM_PLUCKERS];
@@ -1035,10 +1036,8 @@ private:
                 return false;
             }
             origin[k] = pos[k];
-            step[k] = pickerTicks(node, PLUCK_CAL_STEP_MM);
             margin[k] = pickerTicks(node, PLUCK_CAL_MARGIN_MM);
             limit[k] = pickerTicks(node, PLUCK_CAL_MAX_MM);
-            baselineTicks[k] = pickerTicks(node, PLUCK_CAL_BASELINE_MM);
             clear[k] = learnBaseline;
             release[k] = 0;
             peak[k] = 0;
@@ -1050,15 +1049,15 @@ private:
                 if (done[k]) continue;
                 int node = pluckerNode(k);
                 if (abs(pos[k] - origin[k]) > limit[k]) {
-                    LOG_ERROR("Plucker %i never released", node);
+                    LOG_ERROR("Plucker %i never released (peak rise %i mA)", node, peak[k]);
                     done[k] = true;
                     --remaining;
                     continue;
                 }
-                int32_t next = pos[k] + sign[k] * step[k];
+                int32_t next = pos[k] + sign[k];
                 // The return stroke walks back toward the hard stop. Don't drive into it.
-                if (!learnBaseline && abs(next) < abs(pos[k]) && abs(next) <= step[k]) {
-                    LOG_ERROR("Plucker %i reached the stop without releasing", node);
+                if (!learnBaseline && abs(next) < abs(pos[k]) && abs(next) <= 1) {
+                    LOG_ERROR("Plucker %i reached the stop without releasing (peak rise %i mA)", node, peak[k]);
                     done[k] = true;
                     --remaining;
                     continue;
@@ -1073,7 +1072,7 @@ private:
 
                 // Margin steps after a release. Detection stays disarmed so the drop is recorded once.
                 if (streak[k] < 0) {
-                    marginLeft[k] -= step[k];
+                    marginLeft[k] -= 1;
                     if (marginLeft[k] <= 0) {
                         done[k] = true;
                         --remaining;
@@ -1085,20 +1084,24 @@ private:
                 if (!m_striker[node].readCurrent(current)) continue;
                 int mag = abs(current);
 
-                if (learnBaseline && abs(pos[k] - origin[k]) <= baselineTicks[k]) {
-                    if (mag > baseline[k]) baseline[k] = mag;
+                if (learnBaseline && baseCount[k] < PLUCK_BASELINE_TICKS) {
+                    baseSum[k] += mag;
+                    baseCount[k] += 1;
+                    if (baseCount[k] == PLUCK_BASELINE_TICKS) baseline[k] = (int)(baseSum[k] / baseCount[k]);
                     continue;
                 }
 
                 int rise = mag - baseline[k];
-                if (rise > peak[k]) peak[k] = rise;
                 if (!clear[k]) {
-                    if (rise < PLUCK_CURRENT_RISE_MA / 2) clear[k] = true;
+                    if (rise < PLUCK_CURRENT_RISE_MA / 2) {
+                        clear[k] = true;
+                        peak[k] = 0;
+                    }
                     continue;
                 }
+                if (rise > peak[k]) peak[k] = rise;
                 if (!contact[k]) {
-                    streak[k] = rise >= PLUCK_CURRENT_RISE_MA ? streak[k] + 1 : 0;
-                    if (streak[k] >= 2) contact[k] = true;
+                    if (rise >= PLUCK_CURRENT_RISE_MA) contact[k] = true;
                     continue;
                 }
                 if (rise <= peak[k] - PLUCK_CURRENT_DROP_MA) {
@@ -1204,7 +1207,11 @@ private:
                 Serial.print("    Plucker ");
                 Serial.print(pluckerNode(k));
                 Serial.print(": ");
-                if (nearTick[state][k] == 0) Serial.print("no release");
+                if (nearTick[state][k] == 0) {
+                    Serial.print("no release (");
+                    Serial.print(nearPeak[state][k]);
+                    Serial.print(")");
+                }
                 else {
                     Serial.print(nearTick[state][k]);
                     Serial.print(" (");
@@ -1212,7 +1219,11 @@ private:
                     Serial.print(")");
                 }
                 Serial.print(" / ");
-                if (farTick[state][k] == 0) Serial.print("no release");
+                if (farTick[state][k] == 0) {
+                    Serial.print("no release (");
+                    Serial.print(farPeak[state][k]);
+                    Serial.print(")");
+                }
                 else {
                     Serial.print(farTick[state][k]);
                     Serial.print(" (");
