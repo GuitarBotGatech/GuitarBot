@@ -527,17 +527,10 @@ private:
     static constexpr int MOVE_ARRIVED_TICKS = 20;
     static constexpr unsigned long MOVE_TIMEOUT_MS = 5000;
 
-    // Plucker homing. After the hard-stop home, each pick walks slowly through the
-    // string until the motor current falls (the pick released). Both directions,
-    // on an open string and with the string pressed at fret 9.
+    // Plucker debug sweep. After the hard-stop home, each pick travels past its
+    // tuned up position and back while position and current are logged. Open string, then fret 9.
     static constexpr float PLUCK_CAL_BACKOFF_MM = 0.2f;
-    static constexpr float PLUCK_CAL_MARGIN_MM = 0.3f;
-    static constexpr float PLUCK_CAL_MAX_MM = 8.f;
-    // Leaving the hard stop draws a few hundred mA. A release only counts after that spike
-    // has fallen and the pick has moved an eighth of a turn, which is still short of the string.
-    static constexpr int PLUCK_CURRENT_RISE_MA = 15;
-    static constexpr int PLUCK_CURRENT_DROP_MA = 10;
-    // Continuous sweep speed. The full pluck stroke is about 1/4 turn; 2 rpm takes ~7.5 s.
+    // Continuous sweep speed, in rpm. The longest tuned stroke is about 6 mm.
     static constexpr uint32_t PLUCK_CAL_SPEED = 2;
 
     // True after a press was accepted from home. Cleared on a lift, so the next
@@ -1010,39 +1003,37 @@ private:
         return ticks < 1 ? 1 : ticks;
     }
 
-    // Moves every picker toward its target until the pick releases.
-    // One move is commanded per picker; the loop only reads position and current.
-    // learnBaseline blanks the breakaway from the hard stop for an eighth of a turn.
-    // The return stroke only blanks its own acceleration, because the string is close.
-    bool sweepPluckers(const int* sign, int* baseline, bool learnBaseline, bool pressing, int32_t* release, int* peak) {
+    // Debug sweep. Outward travel is each plucker's tuned up position plus a margin,
+    // and at least a quarter turn. Back returns to the stop.
+    // Prints "SWEEP <label> <out|back> <node> <ticks> <mA>" along the way.
+    bool logSweep(const int* sign, bool outward, bool pressing, const char* label) {
         const int n = NUM_PLUCKERS;
         int32_t pos[NUM_PLUCKERS];
-        int32_t origin[NUM_PLUCKERS];
         int32_t target[NUM_PLUCKERS];
-        int margin[NUM_PLUCKERS];
-        int blank[NUM_PLUCKERS];
-        int startPeak[NUM_PLUCKERS] = {};
-        int lastCurrent[NUM_PLUCKERS] = {};
-        bool sawCurrent[NUM_PLUCKERS] = {};
-        bool settled[NUM_PLUCKERS] = {};
-        bool contact[NUM_PLUCKERS] = {};
+        int32_t lastLogged[NUM_PLUCKERS];
+        int step[NUM_PLUCKERS];
         bool done[NUM_PLUCKERS] = {};
         int remaining = n;
 
+        Serial.print("SWEEP ");
+        Serial.print(label);
+        Serial.print(outward ? " out" : " back");
+        Serial.println(" begin");
+
         for (int k = 0; k < n; ++k) {
             int node = pluckerNode(k);
+            int res = m_striker[node].encoderResolution();
             if (!m_striker[node].readPosition(pos[k])) {
                 LOG_ERROR("Plucker %i position read failed", node);
                 return false;
             }
-            origin[k] = pos[k];
-            margin[k] = pickerTicks(node, PLUCK_CAL_MARGIN_MM);
-            blank[k] = learnBaseline ? m_striker[node].encoderResolution() / 8 : margin[k];
-            int32_t travel = pickerTicks(node, PLUCK_CAL_MAX_MM);
-            target[k] = learnBaseline ? origin[k] + sign[k] * travel : 0;
-            release[k] = 0;
-            peak[k] = 0;
-            baseline[k] = 0;
+            lastLogged[k] = pos[k] - res;
+            int32_t tuned = (int32_t)(fabs(start_state_PICK[k]) * res / mm_to_enc_conversion_factor);
+            int32_t travel = tuned + tuned / 4;
+            if (travel < res / 4) travel = res / 4;
+            step[k] = travel / 16;
+            if (step[k] < 1) step[k] = 1;
+            target[k] = outward ? pos[k] + sign[k] * travel : 0;
             if (m_striker[node].startMove(target[k], PLUCK_CAL_SPEED) != kNoError) {
                 LOG_ERROR("Plucker %i could not start its sweep", node);
                 done[k] = true;
@@ -1056,51 +1047,24 @@ private:
                 int node = pluckerNode(k);
                 if (!m_striker[node].readPosition(pos[k])) continue;
 
-                bool atEnd = learnBaseline
-                    ? abs(pos[k] - origin[k]) >= abs(target[k] - origin[k])
-                    : abs(pos[k]) <= margin[k];
-                if (atEnd) {
-                    LOG_ERROR("Plucker %i never released (peak %i mA, baseline %i, last %i)",
-                              node, peak[k], baseline[k], lastCurrent[k]);
-                    done[k] = true;
-                    --remaining;
-                    continue;
+                if (abs(pos[k] - lastLogged[k]) >= step[k]) {
+                    int current = 0;
+                    m_striker[node].readCurrent(current);
+                    Serial.print("SWEEP ");
+                    Serial.print(label);
+                    Serial.print(outward ? " out " : " back ");
+                    Serial.print(node);
+                    Serial.print(' ');
+                    Serial.print(pos[k]);
+                    Serial.print(' ');
+                    Serial.println(current);
+                    lastLogged[k] = pos[k];
                 }
 
-                int current = 0;
-                if (!m_striker[node].readCurrent(current)) continue;
-                if (!sawCurrent[k]) {
-                    sawCurrent[k] = true;
-                    LOG_LOG("Plucker %i current %i mA", node, current);
-                }
-                lastCurrent[k] = current;
-                int mag = abs(current);
-
-                // The first current hump is the motor breaking away, not the pick leaving the string.
-                // The spike is measured only inside the blanking distance, so a later pluck cannot raise it.
-                if (!settled[k]) {
-                    if (abs(pos[k] - origin[k]) < blank[k]) {
-                        if (mag > startPeak[k]) startPeak[k] = mag;
-                        continue;
-                    }
-                    bool fallen = startPeak[k] < 80 || mag <= startPeak[k] - 80;
-                    if (fallen) {
-                        settled[k] = true;
-                        baseline[k] = mag;
-                        peak[k] = 0;
-                    }
-                    continue;
-                }
-
-                int rise = mag - baseline[k];
-                if (rise > peak[k]) peak[k] = rise;
-                if (!contact[k]) {
-                    if (rise >= PLUCK_CURRENT_RISE_MA) contact[k] = true;
-                    continue;
-                }
-                if (rise <= peak[k] - PLUCK_CURRENT_DROP_MA) {
-                    release[k] = pos[k];
-                    m_striker[node].nudge(pos[k] + sign[k] * margin[k]);
+                bool arrived = outward
+                    ? abs(pos[k] - target[k]) <= step[k]
+                    : abs(pos[k]) <= step[k];
+                if (arrived) {
                     done[k] = true;
                     --remaining;
                 }
@@ -1109,9 +1073,10 @@ private:
             delay(2);
         }
 
-        for (int k = 0; k < n; ++k) {
-            if (release[k] == 0) return false;
-        }
+        Serial.print("SWEEP ");
+        Serial.print(label);
+        Serial.print(outward ? " out" : " back");
+        Serial.println(" end");
         return true;
     }
 
@@ -1123,20 +1088,14 @@ private:
         for (int k = 0; k < NUM_PRESSERS; ++k) m_striker[NUM_STRIKERS + 1 + k].holdTorque(torque);
     }
 
-    // Measures both pick releases on an open string and with fret 9 pressed.
-    // Playback still uses up_pluck_mm and down_pluck_mm; this prints the measured ticks.
+    // Logs current over a quarter turn out and back, open and with fret 9 pressed.
+    // Playback still uses up_pluck_mm and down_pluck_mm.
     void homePluckers() {
         const int n = NUM_PLUCKERS;
         int sign[NUM_PLUCKERS];
-        int baseline[NUM_PLUCKERS];
-        int32_t nearTick[2][NUM_PLUCKERS] = {};
-        int32_t farTick[2][NUM_PLUCKERS] = {};
-        int nearPeak[2][NUM_PLUCKERS] = {};
-        int farPeak[2][NUM_PLUCKERS] = {};
-        bool okState[2] = {};
         int32_t home[NUM_PLUCKERS];
         int32_t backoff[NUM_PLUCKERS];
-        const char* stateName[2] = {"open", "fret 9"};
+        const char* stateName[2] = {"open", "fret9"};
 
         int fret9 = -1;
         for (int i = 0; i < NUM_CAL_FRETS; ++i) {
@@ -1175,59 +1134,20 @@ private:
                 holdPressers(presser_cal_torque);
             }
 
-            bool swept = movePluckersTo(backoff, pressing)
-                && sweepPluckers(sign, baseline, true, pressing, nearTick[state], nearPeak[state]);
+            movePluckersTo(backoff, pressing);
+            logSweep(sign, true, pressing, stateName[state]);
             for (int k = 0; k < n; ++k) sign[k] = -sign[k];
-            swept = swept && sweepPluckers(sign, baseline, false, pressing, farTick[state], farPeak[state]);
+            logSweep(sign, false, pressing, stateName[state]);
             for (int k = 0; k < n; ++k) sign[k] = -sign[k];
-            okState[state] = swept;
 
-            // Back to the stop while the string is still in this state, so it does not rise into a pick.
             movePluckersTo(home, pressing);
             if (pressing) {
                 for (int k = 0; k < NUM_PRESSERS; ++k) m_striker[NUM_STRIKERS + 1 + k].stopTorque();
             }
-            if (!swept) LOG_ERROR("Pluck measurement failed for %s", stateName[state]);
         }
 
         int32_t sliderHome[NUM_STRIKERS] = {};
         moveAndWait(1, sliderHome, NUM_STRIKERS, SLIDER_CAL_SPEED);
-
-        Serial.println("Plucker release ticks from hard stop (near / far), peak rise in mA:");
-        for (int state = 0; state < 2; ++state) {
-            Serial.print("  ");
-            Serial.print(stateName[state]);
-            Serial.println(okState[state] ? ":" : " FAILED:");
-            for (int k = 0; k < n; ++k) {
-                Serial.print("    Plucker ");
-                Serial.print(pluckerNode(k));
-                Serial.print(": ");
-                if (nearTick[state][k] == 0) {
-                    Serial.print("no release (");
-                    Serial.print(nearPeak[state][k]);
-                    Serial.print(")");
-                }
-                else {
-                    Serial.print(nearTick[state][k]);
-                    Serial.print(" (");
-                    Serial.print(nearPeak[state][k]);
-                    Serial.print(")");
-                }
-                Serial.print(" / ");
-                if (farTick[state][k] == 0) {
-                    Serial.print("no release (");
-                    Serial.print(farPeak[state][k]);
-                    Serial.print(")");
-                }
-                else {
-                    Serial.print(farTick[state][k]);
-                    Serial.print(" (");
-                    Serial.print(farPeak[state][k]);
-                    Serial.print(")");
-                }
-                Serial.println();
-            }
-        }
     }
     // static void clearFaultTimerIRQHandler() {
     //     for (int i = 1; i < NUM_STRIKERS + 1; ++i) {
