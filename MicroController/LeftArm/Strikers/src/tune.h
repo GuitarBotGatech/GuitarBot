@@ -5,6 +5,7 @@
 // Run: python -m tuning.gen_tune_h  (or python -m tuning.tune)
 
 const float start_state_PICK[6] = {-6.0f, 4.2f, -3.6f, 4.3f, 4.0f, -5.1f};
+const float start_state_PICK_DOWN[6] = {-2.75f, 0.6f, -0.7f, 0.95f, 1.1f, -2.0f};
 const int motor_id_PICK[6] = {13, 14, 15, 16, 17, 18};
 const int home_offset_SLIDE = 50000;
 const int home_offset_PRESS = -25;

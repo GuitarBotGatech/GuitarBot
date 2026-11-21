@@ -191,9 +191,16 @@ CHORD_LIBRARY_FILE = str(_REPO_ROOT / "control" / "Alternate_Chords.csv")
 # Note that these values are not used in the python code, but are here so that 
 # tune.h can be generated programmatically.
 
-# Picker start state (positions). Physical CAN order; B↔e remapped like initial_point.
+# Nominal picker endpoints, in mm. Physical CAN order; B↔e remapped like initial_point.
+# The host plans strokes between these. At boot the firmware measures the open-string
+# releases and stretches this segment onto them, so play follows that measurement
+# without rewriting these values.
 START_STATE_PICK = [
     PICKER_MOTOR_INFO[PICKER_LOGICAL_TO_PHYSICAL[i]]['up_pluck_mm']
+    for i in range(6)
+]
+START_STATE_PICK_DOWN = [
+    PICKER_MOTOR_INFO[PICKER_LOGICAL_TO_PHYSICAL[i]]['down_pluck_mm']
     for i in range(6)
 ]
 

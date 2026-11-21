@@ -72,6 +72,7 @@ def generate_tune_h(
     # Map header names -> (python var name, c type, is_array)
     mapping = {
         "start_state_PICK": ("START_STATE_PICK", "float", True),
+        "start_state_PICK_DOWN": ("START_STATE_PICK_DOWN", "float", True),
         "motor_id_PICK": ("MOTOR_ID_PICK", "int", True),
         "home_offset_SLIDE": ("HOME_OFFSET_SLIDE", "int", False),
         "home_offset_PRESS": ("HOME_OFFSET_PRESS", "int", False),

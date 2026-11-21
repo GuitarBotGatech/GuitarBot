@@ -527,10 +527,15 @@ private:
     static constexpr int MOVE_ARRIVED_TICKS = 20;
     static constexpr unsigned long MOVE_TIMEOUT_MS = 5000;
 
-    // Plucker release calibration. After the hard-stop home, each pick sweeps slowly
-    // through the string; a sharp current drop marks release. Open string, then fret 9.
+    // Plucker release calibration, open string only. A sharp current drop marks each
+    // side of the string. Playback stretches the host's down/up targets onto those
+    // two ticks, the way a presser's measured rest becomes encoder 0.
     // Thresholds are from the full-range SWEEP log: real plucks drop 270-530 mA and
     // fall to under ~65% of the prior sample; mid-stroke noise dips do not.
+    // A string that misses either side keeps the host targets unchanged.
+    int32_t m_pluckNear[NUM_PLUCKERS] = {};
+    int32_t m_pluckFar[NUM_PLUCKERS] = {};
+    bool m_pluckMapped[NUM_PLUCKERS] = {};
     static constexpr float PLUCK_CAL_BACKOFF_MM = 0.2f;
     static constexpr float PLUCK_CAL_MARGIN_MM = 0.3f;
     static constexpr uint32_t PLUCK_CAL_SPEED = 2; // rpm
@@ -771,7 +776,11 @@ private:
                         pInstance->drivePresser(i, point[i - 1]);
                     }
                     else{
-                        pInstance->m_striker[i].rotate(point[i - 1]);
+                        int32_t target = point[i - 1];
+                        if (i >= pInstance->pluckerNode(0) && i < pInstance->pluckerNode(0) + NUM_PLUCKERS) {
+                            target = pInstance->playbackPluckTicks(i, target);
+                        }
+                        pInstance->m_striker[i].rotate(target);
                     }
                 }
         }
@@ -1006,6 +1015,22 @@ private:
         return NUM_STRIKERS + NUM_PRESSERS + NUM_STRUMMER_SLIDERS + NUM_STRUMMER_PICKERS + 1 + index;
     }
 
+    // Host commands live in the tune.py down/up frame. A mapped plucker plays on the
+    // releases measured this boot: nominal down lands on the near release, nominal up
+    // on the far one, and the stroke in between is scaled to match.
+    int32_t playbackPluckTicks(int node, int32_t commanded) const {
+        int k = node - pluckerNode(0);
+        if (k < 0 || k >= NUM_PLUCKERS || !m_pluckMapped[k]) return commanded;
+        float scale = (float)m_striker[node].encoderResolution() / mm_to_enc_conversion_factor;
+        float nomDown = start_state_PICK_DOWN[k] * scale;
+        float nomUp = start_state_PICK[k] * scale;
+        float span = nomUp - nomDown;
+        if (span > -1.f && span < 1.f) return commanded;
+        float t = ((float)commanded - nomDown) / span;
+        float mapped = (float)m_pluckNear[k] + t * ((float)m_pluckFar[k] - (float)m_pluckNear[k]);
+        return (int32_t)(mapped + (mapped >= 0.f ? 0.5f : -0.5f));
+    }
+
     int32_t pickerTicks(int node, float mm) const {
         int32_t ticks = (int32_t)(mm * m_striker[node].encoderResolution() / mm_to_enc_conversion_factor + 0.5f);
         return ticks < 1 ? 1 : ticks;
@@ -1034,8 +1059,7 @@ private:
     // were fit to — so dense loop timing cannot turn a cliff into a ramp.
     // On release, nudges past by PLUCK_CAL_MARGIN_MM and stops that motor.
     // release[k] is absolute ticks from hard-stop home; 0 means no release found.
-    bool measureSweep(const int* sign, bool outward, bool pressing, const char* label,
-                      int32_t* release, int* peakMag) {
+    bool measureSweep(const int* sign, bool outward, int32_t* release) {
         const int n = NUM_PLUCKERS;
         int32_t pos[NUM_PLUCKERS];
         int32_t origin[NUM_PLUCKERS];
@@ -1045,6 +1069,7 @@ private:
         int blank[NUM_PLUCKERS];
         int margin[NUM_PLUCKERS];
         int prevMag[NUM_PLUCKERS];
+        int peakMag[NUM_PLUCKERS] = {};
         bool havePrev[NUM_PLUCKERS] = {};
         bool done[NUM_PLUCKERS] = {};
         int remaining = n;
@@ -1060,7 +1085,6 @@ private:
             lastSamplePos[k] = pos[k];
             prevMag[k] = 0;
             release[k] = 0;
-            peakMag[k] = 0;
             blank[k] = res / 8;
             margin[k] = pickerTicks(node, PLUCK_CAL_MARGIN_MM);
             int32_t tuned = (int32_t)(fabs(start_state_PICK[k]) * res / mm_to_enc_conversion_factor);
@@ -1086,8 +1110,8 @@ private:
                     ? abs(pos[k] - target[k]) <= step[k]
                     : abs(pos[k]) <= step[k];
                 if (arrived) {
-                    LOG_ERROR("Plucker %i never released on %s %s (peak %i mA)",
-                              node, label, outward ? "out" : "back", peakMag[k]);
+                    LOG_ERROR("Plucker %i never released %s (peak %i mA)",
+                              node, outward ? "out" : "back", peakMag[k]);
                     done[k] = true;
                     --remaining;
                     continue;
@@ -1100,15 +1124,6 @@ private:
                 int mag = abs(current);
                 lastSamplePos[k] = pos[k];
 
-                Serial.print("SWEEP ");
-                Serial.print(label);
-                Serial.print(outward ? " out " : " back ");
-                Serial.print(node);
-                Serial.print(' ');
-                Serial.print(pos[k]);
-                Serial.print(' ');
-                Serial.println(current);
-
                 if (abs(pos[k] - origin[k]) < blank[k]) {
                     havePrev[k] = true;
                     prevMag[k] = mag;
@@ -1119,19 +1134,6 @@ private:
 
                 if (havePrev[k] && isPluckRelease(prevMag[k], mag)) {
                     release[k] = pos[k];
-                    Serial.print("RELEASE ");
-                    Serial.print(label);
-                    Serial.print(outward ? " out " : " back ");
-                    Serial.print(node);
-                    Serial.print(' ');
-                    Serial.print(pos[k]);
-                    Serial.print(" drop ");
-                    Serial.print(prevMag[k] - mag);
-                    Serial.print(" mA (");
-                    Serial.print(prevMag[k]);
-                    Serial.print(" -> ");
-                    Serial.print(mag);
-                    Serial.println(")");
                     m_striker[node].nudge(pos[k] + sign[k] * margin[k]);
                     done[k] = true;
                     --remaining;
@@ -1141,7 +1143,6 @@ private:
                 havePrev[k] = true;
                 prevMag[k] = mag;
             }
-            if (pressing) holdPressers(presser_cal_torque);
             delay(2);
         }
 
@@ -1159,112 +1160,65 @@ private:
         for (int k = 0; k < NUM_PRESSERS; ++k) m_striker[NUM_STRIKERS + 1 + k].holdTorque(torque);
     }
 
-    // Measures both pick releases on an open string and with fret 9 pressed.
-    // Playback still uses up_pluck_mm / down_pluck_mm; this prints measured ticks.
+    // Measures both open-string releases and, where both sides are found, makes
+    // playback use them. A miss leaves that plucker on the tune.py stroke.
     void homePluckers() {
         const int n = NUM_PLUCKERS;
         int sign[NUM_PLUCKERS];
         int32_t home[NUM_PLUCKERS];
         int32_t backoff[NUM_PLUCKERS];
-        int32_t farTick[2][NUM_PLUCKERS] = {};
-        int32_t nearTick[2][NUM_PLUCKERS] = {};
-        int farPeak[2][NUM_PLUCKERS] = {};
-        int nearPeak[2][NUM_PLUCKERS] = {};
-        bool okState[2] = {};
-        const char* stateName[2] = {"open", "fret9"};
-
-        int fret9 = -1;
-        for (int i = 0; i < NUM_CAL_FRETS; ++i) {
-            if (presser_cal_frets[i] == 9) fret9 = i;
-        }
+        int32_t farTick[NUM_PLUCKERS] = {};
+        int32_t nearTick[NUM_PLUCKERS] = {};
 
         for (int k = 0; k < n; ++k) {
             sign[k] = start_state_PICK[k] >= 0.f ? 1 : -1;
             home[k] = 0;
+            m_pluckMapped[k] = false;
             int node = pluckerNode(k);
             backoff[k] = sign[k] * pickerTicks(node, PLUCK_CAL_BACKOFF_MM);
         }
 
-        for (int state = 0; state < 2; ++state) {
-            bool pressing = state == 1;
-            if (pressing) {
-                if (fret9 < 0) {
-                    LOG_ERROR("Fret 9 is not in the slider table");
-                    break;
-                }
-                int32_t sliderTargets[NUM_STRIKERS];
-                for (int s = 0; s < NUM_STRIKERS; ++s) sliderTargets[s] = presser_cal_slider_ticks[fret9][s];
-                if (!moveAndWait(1, sliderTargets, NUM_STRIKERS, SLIDER_CAL_SPEED)) {
-                    LOG_ERROR("Sliders did not reach fret 9");
-                    break;
-                }
-                bool pressed = true;
-                for (int k = 0; k < NUM_PRESSERS && pressed; ++k) {
-                    if (m_striker[NUM_STRIKERS + 1 + k].startTorque() != kNoError) pressed = false;
-                }
-                if (!pressed) {
-                    LOG_ERROR("Pressers did not engage for fret 9");
-                    for (int k = 0; k < NUM_PRESSERS; ++k) m_striker[NUM_STRIKERS + 1 + k].stopTorque();
-                    break;
-                }
-                holdPressers(presser_cal_torque);
-            }
+        movePluckersTo(backoff);
+        measureSweep(sign, true, farTick);
+        for (int k = 0; k < n; ++k) sign[k] = -sign[k];
+        measureSweep(sign, false, nearTick);
+        for (int k = 0; k < n; ++k) sign[k] = -sign[k];
+        movePluckersTo(home);
 
-            bool swept = movePluckersTo(backoff, pressing)
-                && measureSweep(sign, true, pressing, stateName[state], farTick[state], farPeak[state]);
-            for (int k = 0; k < n; ++k) sign[k] = -sign[k];
-            // Fret 9 often has weaker / missing signatures; do not fail the whole state
-            // if only the return stroke misses — still record what we got.
-            bool backOk = measureSweep(sign, false, pressing, stateName[state],
-                                       nearTick[state], nearPeak[state]);
-            for (int k = 0; k < n; ++k) sign[k] = -sign[k];
-            okState[state] = swept && backOk;
-            if (!okState[state]) {
-                LOG_ERROR("Pluck measurement incomplete for %s", stateName[state]);
-            }
-
-            movePluckersTo(home, pressing);
-            if (pressing) {
-                for (int k = 0; k < NUM_PRESSERS; ++k) m_striker[NUM_STRIKERS + 1 + k].stopTorque();
+        for (int k = 0; k < n; ++k) {
+            if (nearTick[k] != 0 && farTick[k] != 0) {
+                m_pluckNear[k] = nearTick[k];
+                m_pluckFar[k] = farTick[k];
+                m_pluckMapped[k] = true;
             }
         }
 
-        int32_t sliderHome[NUM_STRIKERS] = {};
-        moveAndWait(1, sliderHome, NUM_STRIKERS, SLIDER_CAL_SPEED);
-
-        Serial.println("Plucker release ticks from hard stop (near / far), peak |I| in mA:");
-        for (int state = 0; state < 2; ++state) {
-            Serial.print("  ");
-            Serial.print(stateName[state]);
-            Serial.println(okState[state] ? ":" : " (incomplete):");
-            for (int k = 0; k < n; ++k) {
-                Serial.print("    Plucker ");
-                Serial.print(pluckerNode(k));
-                Serial.print(": ");
-                if (nearTick[state][k] == 0) {
-                    Serial.print("no release (");
-                    Serial.print(nearPeak[state][k]);
-                    Serial.print(")");
-                } else {
-                    Serial.print(nearTick[state][k]);
-                    Serial.print(" (");
-                    Serial.print(nearPeak[state][k]);
-                    Serial.print(")");
-                }
-                Serial.print(" / ");
-                if (farTick[state][k] == 0) {
-                    Serial.print("no release (");
-                    Serial.print(farPeak[state][k]);
-                    Serial.print(")");
-                } else {
-                    Serial.print(farTick[state][k]);
-                    Serial.print(" (");
-                    Serial.print(farPeak[state][k]);
-                    Serial.print(")");
-                }
-                Serial.println();
-            }
+        // Logical string order, so this block pastes into PICKER_MOTOR_INFO.
+        // B and high e are swapped on the CAN bus; the table below undoes that.
+        // A string that missed a side keeps its tune.py millimetres and is marked unchanged.
+        const int physicalForLogical[NUM_PLUCKERS] = {0, 1, 2, 3, 5, 4};
+        const char* name[NUM_PLUCKERS] = {"E", "A", "D", "G", "B", "E"};
+        Serial.println("PICKER_MOTOR_INFO = {");
+        for (int logical = 0; logical < n; ++logical) {
+            int k = physicalForLogical[logical];
+            int node = pluckerNode(k);
+            float scale = mm_to_enc_conversion_factor / (float)m_striker[node].encoderResolution();
+            float down = m_pluckMapped[k] ? m_pluckNear[k] * scale : start_state_PICK_DOWN[k];
+            float up = m_pluckMapped[k] ? m_pluckFar[k] * scale : start_state_PICK[k];
+            Serial.print("    ");
+            Serial.print(logical);
+            Serial.print(": {'down_pluck_mm': ");
+            Serial.print(down, 2);
+            Serial.print(", 'up_pluck_mm': ");
+            Serial.print(up, 2);
+            Serial.print(", 'resolution': ");
+            Serial.print(m_striker[node].encoderResolution());
+            Serial.print("}, # ");
+            Serial.print(name[logical]);
+            if (!m_pluckMapped[k]) Serial.print(" unchanged");
+            Serial.println();
         }
+        Serial.println("}");
     }
     // static void clearFaultTimerIRQHandler() {
     //     for (int i = 1; i < NUM_STRIKERS + 1; ++i) {
