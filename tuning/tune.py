@@ -102,8 +102,9 @@ def slider_encoder_for_fret(string, fret):
 # Each presser cam is rotated with PRESSER_CAL_TORQUE until it stalls on the fretboard,
 # once in each direction, at every fret in PRESSER_CAL_FRETS. The midpoint of the two
 # stalls, averaged over the frets, becomes the presser's rest position (encoder 0).
+# The two ends of the board are enough; the midpoint does not move at the frets between them.
 # The torque is the same in both directions so the string deflects equally on each side.
-PRESSER_CAL_FRETS = [0, 4, 9]
+PRESSER_CAL_FRETS = [0, 9]
 PRESSER_CAL_TORQUE = 500
 PRESSER_CAL_SLIDER_TICKS = [
     [int(round(slider_encoder_for_fret(string, fret))) for string in range(6)]
