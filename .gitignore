@@ -243,3 +243,9 @@ fabric.properties
 
 # Motor telemetry dumps from OpenCR UDP feed
 logs/telemetry/
+
+# Pickup recordings from the AudioBox
+logs/audio/
+
+# One folder per recorded song: telemetry, audio, spectrogram, song JSON
+logs/*/

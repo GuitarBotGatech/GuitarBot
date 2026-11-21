@@ -27,7 +27,7 @@ PICKER_PLUCK_MOTION_POINTS = 11
 LH_PRESSER_UNPRESSED_POS = -650
 
 # Position value for a fully pressed left-hand presser motor.
-LH_PRESSER_PRESSED_POS = 500
+LH_PRESSER_PRESSED_POS = 600
 
 # Partial press that damps a string without fretting it. The slider can stay wherever it is.
 LH_PRESSER_MUTE_POS = 100
@@ -79,7 +79,7 @@ MM_TO_ENCODER_CONVERSION_FACTOR = 9.4
 
 # An offset (in encoder ticks) applied to all slider motor calculations.
 # Offsets the positions relative to the nut
-SLIDER_ENCODER_OFFSET = -2900
+SLIDER_ENCODER_OFFSET = -3000
 
 # Multiplier to reverse the direction of specific slider motors if they are mounted mirrored.
 # A value of -1 reverses the motor, 1 keeps it the same.
@@ -121,11 +121,11 @@ PRESSER_CAL_SLIDER_TICKS = [
 # Key is the motor ID.
 
 PICKER_MOTOR_INFO = {
-    0: {'down_pluck_mm': -2.75, 'up_pluck_mm': -6, 'resolution': 1024}, # E
+    0: {'down_pluck_mm': -0.7, 'up_pluck_mm': -4, 'resolution': 1024}, # E
     1: {'down_pluck_mm': 0.6, 'up_pluck_mm': 4.2, 'resolution': 2048}, # A
     2: {'down_pluck_mm': -0.7, 'up_pluck_mm': -3.6, 'resolution': 2048}, # D
     3: {'down_pluck_mm': 0.95, 'up_pluck_mm': 4.3, 'resolution': 1024}, # G
-    4: {'down_pluck_mm': -2, 'up_pluck_mm':-5.1, 'resolution': 2048}, # B
+    4: {'down_pluck_mm': -1.2, 'up_pluck_mm':-4.5, 'resolution': 2048}, # B
     5: {'down_pluck_mm': 1.1, 'up_pluck_mm': 4, 'resolution': 2048} # E
 }
 

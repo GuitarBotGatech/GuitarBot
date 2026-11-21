@@ -21,13 +21,13 @@ def _smoke() -> dict:
     return json.loads(SMOKE.read_text(encoding="utf-8"))
 
 
-def _client(monkeypatch, *, dry_run: bool, send_impl=None):
+def _client(monkeypatch, *, dry_run: bool, record_audio: bool = False, send_impl=None):
     if send_impl is None:
-        monkeypatch.setattr("control.playback.send_trajectory", lambda traj: None)
+        monkeypatch.setattr("control.playback.send_trajectory", lambda traj, **kwargs: None)
     else:
         monkeypatch.setattr("control.playback.send_trajectory", send_impl)
     session = PlaybackSession()
-    app = create_app(dry_run=dry_run, session=session)
+    app = create_app(dry_run=dry_run, record_audio=record_audio, session=session)
     app.config["TESTING"] = True
     return app.test_client(), session
 
@@ -45,7 +45,7 @@ def test_health():
 
 def test_play_dry_run_returns_shape_and_does_not_send(monkeypatch):
     called = []
-    monkeypatch.setattr("control.playback.send_trajectory", lambda traj: called.append(traj))
+    monkeypatch.setattr("control.playback.send_trajectory", lambda traj, **kwargs: called.append(traj))
     session = PlaybackSession()
     client = create_app(dry_run=True, session=session).test_client()
     resp = client.post("/play", json=_smoke())
@@ -62,7 +62,7 @@ def test_play_dry_run_returns_shape_and_does_not_send(monkeypatch):
 def test_play_without_dry_run_sends_trajectory(monkeypatch):
     sent = threading.Event()
 
-    def fake_send(traj):
+    def fake_send(traj, **kwargs):
         sent.set()
 
     client, _session = _client(monkeypatch, dry_run=False, send_impl=fake_send)
@@ -70,6 +70,51 @@ def test_play_without_dry_run_sends_trajectory(monkeypatch):
     assert resp.status_code == 200
     assert resp.get_json()["ok"] is True
     assert sent.wait(timeout=5)
+
+
+def test_play_records_audio_when_enabled(monkeypatch):
+    seen = {}
+    done = threading.Event()
+
+    def fake_send(traj, **kwargs):
+        seen.update(kwargs)
+        done.set()
+
+    client, _session = _client(
+        monkeypatch,
+        dry_run=False,
+        record_audio=True,
+        send_impl=fake_send,
+    )
+    song = _smoke()
+    resp = client.post("/play", json=song)
+    assert resp.status_code == 200
+    assert done.wait(timeout=5)
+    assert seen.get("telemetry_label") == "play"
+    assert seen.get("record_audio") is True
+    assert seen.get("song") == song
+
+
+def test_reset_does_not_record_audio(monkeypatch):
+    seen = {}
+    done = threading.Event()
+
+    def fake_send(traj, **kwargs):
+        seen.update(kwargs)
+        done.set()
+
+    client, _session = _client(
+        monkeypatch,
+        dry_run=False,
+        record_audio=True,
+        send_impl=fake_send,
+    )
+    resp = client.post("/reset")
+    assert resp.status_code == 200
+    assert done.wait(timeout=5)
+    assert seen.get("telemetry_label") == "reset"
+    assert seen.get("record_audio") is False
+    assert seen.get("song") is None
 
 
 def test_reset_dry_run(monkeypatch):

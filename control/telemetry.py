@@ -1,7 +1,7 @@
 """UDP listener for OpenCR motor encoder telemetry.
 
 OpenCR sends little-endian float32[18] encoder ticks to TELEM_PORT at ~50 Hz.
-Capture around a play/reset send and write CSV + npy under logs/telemetry/.
+A performance log writes telemetry.csv into its session folder.
 """
 
 from __future__ import annotations
@@ -33,10 +33,12 @@ class TelemetryRecorder:
         port: int = TELEM_PORT,
         log_dir: Path | str | None = None,
         label: str = "run",
+        csv_name: str | None = None,
     ) -> None:
         self.port = int(port)
         self.log_dir = Path(DEFAULT_LOG_DIR if log_dir is None else log_dir)
         self.label = label
+        self.csv_name = csv_name
         self._stop = threading.Event()
         self._thread: threading.Thread | None = None
         self._rows: list[tuple[float, ...]] = []
@@ -105,10 +107,14 @@ class TelemetryRecorder:
             return None
 
         self.log_dir.mkdir(parents=True, exist_ok=True)
-        stamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
-        stem = f"{stamp}_{self.label}"
-        self.csv_path = self.log_dir / f"{stem}.csv"
-        self.npy_path = self.log_dir / f"{stem}.npy"
+        if self.csv_name:
+            self.csv_path = self.log_dir / self.csv_name
+            self.npy_path = None
+        else:
+            stamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
+            stem = f"{stamp}_{self.label}"
+            self.csv_path = self.log_dir / f"{stem}.csv"
+            self.npy_path = self.log_dir / f"{stem}.npy"
 
         header = ["t_unix"] + [f"m{i}" for i in range(1, NUM_MOTORS + 1)]
         with self.csv_path.open("w", newline="") as f:
@@ -116,11 +122,17 @@ class TelemetryRecorder:
             writer.writerow(header)
             writer.writerows(rows)
 
-        arr = np.asarray(rows, dtype=np.float64)
-        np.save(self.npy_path, arr)
+        if self.npy_path is not None:
+            arr = np.asarray(rows, dtype=np.float64)
+            np.save(self.npy_path, arr)
         print(f"Recorded {len(rows)} telemetry samples -> {self.csv_path}")
         return self.csv_path
 
 
-def capture_telemetry(*, label: str = "run", log_dir: Path | str | None = None) -> TelemetryRecorder:
-    return TelemetryRecorder(label=label, log_dir=log_dir)
+def capture_telemetry(
+    *,
+    label: str = "run",
+    log_dir: Path | str | None = None,
+    csv_name: str | None = None,
+) -> TelemetryRecorder:
+    return TelemetryRecorder(label=label, log_dir=log_dir, csv_name=csv_name)

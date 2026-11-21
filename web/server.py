@@ -27,21 +27,33 @@ def _env_flag(name: str) -> bool:
 def create_app(
     *,
     dry_run: bool = False,
+    record_audio: bool = False,
     session: PlaybackSession | None = None,
 ) -> Flask:
     app = Flask(__name__)
     playback = session if session is not None else get_session()
     app.config["DRY_RUN"] = bool(dry_run)
+    app.config["RECORD_AUDIO"] = bool(record_audio)
     app.config["PLAYBACK_SESSION"] = playback
 
     def _busy_error():
         return jsonify({"ok": False, "error": "robot is busy"}), 409
 
-    def _send_in_background(traj, telemetry_label: str = "play") -> None:
+    def _send_in_background(
+        traj,
+        telemetry_label: str = "play",
+        record_audio: bool = False,
+        song: dict | None = None,
+    ) -> None:
         try:
             from control.playback import send_trajectory
 
-            send_trajectory(traj, telemetry_label=telemetry_label)
+            send_trajectory(
+                traj,
+                telemetry_label=telemetry_label,
+                record_audio=record_audio,
+                song=song,
+            )
         except Exception:
             import traceback
 
@@ -88,7 +100,7 @@ def create_app(
 
         worker = threading.Thread(
             target=_send_in_background,
-            args=(traj, "play"),
+            args=(traj, "play", bool(app.config["RECORD_AUDIO"]), payload),
             daemon=True,
             name="guitarbot-play",
         )
@@ -119,7 +131,7 @@ def create_app(
 
         worker = threading.Thread(
             target=_send_in_background,
-            args=(traj, "reset"),
+            args=(traj, "reset", False),
             daemon=True,
             name="guitarbot-reset",
         )
@@ -151,6 +163,11 @@ def _parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         help="Plan trajectories but do not send UDP to OpenCR",
     )
     parser.add_argument(
+        "--record-audio",
+        action="store_true",
+        help="Record the AudioBox while a song is sent to the robot",
+    )
+    parser.add_argument(
         "--no-browser",
         action="store_true",
         help="Do not open the web UI in a browser tab",
@@ -166,15 +183,21 @@ def _parse_args(argv: list[str] | None = None) -> argparse.Namespace:
 def main(argv: list[str] | None = None) -> None:
     args = _parse_args(argv)
     dry_run = bool(args.dry_run or _env_flag("GUITARBOT_DRY_RUN"))
+    record_audio = bool(args.record_audio)
     tu.graph = False
 
     config = load_config(args.config)
-    app = create_app(dry_run=dry_run, session=PlaybackSession(config=config))
+    app = create_app(
+        dry_run=dry_run,
+        record_audio=record_audio,
+        session=PlaybackSession(config=config),
+    )
     url = f"http://{args.host}:{args.port}/index.html"
     print(f"GuitarBot server on {url}")
     print(f"  POST /play   arrangement JSON")
     print(f"  POST /reset  home motors")
     print(f"  dry_run={dry_run}")
+    print(f"  record_audio={record_audio}")
     print(f"  config={args.config or 'configs/default.yaml'}")
 
     if not args.no_browser:

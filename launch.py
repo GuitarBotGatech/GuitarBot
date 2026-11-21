@@ -23,6 +23,11 @@ def main() -> None:
         action="store_true",
         help="Plan trajectories but do not send UDP to OpenCR",
     )
+    parser.add_argument(
+        "--record-audio",
+        action="store_true",
+        help="Record the AudioBox while a song is sent to the robot",
+    )
     parser.add_argument("--port", type=int, default=8000, help="HTTP port")
     args = parser.parse_args()
 
@@ -33,6 +38,8 @@ def main() -> None:
         argv.append("--no-browser")
     if args.dry_run:
         argv.append("--dry-run")
+    if args.record_audio:
+        argv.append("--record-audio")
     server_main(argv)
 
 

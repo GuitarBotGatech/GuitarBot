@@ -55,20 +55,20 @@ def test_legacy_midi_track_is_ignored():
 
 def test_play_arrangement_send_false_does_not_call_robot(monkeypatch):
     called = []
-    monkeypatch.setattr("control.playback.send_trajectory", lambda traj: called.append(traj))
+    monkeypatch.setattr("control.playback.send_trajectory", lambda traj, **kwargs: called.append(traj))
     play_arrangement(_load(SMOKE), send=False, session=PlaybackSession())
     assert called == []
 
 
 def test_play_arrangement_send_true_calls_robot(monkeypatch):
     called = []
-    monkeypatch.setattr("control.playback.send_trajectory", lambda traj: called.append(traj.shape))
+    monkeypatch.setattr("control.playback.send_trajectory", lambda traj, **kwargs: called.append(traj.shape))
     traj = play_arrangement(_load(SMOKE), send=True, session=PlaybackSession())
     assert called == [traj.shape]
 
 
 def test_reset_returns_home_trajectory_and_restores_parser_state(monkeypatch):
-    monkeypatch.setattr("control.playback.send_trajectory", lambda traj: None)
+    monkeypatch.setattr("control.playback.send_trajectory", lambda traj, **kwargs: None)
     session = PlaybackSession()
     play_arrangement(_load(SMOKE), send=False, session=session)
 

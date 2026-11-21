@@ -56,15 +56,16 @@ def build_reset_trajectory(current_position=None, target_position=None) -> np.nd
 def send_trajectory(
     traj: np.ndarray,
     *,
-    record_telemetry: bool = True,
+    record_audio: bool = False,
+    song: dict | None = None,
     telemetry_label: str = "play",
 ) -> None:
     """Send a trajectory to OpenCR in timed UDP batches, without waiting for ACKs.
 
-    When record_telemetry is True, also listen for the OpenCR encoder feed on
-    UDP :8889 and save CSV/npy under logs/telemetry/.
+    When record_audio is True, record telemetry and the AudioBox into one
+    dated folder under logs/ for this send. Telemetry is not captured otherwise.
     """
-    from control.telemetry import capture_telemetry
+    from tuning.record_audio import capture_performance
 
     def _send() -> None:
         udp_ip = "10.2.1.177"
@@ -101,8 +102,8 @@ def send_trajectory(
         print(f"Total elapsed time: {time.time() - total_start_time:.4f} seconds")
         print("All batches sent. Song Complete.")
 
-    if record_telemetry:
-        with capture_telemetry(label=telemetry_label):
+    if record_audio:
+        with capture_performance(song=song, label=telemetry_label):
             _send()
     else:
         _send()
